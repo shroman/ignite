@@ -185,7 +185,7 @@ class GridDhtPartitionSupplier {
         if (!cctx.affinity().affinityTopologyVersion().equals(d.topologyVersion()))
             return;
 
-        GridDhtPartitionSupplyMessageV2 s = new GridDhtPartitionSupplyMessageV2(d.workerId(),
+        GridDhtPartitionSupplyMessageV2 s = new GridDhtPartitionSupplyMessageV2(
             d.updateSequence(), cctx.cacheId(), d.topologyVersion());
 
         ClusterNode node = cctx.discovery().node(id);
@@ -289,7 +289,7 @@ class GridDhtPartitionSupplier {
                                     if (!reply(node, d, s))
                                         return;
 
-                                    s = new GridDhtPartitionSupplyMessageV2(d.workerId(), d.updateSequence(),
+                                    s = new GridDhtPartitionSupplyMessageV2(d.updateSequence(),
                                         cctx.cacheId(), d.topologyVersion());
                                 }
                             }
@@ -365,7 +365,7 @@ class GridDhtPartitionSupplier {
                                         if (!reply(node, d, s))
                                             return;
 
-                                        s = new GridDhtPartitionSupplyMessageV2(d.workerId(), d.updateSequence(),
+                                        s = new GridDhtPartitionSupplyMessageV2(d.updateSequence(),
                                             cctx.cacheId(), d.topologyVersion());
                                     }
                                 }
@@ -477,7 +477,7 @@ class GridDhtPartitionSupplier {
                                     if (!reply(node, d, s))
                                         return;
 
-                                    s = new GridDhtPartitionSupplyMessageV2(d.workerId(), d.updateSequence(),
+                                    s = new GridDhtPartitionSupplyMessageV2(d.updateSequence(),
                                         cctx.cacheId(), d.topologyVersion());
                                 }
                             }

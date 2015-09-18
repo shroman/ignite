@@ -60,6 +60,7 @@ import org.apache.ignite.internal.processors.timeout.GridTimeoutObject;
 import org.apache.ignite.internal.processors.timeout.GridTimeoutObjectAdapter;
 import org.apache.ignite.internal.util.GridLeanSet;
 import org.apache.ignite.internal.util.future.GridFutureAdapter;
+import org.apache.ignite.internal.util.tostring.GridToStringExclude;
 import org.apache.ignite.internal.util.tostring.GridToStringInclude;
 import org.apache.ignite.internal.util.typedef.CI1;
 import org.apache.ignite.internal.util.typedef.CI2;
@@ -189,11 +190,11 @@ public class GridDhtPartitionDemander {
     }
 
     /**
-     * @param topVer Topology version.
+     * @param fut Future.
      * @return {@code True} if topology changed.
      */
-    private boolean topologyChanged(AffinityTopologyVersion topVer) {
-        return !cctx.affinity().affinityTopologyVersion().equals(topVer);
+    private boolean topologyChanged(SyncFuture fut) {
+        return !cctx.affinity().affinityTopologyVersion().equals(fut.topologyVersion()) || fut != syncFut;
     }
 
     /**
@@ -218,7 +219,7 @@ public class GridDhtPartitionDemander {
         try {
             SyncFuture wFut = (SyncFuture)cctx.kernalContext().cache().internalCache(name).preloader().syncFuture();
 
-            if (!topologyChanged(fut.assigns.topologyVersion()))
+            if (!topologyChanged(fut))
                 wFut.get();
             else {
                 fut.cancel();
@@ -257,8 +258,6 @@ public class GridDhtPartitionDemander {
 
             final SyncFuture fut = new SyncFuture(assigns, cctx, log, oldFut.isDummy());
 
-            syncFut = fut;
-
             if (!oldFut.isDummy())
                 oldFut.cancel();
             else
@@ -268,10 +267,15 @@ public class GridDhtPartitionDemander {
                     }
                 });
 
-            if (fut.doneIfEmpty())// Done in case empty assigns.
-                return;
+            syncFut = fut;
 
-            if (topologyChanged(fut.topologyVersion())) {
+            if (assigns.isEmpty()) {
+                fut.doneIfEmpty();
+
+                return;
+            }
+
+            if (topologyChanged(fut)) {
                 fut.cancel();
 
                 return;
@@ -298,7 +302,7 @@ public class GridDhtPartitionDemander {
                                     log.debug("Waiting for dependant caches rebalance [cacheName=" + cctx.name() +
                                         ", rebalanceOrder=" + rebalanceOrder + ']');
 
-                                if (!topologyChanged(fut.topologyVersion()))
+                                if (!topologyChanged(fut))
                                     oFut.get();
                                 else {
                                     fut.cancel();
@@ -323,7 +327,7 @@ public class GridDhtPartitionDemander {
                         }
                     }
 
-                    requestPartitions(fut);
+                    requestPartitions(fut, assigns);
                 }
             });
 
@@ -358,13 +362,9 @@ public class GridDhtPartitionDemander {
     /**
      * @param fut Future.
      */
-    private void requestPartitions(SyncFuture fut) {
-        final GridDhtPreloaderAssignments assigns = fut.assigns;
-
-        AffinityTopologyVersion topVer = fut.topologyVersion();
-
+    private void requestPartitions(SyncFuture fut, GridDhtPreloaderAssignments assigns) {
         for (Map.Entry<ClusterNode, GridDhtPartitionDemandMessage> e : assigns.entrySet()) {
-            if (topologyChanged(topVer)) {
+            if (topologyChanged(fut)) {
                 fut.cancel();
 
                 return;
@@ -411,7 +411,7 @@ public class GridDhtPartitionDemander {
                         initD.topic(GridCachePartitionExchangeManager.rebalanceTopic(cnt));
 
                         try {
-                            if (!topologyChanged(topVer))
+                            if (!topologyChanged(fut))
                                 cctx.io().sendOrderedMessage(node, GridCachePartitionExchangeManager.rebalanceTopic(cnt), initD, cctx.ioPolicy(), d.timeout());
                             else
                                 fut.cancel();
@@ -498,16 +498,12 @@ public class GridDhtPartitionDemander {
 
         final SyncFuture fut = syncFut;
 
-        if (!fut.topologyVersion().equals(topVer))//will check topology changed at loop.
-            return;
-
         ClusterNode node = cctx.node(id);
 
-        if (node == null) {
-            fut.cancel(id);
+        assert node != null;
 
+        if (!fut.topologyVersion().equals(topVer) || topologyChanged(fut))
             return;
-        }
 
         if (log.isDebugEnabled())
             log.debug("Received supply message: " + supply);
@@ -527,7 +523,7 @@ public class GridDhtPartitionDemander {
         try {
             // Preload.
             for (Map.Entry<Integer, CacheEntryInfoCollection> e : supply.infos().entrySet()) {
-                if (topologyChanged(topVer)) {
+                if (topologyChanged(fut)) {
                     fut.cancel();
 
                     return;
@@ -609,7 +605,10 @@ public class GridDhtPartitionDemander {
             for (Integer miss : supply.missed())
                 fut.partitionDone(id, miss);
 
-            GridDhtPartitionDemandMessage d = fut.getDemandMessage(node);
+            GridDhtPartitionDemandMessage d = new GridDhtPartitionDemandMessage(
+                supply.updateSequence(), supply.topologyVersion(), cctx.cacheId());
+
+            d.timeout(cctx.config().getRebalanceTimeout());
 
             if (d != null) {
                 // Create copy.
@@ -618,7 +617,7 @@ public class GridDhtPartitionDemander {
 
                 nextD.topic(GridCachePartitionExchangeManager.rebalanceTopic(idx));
 
-                if (!topologyChanged(topVer)) {
+                if (!topologyChanged(fut)) {
                     // Send demand message.
                     cctx.io().sendOrderedMessage(node, GridCachePartitionExchangeManager.rebalanceTopic(idx),
                         nextD, cctx.ioPolicy(), cctx.config().getRebalanceTimeout());
@@ -761,8 +760,12 @@ public class GridDhtPartitionDemander {
         /** Lock. */
         private final Lock lock = new ReentrantLock();
 
-        /** Assignments. */
-        private final GridDhtPreloaderAssignments assigns;
+        /** Exchange future. */
+        @GridToStringExclude
+        private final GridDhtPartitionsExchangeFuture exchFut;
+
+        /** Topology version. */
+        private final AffinityTopologyVersion topVer;
 
         /**
          * @param assigns Assigns.
@@ -774,7 +777,10 @@ public class GridDhtPartitionDemander {
             GridCacheContext<?, ?> cctx,
             IgniteLogger log,
             boolean sentStopEvnt) {
-            this.assigns = assigns;
+            assert assigns != null;
+
+            this.exchFut = assigns.exchangeFuture();
+            this.topVer = assigns.topologyVersion();
             this.cctx = cctx;
             this.log = log;
             this.sendStoppedEvnt = sentStopEvnt;
@@ -792,7 +798,8 @@ public class GridDhtPartitionDemander {
          * Dummy future. Will be done by real one.
          */
         public SyncFuture() {
-            this.assigns = null;
+            this.exchFut = null;
+            this.topVer = null;
             this.cctx = null;
             this.log = null;
             this.sendStoppedEvnt = false;
@@ -802,14 +809,14 @@ public class GridDhtPartitionDemander {
          * @return Topology version.
          */
         public AffinityTopologyVersion topologyVersion() {
-            return assigns != null ? assigns.topologyVersion() : null;
+            return topVer;
         }
 
         /**
          * @return Is dummy (created at demander creation).
          */
         private boolean isDummy() {
-            return assigns == null;
+            return topVer == null;
         }
 
         /**
@@ -828,41 +835,22 @@ public class GridDhtPartitionDemander {
         }
 
         /**
-         * @param node Node.
-         * @return Demand message.
+         *
          */
-        private GridDhtPartitionDemandMessage getDemandMessage(ClusterNode node) {
-            if (isDone())
-                return null;
-
-            return assigns.get(node);
-        }
-
-        /**
-         * @return future is done.
-         */
-        private boolean doneIfEmpty() {
+        private void doneIfEmpty() {
             lock.lock();
 
             try {
                 if (isDone())
-                    return true;
+                    return;
 
-                if (assigns.isEmpty()) {
-                    assert remaining.isEmpty();
+                assert remaining.isEmpty();
 
-                    if (assigns.topologyVersion().topologyVersion() > 1)// Not an initial topology.
-                        if (log.isDebugEnabled())
-                            log.debug("Rebalancing is not required [cache=" + cctx.name() +
-                            ", topology=" + assigns.topologyVersion() + "]");
+                if (log.isDebugEnabled())
+                    log.debug("Rebalancing is not required [cache=" + cctx.name() +
+                        ", topology=" + topVer + "]");
 
-                    checkIsDone();
-
-                    return true;
-                }
-                else {
-                    return false;
-                }
+                checkIsDone();
             }
             finally {
                 lock.unlock();
@@ -953,7 +941,7 @@ public class GridDhtPartitionDemander {
 
                 if (cctx.events().isRecordable(EVT_CACHE_REBALANCE_PART_LOADED))
                     preloadEvent(p, EVT_CACHE_REBALANCE_PART_LOADED,
-                        assigns.exchangeFuture().discoveryEvent());
+                        exchFut.discoveryEvent());
 
                 Collection<Integer> parts = remaining.get(nodeId).get2();
 
@@ -1011,15 +999,15 @@ public class GridDhtPartitionDemander {
                 }
 
                 if (!m.isEmpty()) {
-                    U.log(log,("Reassigning partitions that were missed: " + m));
+                    U.log(log, ("Reassigning partitions that were missed: " + m));
 
-                    cctx.shared().exchange().forceDummyExchange(true, assigns.exchangeFuture());
+                    cctx.shared().exchange().forceDummyExchange(true, exchFut);
                 }
 
                 cctx.shared().exchange().scheduleResendPartitions();
 
                 if (cctx.events().isRecordable(EVT_CACHE_REBALANCE_STOPPED) && (!cctx.isReplicated() || sendStoppedEvnt))
-                    preloadEvent(EVT_CACHE_REBALANCE_STOPPED, assigns.exchangeFuture().discoveryEvent());
+                    preloadEvent(EVT_CACHE_REBALANCE_STOPPED, exchFut.discoveryEvent());
 
                 onDone();
             }
@@ -1163,7 +1151,7 @@ public class GridDhtPartitionDemander {
             // Get the same collection that will be sent in the message.
             Collection<Integer> remaining = d.partitions();
 
-            if (topologyChanged(topVer))
+            if (topologyChanged(fut))
                 return missed;
 
             cctx.io().addOrderedHandler(d.topic(), new CI2<UUID, GridDhtPartitionSupplyMessage>() {
@@ -1195,7 +1183,7 @@ public class GridDhtPartitionDemander {
 
                     // While.
                     // =====
-                    while (!topologyChanged(topVer)) {
+                    while (!topologyChanged(fut)) {
                         SupplyMessage s = poll(msgQ, timeout);
 
                         // If timed out.
@@ -1358,7 +1346,7 @@ public class GridDhtPartitionDemander {
                         }
                     }
                 }
-                while (retry && !topologyChanged(topVer));
+                while (retry && !topologyChanged(fut));
 
                 return missed;
             }
@@ -1375,13 +1363,13 @@ public class GridDhtPartitionDemander {
             demandLock.readLock().lock();
 
             try {
-                GridDhtPartitionsExchangeFuture exchFut = fut.assigns.exchangeFuture();
+                GridDhtPartitionsExchangeFuture exchFut = fut.exchFut;
 
-                AffinityTopologyVersion topVer = fut.assigns.topologyVersion();
+                AffinityTopologyVersion topVer = fut.topVer;
 
                 Collection<Integer> missed = new HashSet<>();
 
-                if (topologyChanged(topVer)) {
+                if (topologyChanged(fut)) {
                     fut.cancel();
 
                     return;

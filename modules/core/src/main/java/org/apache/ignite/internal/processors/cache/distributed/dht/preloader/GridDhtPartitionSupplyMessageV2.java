@@ -17,17 +17,30 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.dht.preloader;
 
-import org.apache.ignite.*;
-import org.apache.ignite.internal.*;
-import org.apache.ignite.internal.processors.affinity.*;
-import org.apache.ignite.internal.processors.cache.*;
-import org.apache.ignite.internal.util.tostring.*;
-import org.apache.ignite.internal.util.typedef.internal.*;
-import org.apache.ignite.plugin.extensions.communication.*;
-
-import java.io.*;
-import java.nio.*;
-import java.util.*;
+import java.io.Externalizable;
+import java.nio.ByteBuffer;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.internal.GridDirectCollection;
+import org.apache.ignite.internal.GridDirectMap;
+import org.apache.ignite.internal.GridDirectTransient;
+import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
+import org.apache.ignite.internal.processors.cache.CacheEntryInfoCollection;
+import org.apache.ignite.internal.processors.cache.GridCacheContext;
+import org.apache.ignite.internal.processors.cache.GridCacheDeployable;
+import org.apache.ignite.internal.processors.cache.GridCacheEntryInfo;
+import org.apache.ignite.internal.processors.cache.GridCacheMessage;
+import org.apache.ignite.internal.processors.cache.GridCacheSharedContext;
+import org.apache.ignite.internal.util.tostring.GridToStringInclude;
+import org.apache.ignite.internal.util.typedef.internal.S;
+import org.apache.ignite.plugin.extensions.communication.MessageCollectionItemType;
+import org.apache.ignite.plugin.extensions.communication.MessageReader;
+import org.apache.ignite.plugin.extensions.communication.MessageWriter;
 
 /**
  * Partition supply message.
@@ -35,9 +48,6 @@ import java.util.*;
 public class GridDhtPartitionSupplyMessageV2 extends GridCacheMessage implements GridCacheDeployable {
     /** */
     private static final long serialVersionUID = 0L;
-
-    /** Worker ID. */
-    private int workerId = -1;
 
     /** Update sequence. */
     private long updateSeq;
@@ -66,17 +76,14 @@ public class GridDhtPartitionSupplyMessageV2 extends GridCacheMessage implements
     private int msgSize;
 
     /**
-     * @param workerId Worker ID.
      * @param updateSeq Update sequence for this node.
      * @param cacheId Cache ID.
      */
-    GridDhtPartitionSupplyMessageV2(int workerId, long updateSeq, int cacheId, AffinityTopologyVersion topVer) {
-        assert workerId >= 0;
+    GridDhtPartitionSupplyMessageV2(long updateSeq, int cacheId, AffinityTopologyVersion topVer) {
         assert updateSeq > 0;
 
         this.cacheId = cacheId;
         this.updateSeq = updateSeq;
-        this.workerId = workerId;
         this.topVer = topVer;
     }
 
@@ -95,13 +102,6 @@ public class GridDhtPartitionSupplyMessageV2 extends GridCacheMessage implements
     /** {@inheritDoc} */
     @Override public boolean ignoreClassErrors() {
         return true;
-    }
-
-    /**
-     * @return Worker ID.
-     */
-    int workerId() {
-        return workerId;
     }
 
     /**
@@ -255,7 +255,7 @@ public class GridDhtPartitionSupplyMessageV2 extends GridCacheMessage implements
         GridCacheContext cacheCtx = ctx.cacheContext(cacheId);
 
         for (CacheEntryInfoCollection col : infos().values()) {
-            List<GridCacheEntryInfo>  entries = col.infos();
+            List<GridCacheEntryInfo> entries = col.infos();
 
             for (int i = 0; i < entries.size(); i++)
                 entries.get(i).unmarshal(cacheCtx, ldr);
@@ -316,12 +316,6 @@ public class GridDhtPartitionSupplyMessageV2 extends GridCacheMessage implements
 
             case 8:
                 if (!writer.writeLong("updateSeq", updateSeq))
-                    return false;
-
-                writer.incrementState();
-
-            case 9:
-                if (!writer.writeInt("workerId", workerId))
                     return false;
 
                 writer.incrementState();
@@ -390,17 +384,9 @@ public class GridDhtPartitionSupplyMessageV2 extends GridCacheMessage implements
 
                 reader.incrementState();
 
-            case 9:
-                workerId = reader.readInt("workerId");
-
-                if (!reader.isLastRead())
-                    return false;
-
-                reader.incrementState();
-
         }
 
-        return true;
+        return reader.afterMessageRead(GridDhtPartitionSupplyMessageV2.class);
     }
 
     /** {@inheritDoc} */
@@ -410,7 +396,7 @@ public class GridDhtPartitionSupplyMessageV2 extends GridCacheMessage implements
 
     /** {@inheritDoc} */
     @Override public byte fieldsCount() {
-        return 10;
+        return 9;
     }
 
     /** {@inheritDoc} */
