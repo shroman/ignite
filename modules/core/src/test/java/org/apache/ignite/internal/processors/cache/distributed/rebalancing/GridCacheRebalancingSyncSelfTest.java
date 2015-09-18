@@ -110,8 +110,8 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         cacheRCfg.setName(CACHE_NAME_DHT_REPLICATED);
         cacheRCfg.setCacheMode(CacheMode.REPLICATED);
         cacheRCfg.setRebalanceMode(CacheRebalanceMode.SYNC);
-        cachePCfg.setRebalanceBatchSize(1);
-        cachePCfg.setRebalanceBatchesCount(Integer.MAX_VALUE);
+        cacheRCfg.setRebalanceBatchSize(1);
+        cacheRCfg.setRebalanceBatchesCount(Integer.MAX_VALUE);
 
         CacheConfiguration<Integer, Integer> cacheRCfg2 = new CacheConfiguration<>();
 
