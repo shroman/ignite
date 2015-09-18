@@ -852,7 +852,8 @@ public class GridDhtPartitionDemander {
                     assert remaining.isEmpty();
 
                     if (assigns.topologyVersion().topologyVersion() > 1)// Not an initial topology.
-                        U.log(log, "Rebalancing is not required [cache=" + cctx.name() +
+                        if (log.isDebugEnabled())
+                            log.debug("Rebalancing is not required [cache=" + cctx.name() +
                             ", topology=" + assigns.topologyVersion() + "]");
 
                     checkIsDone();
@@ -1010,8 +1011,7 @@ public class GridDhtPartitionDemander {
                 }
 
                 if (!m.isEmpty()) {
-                    if (log.isDebugEnabled())
-                        log.debug("Reassigning partitions that were missed: " + m);
+                    U.log(log,("Reassigning partitions that were missed: " + m));
 
                     cctx.shared().exchange().forceDummyExchange(true, assigns.exchangeFuture());
                 }
