@@ -48,6 +48,7 @@ import org.jsr166.ConcurrentHashMap8;
 
 import static org.apache.ignite.events.EventType.EVT_CACHE_REBALANCE_STOPPED;
 import static org.apache.ignite.events.EventType.EVT_NODE_FAILED;
+import static org.apache.ignite.events.EventType.EVT_NODE_JOINED;
 import static org.apache.ignite.events.EventType.EVT_NODE_LEFT;
 import static org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionState.OWNING;
 
@@ -97,28 +98,27 @@ class GridDhtPartitionSupplier {
     void start() {
         lsnr = new GridLocalEventListener() {
             @Override public void onEvent(Event evt) {
-                int lsnrCnt = cctx.gridConfig().getRebalanceThreadPoolSize();
+                if (evt instanceof CacheRebalancingEvent) {
+                    ClusterNode node = ((CacheRebalancingEvent)evt).discoveryNode();
 
-                for (int idx = 0; idx < lsnrCnt; idx++) {
-                    ClusterNode node;
-                    if (evt instanceof CacheRebalancingEvent)
-                        node = ((CacheRebalancingEvent)evt).discoveryNode();
-                    else if (evt instanceof DiscoveryEvent)
-                        node = ((DiscoveryEvent)evt).eventNode();
-                    else {
-                        assert false;
+                    int lsnrCnt = cctx.gridConfig().getRebalanceThreadPoolSize();
 
-                        return;
+                    for (int idx = 0; idx < lsnrCnt; idx++) {
+                        T2<UUID, Integer> scId = new T2<>(node.id(), idx);
+
+                        tryClearContext(scMap, scId, log);
                     }
-
-                    T2<UUID, Integer> scId = new T2<>(node.id(), idx);
-
-                    tryClearContext(scMap, scId, log);
+                }
+                else if (evt instanceof DiscoveryEvent) {
+                    scMap.clear();
+                }
+                else {
+                    assert false;
                 }
             }
         };
 
-        cctx.events().addListener(lsnr, EVT_NODE_LEFT, EVT_NODE_FAILED, EVT_CACHE_REBALANCE_STOPPED);
+        cctx.events().addListener(lsnr, EVT_NODE_JOINED, EVT_NODE_LEFT, EVT_NODE_FAILED, EVT_CACHE_REBALANCE_STOPPED);
 
         startOldListeners();
     }
