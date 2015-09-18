@@ -409,6 +409,7 @@ public class GridDhtPartitionDemander {
                         GridDhtPartitionDemandMessage initD = new GridDhtPartitionDemandMessage(d, sParts.get(cnt));
 
                         initD.topic(GridCachePartitionExchangeManager.rebalanceTopic(cnt));
+
                         try {
                             if (!topologyChanged(topVer))
                                 cctx.io().sendOrderedMessage(node, GridCachePartitionExchangeManager.rebalanceTopic(cnt), initD, cctx.ioPolicy(), d.timeout());

@@ -1084,7 +1084,7 @@ public class CacheConfiguration<K, V> extends MutableConfiguration<K, V> {
      * @return {@code this} for chaining.
      */
     public CacheConfiguration<K, V> setRebalanceBatchSize(int rebalanceBatchSize) {
-        this.rebalanceBatchSize = rebalanceBatchSize;
+        this.rebalanceBatchSize = Math.max(1, rebalanceBatchSize);
 
         return this;
     }

@@ -95,6 +95,8 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         cachePCfg.setCacheMode(CacheMode.PARTITIONED);
         cachePCfg.setRebalanceMode(CacheRebalanceMode.SYNC);
         cachePCfg.setBackups(1);
+        cachePCfg.setRebalanceBatchSize(1);
+        cachePCfg.setRebalanceBatchesCount(1);
 
         CacheConfiguration<Integer, Integer> cachePCfg2 = new CacheConfiguration<>();
 
@@ -108,6 +110,8 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         cacheRCfg.setName(CACHE_NAME_DHT_REPLICATED);
         cacheRCfg.setCacheMode(CacheMode.REPLICATED);
         cacheRCfg.setRebalanceMode(CacheRebalanceMode.SYNC);
+        cachePCfg.setRebalanceBatchSize(1);
+        cachePCfg.setRebalanceBatchesCount(Integer.MAX_VALUE);
 
         CacheConfiguration<Integer, Integer> cacheRCfg2 = new CacheConfiguration<>();
 
@@ -123,19 +127,19 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
     /**
      * @param ignite Ignite.
      */
-    protected void generateData(Ignite ignite) {
-        generateData(ignite, CACHE_NAME_DHT_PARTITIONED);
-        generateData(ignite, CACHE_NAME_DHT_PARTITIONED_2);
-        generateData(ignite, CACHE_NAME_DHT_REPLICATED);
-        generateData(ignite, CACHE_NAME_DHT_REPLICATED_2);
+    protected void generateData(Ignite ignite, int from) {
+        generateData(ignite, CACHE_NAME_DHT_PARTITIONED, from);
+        generateData(ignite, CACHE_NAME_DHT_PARTITIONED_2, from);
+        generateData(ignite, CACHE_NAME_DHT_REPLICATED, from);
+        generateData(ignite, CACHE_NAME_DHT_REPLICATED_2, from);
     }
 
     /**
      * @param ignite Ignite.
      */
-    protected void generateData(Ignite ignite, String name) {
+    protected void generateData(Ignite ignite, String name, int from) {
         try (IgniteDataStreamer<Integer, Integer> stmr = ignite.dataStreamer(name)) {
-            for (int i = 0; i < TEST_SIZE; i++) {
+            for (int i = from; i < from + TEST_SIZE; i++) {
                 if (i % (TEST_SIZE / 10) == 0)
                     log.info("Prepared " + i * 100 / (TEST_SIZE) + "% entries (" + TEST_SIZE + ").");
 
@@ -150,11 +154,11 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
      * @param ignite Ignite.
      * @throws IgniteCheckedException Exception.
      */
-    protected void checkData(Ignite ignite) throws IgniteCheckedException {
-        checkData(ignite, CACHE_NAME_DHT_PARTITIONED);
-        checkData(ignite, CACHE_NAME_DHT_PARTITIONED_2);
-        checkData(ignite, CACHE_NAME_DHT_REPLICATED);
-        checkData(ignite, CACHE_NAME_DHT_REPLICATED_2);
+    protected void checkData(Ignite ignite, int from) throws IgniteCheckedException {
+        checkData(ignite, CACHE_NAME_DHT_PARTITIONED, from);
+        checkData(ignite, CACHE_NAME_DHT_PARTITIONED_2, from);
+        checkData(ignite, CACHE_NAME_DHT_REPLICATED, from);
+        checkData(ignite, CACHE_NAME_DHT_REPLICATED_2, from);
     }
 
     /**
@@ -162,13 +166,13 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
      * @param name Cache name.
      * @throws IgniteCheckedException Exception.
      */
-    protected void checkData(Ignite ignite, String name) throws IgniteCheckedException {
-        for (int i = 0; i < TEST_SIZE; i++) {
+    protected void checkData(Ignite ignite, String name, int from) throws IgniteCheckedException {
+        for (int i = from; i < from + TEST_SIZE; i++) {
             if (i % (TEST_SIZE / 10) == 0)
                 log.info("Checked " + i * 100 / (TEST_SIZE) + "% entries (" + TEST_SIZE + ").");
 
             assert ignite.cache(name).get(i) != null && ignite.cache(name).get(i).equals(i + name.hashCode()) :
-                "value " + i + name.hashCode() + " does not match (" + ignite.cache(name).get(i) + ")";
+                "value " + (i + name.hashCode()) + " does not match (" + ignite.cache(name).get(i) + ")";
         }
     }
 
@@ -178,7 +182,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
     public void testSimpleRebalancing() throws Exception {
         Ignite ignite = startGrid(0);
 
-        generateData(ignite);
+        generateData(ignite, 0);
 
         log.info("Preloading started.");
 
@@ -204,7 +208,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
 
         long spend = (System.currentTimeMillis() - start) / 1000;
 
-        checkData(grid(1));
+        checkData(grid(1), 0);
 
         log.info("Spend " + spend + " seconds to rebalance entries.");
 
@@ -260,7 +264,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
     public void testComplexRebalancing() throws Exception {
         Ignite ignite = startGrid(0);
 
-        generateData(ignite);
+        generateData(ignite, 0);
 
         log.info("Preloading started.");
 
@@ -351,7 +355,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
 
         long spend = (System.currentTimeMillis() - start) / 1000;
 
-        checkData(grid(4));
+        checkData(grid(4), 0);
 
         log.info("Spend " + spend + " seconds to rebalance entries.");
 
@@ -370,7 +374,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
 
         ((TcpDiscoveryNode)ignite.cluster().localNode()).setAttributes(map);
 
-        generateData(ignite);
+        generateData(ignite, 0);
 
         startGrid(1);
 
@@ -378,7 +382,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
 
         stopGrid(0);
 
-        checkData(grid(1));
+        checkData(grid(1), 0);
 
         stopAllGrids();
     }
@@ -389,7 +393,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
     public void testNodeFailedAtRebalancing() throws Exception {
         Ignite ignite = startGrid(0);
 
-        generateData(ignite);
+        generateData(ignite, 0);
 
         log.info("Preloading started.");
 

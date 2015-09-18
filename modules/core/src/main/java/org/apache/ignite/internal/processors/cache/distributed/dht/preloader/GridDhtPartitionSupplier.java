@@ -509,6 +509,8 @@ class GridDhtPartitionSupplier {
                 }
             }
 
+            scMap.remove(scId);
+
             reply(node, d, s);
         }
         catch (IgniteCheckedException e) {
