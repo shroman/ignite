@@ -827,7 +827,7 @@ public class GridDhtPartitionDemander {
             lock.lock();
 
             try {
-                remaining.put(nodeId, new IgniteBiTuple<>(System.currentTimeMillis(), parts));
+                remaining.put(nodeId, new IgniteBiTuple<>(U.currentTimeMillis(), parts));
             }
             finally {
                 lock.unlock();
@@ -949,7 +949,8 @@ public class GridDhtPartitionDemander {
                     parts.remove(p);
 
                     if (parts.isEmpty()) {
-                        U.log(log, ("Completed rebalancing [cache=" + cctx.name() +
+                        U.log(log, "Completed " + ((remaining.size() == 1 ? "(final) " : "") +
+                            "rebalancing [cache=" + cctx.name() +
                             ", fromNode=" + nodeId + ", topology=" + topologyVersion() +
                             ", time=" + (U.currentTimeMillis() - remaining.get(nodeId).get1()) + " ms]"));
 
@@ -988,6 +989,9 @@ public class GridDhtPartitionDemander {
          */
         private void checkIsDone() {
             if (remaining.isEmpty()) {
+                if (cctx.events().isRecordable(EVT_CACHE_REBALANCE_STOPPED) && (!cctx.isReplicated() || sendStoppedEvnt))
+                    preloadEvent(EVT_CACHE_REBALANCE_STOPPED, exchFut.discoveryEvent());
+
                 if (log.isDebugEnabled())
                     log.debug("Completed sync future.");
 
@@ -1005,9 +1009,6 @@ public class GridDhtPartitionDemander {
                 }
 
                 cctx.shared().exchange().scheduleResendPartitions();
-
-                if (cctx.events().isRecordable(EVT_CACHE_REBALANCE_STOPPED) && (!cctx.isReplicated() || sendStoppedEvnt))
-                    preloadEvent(EVT_CACHE_REBALANCE_STOPPED, exchFut.discoveryEvent());
 
                 onDone();
             }
