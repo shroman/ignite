@@ -22,8 +22,9 @@
                 h4.modal-title Clone
             form.form-horizontal(name='ui.inputForm' novalidate)
                 .modal-body.row
-                    .col-sm-9.login.col-sm-offset-1
-                        label.required.labelFormField New name:&nbsp;
+                    .login
+                        .col-sm-3
+                            label.required.labelFormField New name:&nbsp;
                         .col-sm-9
                             input.form-control(id='copy-new-name' type='text' ng-model='newName' required auto-focus)
             .modal-footer
