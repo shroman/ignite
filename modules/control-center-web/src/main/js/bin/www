@@ -72,7 +72,7 @@ else {
   agentServer = http.createServer();
 }
 
-agentServer.listen(config.get('monitor:server:port'));
+agentServer.listen(config.get('agent-server:port'));
 
 agentManager.createManager(agentServer);
 
