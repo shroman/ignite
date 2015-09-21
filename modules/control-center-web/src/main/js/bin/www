@@ -7,6 +7,7 @@ var http = require('http');
 var https = require('https');
 var config = require('../helpers/configuration-loader.js');
 var app = require('../app');
+var forceSSL = require('express-force-ssl');
 var agentManager = require('../agents/agent-manager');
 
 var fs = require('fs');
@@ -16,13 +17,12 @@ var debug = require('debug')('ignite-web-control-center:server');
 /**
  * Get port from environment and store in Express.
  */
-var port = normalizePort(process.env.PORT || config.get('express:port'));
-app.set('port', port);
+var port = normalizePort(process.env.PORT || config.get('server:port'));
 
-/**
- * Create HTTP server.
- */
+// Create HTTP server.
 var server = http.createServer(app);
+
+app.set('port', port);
 
 /**
  * Listen on provided port, on all network interfaces.
@@ -31,16 +31,41 @@ server.listen(port);
 server.on('error', onError);
 server.on('listening', onListening);
 
+if (config.get('server:ssl')) {
+    httpsServer = https.createServer({
+        key: fs.readFileSync(config.get('server:key')),
+        cert: fs.readFileSync(config.get('server:cert')),
+        passphrase: config.get('server:keyPassphrase')
+    }, app);
+
+    var httpsPort = normalizePort(process.env.PORT || config.get('server:https-port'));
+
+    app.set('forceSSLOptions', {
+        enable301Redirects: true,
+        trustXFPHeader: true,
+        httpsPort: httpsPort
+    });
+
+    app.use(forceSSL);
+
+    /**
+     * Listen on provided port, on all network interfaces.
+     */
+    httpsServer.listen(httpsPort);
+    httpsServer.on('error', onError);
+    httpsServer.on('listening', onListening);
+}
+
 /**
  * Start agent server.
  */
 var agentServer;
 
-if (config.get('monitor:server:ssl')) {
+if (config.get('agent-server:ssl')) {
     agentServer = https.createServer({
-    key: fs.readFileSync(config.get('monitor:server:key')),
-    cert: fs.readFileSync(config.get('monitor:server:cert')),
-    passphrase: config.get('monitor:server:keyPassphrase')
+    key: fs.readFileSync(config.get('agent-server:key')),
+    cert: fs.readFileSync(config.get('agent-server:cert')),
+    passphrase: config.get('agent-server:keyPassphrase')
   });
 }
 else {

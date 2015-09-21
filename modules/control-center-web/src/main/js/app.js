@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-var flash = require('connect-flash');
 var express = require('express');
 var compress = require('compression');
 var path = require('path');
@@ -84,8 +83,6 @@ app.use(session({
         mongooseConnection: db.mongoose.connection
     })
 }));
-
-app.use(flash());
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -173,5 +170,24 @@ app.use(function (err, req, res) {
         error: {}
     });
 });
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+function normalizePort(val) {
+    var port = parseInt(val, 10);
+
+    if (isNaN(port)) {
+        // named pipe
+        return val;
+    }
+
+    if (port >= 0) {
+        // port number
+        return port;
+    }
+
+    return false;
+}
 
 module.exports = app;
