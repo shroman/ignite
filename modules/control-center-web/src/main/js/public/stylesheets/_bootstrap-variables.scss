@@ -539,17 +539,17 @@ $state-danger-border:            darken(adjust-hue($state-danger-bg, -10), 5%) !
 //##
 
 //** Tooltip max width
-$tooltip-max-width:           200px !default;
+$tooltip-max-width:           400px !default;
 //** Tooltip text color
-$tooltip-color:               #fff !default;
+$tooltip-color:               #000 !default;
 //** Tooltip background color
-$tooltip-bg:                  #000 !default;
+$tooltip-bg:                  #f5f5f5 !default;
 $tooltip-opacity:             1 !default;
 
 //** Tooltip arrow width
 $tooltip-arrow-width:         5px !default;
 //** Tooltip arrow color
-$tooltip-arrow-color:         $tooltip-bg !default;
+$tooltip-arrow-color:         #ccc !default;
 
 
 //== Popovers
