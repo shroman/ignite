@@ -40,9 +40,15 @@ block container
                             .col-xs-5.col-sm-4
                                 input.form-control(id='profile-email' type='email' ng-model='profileUser.email' placeholder='you@domain.com' required)
                         .details-row
+                            .advanced-options
+                                i.fa.fa-chevron-circle-up(ng-show='profileUser.showToken' ng-click='profileUser.showToken = ! profileUser.showToken')
+                                i.fa.fa-chevron-circle-down(ng-show='!profileUser.showToken' ng-click='profileUser.showToken = ! profileUser.showToken')
+                                a(ng-click='profileUser.showToken = ! profileUser.showToken') {{profileUser.showToken ? 'Hide security token...' : 'Show security token...'}}
+                        .details-row(ng-show='profileUser.showToken')
                             +lbl('Security token:')
-                            a(ng-click-copy='{{profileUser.token}}' bs-tooltip data-title='The security token is used for authorization of web agent.<br/>Click to copy security token to clipboard.' data-placement='bottom') {{profileUser.token}}
+                            a(ng-click-copy='{{profileUser.token}}') {{profileUser.token}}
                             i.tipLabel.fa.fa-refresh(ng-click='generateToken()' bs-tooltip data-title='Generate random security token')
+                            i.tipLabel.fa.fa-question-circle(ng-if=lines bs-tooltip='' data-title='The security token is used for authorization of web agent' type='button')
                         .details-row
                             .advanced-options
                                 i.fa.fa-chevron-circle-up(ng-show='profileUser.changePassword' ng-click='profileUser.changePassword = ! profileUser.changePassword')

@@ -69,18 +69,18 @@ block content
                                 div(ui-ace='{ onLoad: aceInit, mode: "java" }' ng-model='javaServer')
                             div(ng-if='pojoAvailable()' bs-pane title='POJO')
                                 .details-row
-                                    .col-xs-2.col-sm-2.col-md-1
-                                        label File:
-                                    .col-xs-4.col-sm-3.col-md-3
+                                    .col-xs-2.col-sm-2.col-md-2
+                                        label POJO class:
+                                    .col-xs-10.col-sm-10.col-md-10
                                         button.form-control(type='button' ng-model='configServer.pojoClass' bs-select data-placeholder='{{detail.placeholder}}' bs-options='item for item in pojoClasses()' data-sort='false')
-                                    .col-xs-1.col-sm-1.col-md-1
+                                    .col-xs-2.col-sm-2.col-md-2
                                         label
-                                    .col-xs-4.col-sm-3.col-md-3
+                                    .col-xs-10.col-sm-10.col-md-10
                                         input(type='checkbox' ng-model='configServer.useConstructor')
                                         | Generate constructors
-                                    .col-xs-1.col-sm-1.col-md-1
+                                    .col-xs-2.col-sm-2.col-md-2
                                         label
-                                    .col-xs-4.col-sm-S3.col-md-3
+                                    .col-xs-10.col-sm-10.col-md-10
                                         input(type='checkbox' ng-model='configServer.includeKeyFields')
                                         | Include key fields
                                 div(ui-ace='{ onLoad: aceInit, mode: "java" }' ng-model='pojoClass')
