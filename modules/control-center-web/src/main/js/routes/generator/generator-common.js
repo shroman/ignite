@@ -69,6 +69,10 @@ $generatorCommon.builder = function () {
     res.safeDatasources = [];
     res.safePoint = -1;
 
+    function getLineStart() {
+        return this.lineStart ? _.repeat('    ', this.deep) : '';
+    }
+
     res.startSafeBlock = function () {
         res.safeDeep = this.deep;
         this.safeNeedEmptyLine = this.needEmptyLine;

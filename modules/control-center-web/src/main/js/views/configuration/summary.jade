@@ -53,6 +53,8 @@ block content
                         input(type='hidden' name='_id' value='{{selectedItem._id}}')
                         input(type='hidden' name='os' value='{{os}}')
                         input(type='hidden' name='javaClass' value='{{javaClassServer}}')
+                        input(type='hidden' name='useConstructor' value='{{configServer.useConstructor}}')
+                        input(type='hidden' name='includeKeyFields' value='{{configServer.includeKeyFields}}')
                         +btn-download('server')
                     .panel-collapse(role='tabpanel' bs-collapse-target)
                         .summary-tabs(bs-tabs ng-show='selectedItem' template='summary/summary-tabs')
@@ -65,6 +67,23 @@ block content
                                     .col-xs-4.col-sm-3.col-md-3
                                         button.form-control(type='button' ng-model='configServer.javaClassServer' bs-select data-placeholder='{{detail.placeholder}}' bs-options='item.value as item.label for item in javaClassItems' data-sort='false')
                                 div(ui-ace='{ onLoad: aceInit, mode: "java" }' ng-model='javaServer')
+                            div(ng-if='pojoAvailable()' bs-pane title='POJO')
+                                .details-row
+                                    .col-xs-2.col-sm-2.col-md-1
+                                        label File:
+                                    .col-xs-4.col-sm-3.col-md-3
+                                        button.form-control(type='button' ng-model='configServer.pojoClass' bs-select data-placeholder='{{detail.placeholder}}' bs-options='item for item in pojoClasses()' data-sort='false')
+                                    .col-xs-1.col-sm-1.col-md-1
+                                        label
+                                    .col-xs-4.col-sm-3.col-md-3
+                                        input(type='checkbox' ng-model='configServer.useConstructor')
+                                        | Generate constructors
+                                    .col-xs-1.col-sm-1.col-md-1
+                                        label
+                                    .col-xs-4.col-sm-S3.col-md-3
+                                        input(type='checkbox' ng-model='configServer.includeKeyFields')
+                                        | Include key fields
+                                div(ui-ace='{ onLoad: aceInit, mode: "java" }' ng-model='pojoClass')
                             div(bs-pane title='Dockerfile')
                                 .details-row
                                     p
@@ -87,6 +106,8 @@ block content
                         input(type='hidden' name='_id' value='{{selectedItem._id}}')
                         input(type='hidden' name='javaClass' value='{{javaClassClient}}')
                         input(type='hidden' name='clientNearConfiguration' value='{{backupItem}}')
+                        input(type='hidden' name='useConstructor' value='{{configServer.useConstructor}}')
+                        input(type='hidden' name='includeKeyFields' value='{{configServer.includeKeyFields}}')
                         +btn-download('client')
                     .panel-collapse(role='tabpanel' bs-collapse-target)
                         div(ng-show='selectedItem')

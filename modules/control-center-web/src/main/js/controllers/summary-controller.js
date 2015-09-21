@@ -33,6 +33,17 @@ controlCenterModule.controller('summaryController', ['$scope', '$http', '$common
         {value: undefined, label: 'Not set'}
     ];
 
+    $scope.pojoClasses = function() {
+        var classes = [];
+
+        _.forEach($generatorJava.metadatas, function(meta) {
+            classes.push(meta.keyType);
+            classes.push(meta.valueType);
+        });
+
+        return classes;
+    };
+
     $scope.oss = ['debian:8', 'ubuntu:14.10'];
 
     $scope.configServer = {javaClassServer: 1, os: undefined};
@@ -71,7 +82,43 @@ controlCenterModule.controller('summaryController', ['$scope', '$http', '$common
         $scope.javaServer = $generatorJava.cluster($scope.selectedItem, $scope.configServer.javaClassServer === 2);
     };
 
+    function selectPojoClass() {
+        _.forEach($generatorJava.metadatas, function(meta) {
+            if (meta.keyType == $scope.configServer.pojoClass)
+                $scope.pojoClass = meta.keyClass;
+            else if (meta.valueType == $scope.configServer.pojoClass)
+                $scope.pojoClass = meta.valueClass;
+        });
+    }
+
+    $scope.updatePojos = function() {
+        if ($common.isDefined($scope.selectedItem)) {
+            var curCls = $scope.configServer.pojoClass;
+
+            $generatorJava.pojos($scope.selectedItem.caches, $scope.configServer.useConstructor, $scope.configServer.includeKeyFields);
+
+            if (_.findIndex($generatorJava.metadatas, function (meta) {
+                    return meta.keyType == curCls || meta.valueType == curCls;
+                }) < 0) {
+                if ($generatorJava.metadatas.length > 0)
+                    $scope.configServer.pojoClass = $generatorJava.metadatas[0].keyType;
+                else
+                    $scope.configServer.pojoClass = undefined;
+            }
+            else
+                $scope.configServer.pojoClass = curCls;
+
+            selectPojoClass();
+        }
+    };
+
     $scope.$watch('configServer.javaClassServer', $scope.generateJavaServer, true);
+
+    $scope.$watch('configServer.pojoClass', selectPojoClass, true);
+
+    $scope.$watch('configServer.useConstructor', $scope.updatePojos, true);
+
+    $scope.$watch('configServer.includeKeyFields', $scope.updatePojos, true);
 
     $scope.generateDockerServer = function() {
         var os = $scope.configServer.os ? $scope.configServer.os : $scope.oss[0];
@@ -84,7 +131,7 @@ controlCenterModule.controller('summaryController', ['$scope', '$http', '$common
     $scope.generateClient = function () {
         $scope.xmlClient = $generatorXml.cluster($scope.selectedItem, $scope.backupItem.nearConfiguration);
         $scope.javaClient = $generatorJava.cluster($scope.selectedItem, $scope.backupItem.javaClassClient === 2,
-            $scope.backupItem.nearConfiguration);
+            $scope.backupItem.nearConfiguration, $scope.configServer.useConstructor);
     };
 
     $scope.$watch('backupItem', $scope.generateClient, true);
@@ -102,16 +149,12 @@ controlCenterModule.controller('summaryController', ['$scope', '$http', '$common
         $scope.generateDockerServer();
 
         $scope.generateClient();
+
+        $scope.updatePojos();
     };
 
-    $scope.download = function () {
-        $http.post('summary/download', {_id: $scope.selectedItem._id, os: $scope.os})
-            .success(function (data) {
-                $common.download('application/octet-stream', $scope.selectedItem.name + '-configuration.zip', data);
-            })
-            .error(function (errMsg) {
-                $common.showError('Failed to generate zip: ' + errMsg);
-            });
+    $scope.pojoAvailable = function() {
+        return $common.isDefined($generatorJava.metadatas) && $generatorJava.metadatas.length > 0;
     };
 
     $http.post('clusters/list').success(function (data) {

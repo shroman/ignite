@@ -80,7 +80,7 @@ router.post('/download', function (req, res) {
             .append($generatorJava.cluster(cluster, true, clientNearConfiguration),
                 {name: 'ConfigurationFactory.java'});
 
-        $generatorJava.pojos(cluster.caches);
+        $generatorJava.pojos(cluster.caches, req.body.useConstructor, req.body.includeKeyFields);
 
         var metadatas = $generatorJava.metadatas;
 

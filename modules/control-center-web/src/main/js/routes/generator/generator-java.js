@@ -1125,9 +1125,10 @@ $generatorJava.clusterCaches = function (caches, res) {
  * @param meta Metadata object.
  * @param key If 'true' then key class should be generated.
  * @param pkg Package name.
- * @param constructor If 'true' then empty and full constructors should be generated.
+ * @param useConstructor If 'true' then empty and full constructors should be generated.
+ * @param includeKeyFields If 'true' then include key fields into value POJO.
  */
-$generatorJava.javaClassCode = function (meta, key, pkg, constructor, res) {
+$generatorJava.javaClassCode = function (meta, key, pkg, useConstructor, includeKeyFields, res) {
     if (!res)
         res = $generatorCommon.builder();
 
@@ -1147,7 +1148,21 @@ $generatorJava.javaClassCode = function (meta, key, pkg, constructor, res) {
     res.line('private static final long serialVersionUID = 0L;');
     res.needEmptyLine = true;
 
-    var fields = key ? meta.keyFields : meta.valueFields;
+    var fields = (key || includeKeyFields) ? meta.keyFields : [];
+
+    if (!key)
+        fields.push.apply(fields, meta.valueFields);
+
+    for (var fldIx = fields.length - 1; fldIx >= 0; fldIx --) {
+        var field = fields[fldIx];
+
+        var ix = _.findIndex(fields, function(fld) {
+            return fld.javaName == field.javaName;
+        });
+
+        if (ix >= 0 && ix < fldIx)
+            fields.splice(fldIx, 1);
+    }
 
     // Generate fields declaration.
     _.forEach(fields, function (field) {
@@ -1161,7 +1176,7 @@ $generatorJava.javaClassCode = function (meta, key, pkg, constructor, res) {
     });
 
     // Generate constructors.
-    if (constructor) {
+    if (useConstructor) {
         res.line('/**');
         res.line(' * Empty constructor.');
         res.line(' */');
@@ -1176,9 +1191,11 @@ $generatorJava.javaClassCode = function (meta, key, pkg, constructor, res) {
         res.line(' */');
         res.startBlock('public ' + type + '(');
 
-        res.line(_.map(fields, function (field) {
-            return res.importClass(field.javaType) + ' ' + field.javaName;
-        }).join(',\n'));
+        for (fldIx = 0; fldIx < fields.length; fldIx ++) {
+            field = fields[fldIx];
+
+            res.line(res.importClass(field.javaType) + ' ' + field.javaName + (fldIx < fields.length - 1 ? ',' : ''))
+        }
 
         res.endBlock(') {');
 
@@ -1284,11 +1301,11 @@ $generatorJava.javaClassCode = function (meta, key, pkg, constructor, res) {
     res.startBlock('@Override public String toString() {');
 
     if (fields.length > 0) {
-        var field = fields[0];
+        field = fields[0];
 
         res.startBlock('return \"' + type + ' [' + field.javaName + '=\" + ' + field.javaName + ' +', type);
 
-        for (var fldIx = 1; fldIx < fields.length; fldIx ++) {
+        for (fldIx = 1; fldIx < fields.length; fldIx ++) {
             field = fields[fldIx];
 
             var javaName = field.javaName;
@@ -1311,7 +1328,7 @@ $generatorJava.javaClassCode = function (meta, key, pkg, constructor, res) {
  *
  * @param caches TODO.
  */
-$generatorJava.pojos = function (caches) {
+$generatorJava.pojos = function (caches, useConstructor, includeKeyFields) {
     var metadataNames = [];
 
     $generatorJava.metadatas = [];
@@ -1333,11 +1350,11 @@ $generatorJava.pojos = function (caches) {
                     // Key class generation only if key is not build in java class.
                     if ($commonUtils.isDefined(meta.keyFields) && meta.keyFields.length > 0) {
                         metadata.keyType = meta.keyType;
-                        metadata.keyClass = $generatorJava.javaClassCode(meta, true, pkg);
+                        metadata.keyClass = $generatorJava.javaClassCode(meta, true, pkg, useConstructor, includeKeyFields);
                     }
 
                     metadata.valueType = meta.valueType;
-                    metadata.valueClass = $generatorJava.javaClassCode(meta, false, pkg);
+                    metadata.valueClass = $generatorJava.javaClassCode(meta, false, pkg, useConstructor, includeKeyFields);
 
                     $generatorJava.metadatas.push(metadata);
                 }

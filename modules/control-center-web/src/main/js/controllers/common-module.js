@@ -225,7 +225,7 @@ controlCenterModule.service('$common', [
 
         function isValidJavaIdentifier(msg, ident, elemId) {
             if (isEmptyString(ident))
-                return showPopoverMessage(null, null, elemId, msg + ' could not be empty!');
+                return showPopoverMessage(null, null, elemId, msg + ' is invalid!');
 
             if (_.contains(JAVA_KEYWORDS, ident))
                 return showPopoverMessage(null, null, elemId, msg + ' could not contains reserved java keyword: "' + ident + '"!');
