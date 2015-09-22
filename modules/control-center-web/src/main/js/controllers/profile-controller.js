@@ -18,7 +18,6 @@
 // Controller for Profile screen.
 controlCenterModule.controller('profileController', ['$scope', '$http', '$common', '$focus', '$confirm', function ($scope, $http, $common, $focus, $confirm) {
     $scope.profileUser = angular.copy($scope.user);
-    $scope.copyToClipboard = $common.copyToClipboard;
 
     if ($scope.profileUser && !$scope.profileUser.token)
         $scope.profileUser.token = 'No security token. Regenerate please.';

@@ -171,23 +171,27 @@ controlCenterModule.controller('clustersController', ['$scope', '$controller', '
                         $scope.advanced = data.advanced;
 
 
-                        var lastSelectedCluster = angular.fromJson(sessionStorage.lastSelectedCluster);
+                        if ($common.getQueryVariable('new'))
+                            $scope.createItem();
+                        else {
+                            var lastSelectedCluster = angular.fromJson(sessionStorage.lastSelectedCluster);
 
-                        if (lastSelectedCluster) {
-                            var idx = _.findIndex($scope.clusters, function (cluster) {
-                                return cluster._id == lastSelectedCluster;
-                            });
+                            if (lastSelectedCluster) {
+                                var idx = _.findIndex($scope.clusters, function (cluster) {
+                                    return cluster._id == lastSelectedCluster;
+                                });
 
-                            if (idx >= 0)
-                                $scope.selectItem($scope.clusters[idx]);
-                            else {
-                                sessionStorage.removeItem('lastSelectedCluster');
+                                if (idx >= 0)
+                                    $scope.selectItem($scope.clusters[idx]);
+                                else {
+                                    sessionStorage.removeItem('lastSelectedCluster');
 
-                                selectFirstItem();
+                                    selectFirstItem();
+                                }
                             }
+                            else
+                                selectFirstItem();
                         }
-                        else
-                            selectFirstItem();
 
                         $timeout(function() {
                             $scope.ui.markPristineHard();

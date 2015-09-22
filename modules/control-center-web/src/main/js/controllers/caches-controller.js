@@ -245,24 +245,28 @@ controlCenterModule.controller('cachesController', [
                             $scope.general = data.general;
                             $scope.advanced = data.advanced;
 
-                            var lastSelectedCache = angular.fromJson(sessionStorage.lastSelectedCache);
+                            if ($common.getQueryVariable('new'))
+                                $scope.createItem();
+                            else {
+                                var lastSelectedCache = angular.fromJson(sessionStorage.lastSelectedCache);
 
-                            if (lastSelectedCache) {
-                                var idx = _.findIndex($scope.caches, function (cache) {
-                                    return cache._id == lastSelectedCache;
-                                });
+                                if (lastSelectedCache) {
+                                    var idx = _.findIndex($scope.caches, function (cache) {
+                                        return cache._id == lastSelectedCache;
+                                    });
 
-                                if (idx >= 0)
-                                    $scope.selectItem($scope.caches[idx]);
-                                else {
-                                    sessionStorage.removeItem('lastSelectedCache');
+                                    if (idx >= 0)
+                                        $scope.selectItem($scope.caches[idx]);
+                                    else {
+                                        sessionStorage.removeItem('lastSelectedCache');
 
-                                    selectFirstItem();
+                                        selectFirstItem();
+                                    }
+
                                 }
-
+                                else
+                                    selectFirstItem();
                             }
-                            else
-                                selectFirstItem();
 
                             $timeout(function() {
                                 $scope.ui.markPristineHard();

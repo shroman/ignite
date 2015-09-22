@@ -598,23 +598,27 @@ controlCenterModule.controller('metadataController', [
                             $scope.metadata = data.metadata;
                             $scope.metadataDb = data.metadataDb;
 
-                            var lastSelectedMetadata = angular.fromJson(sessionStorage.lastSelectedMetadata);
+                            if ($common.getQueryVariable('new'))
+                                $scope.createItem();
+                            else {
+                                var lastSelectedMetadata = angular.fromJson(sessionStorage.lastSelectedMetadata);
 
-                            if (lastSelectedMetadata) {
-                                var idx = _.findIndex($scope.metadatas, function (metadata) {
-                                    return metadata._id == lastSelectedMetadata;
-                                });
+                                if (lastSelectedMetadata) {
+                                    var idx = _.findIndex($scope.metadatas, function (metadata) {
+                                        return metadata._id == lastSelectedMetadata;
+                                    });
 
-                                if (idx >= 0)
-                                    $scope.selectItem($scope.metadatas[idx]);
-                                else {
-                                    sessionStorage.removeItem('lastSelectedMetadata');
+                                    if (idx >= 0)
+                                        $scope.selectItem($scope.metadatas[idx]);
+                                    else {
+                                        sessionStorage.removeItem('lastSelectedMetadata');
 
-                                    selectFirstItem();
+                                        selectFirstItem();
+                                    }
                                 }
+                                else
+                                    selectFirstItem();
                             }
-                            else
-                                selectFirstItem();
 
                             $timeout(function () {
                                 $scope.$apply();

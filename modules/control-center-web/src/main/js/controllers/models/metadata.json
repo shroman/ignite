@@ -37,7 +37,7 @@
           ],
           "addLink": {
             "label": "Add cache(s)",
-            "ref": "/configuration/caches"
+            "ref": "/configuration/caches?new"
           }
         },
         {

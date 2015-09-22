@@ -43,7 +43,7 @@
           ],
           "addLink": {
             "label": "Add cluster(s)",
-            "ref": "/configuration/clusters"
+            "ref": "/configuration/clusters?new"
           }
         },
         {
@@ -59,7 +59,7 @@
           ],
           "addLink": {
             "label": "Add metadata(s)",
-            "ref": "/configuration/metadata"
+            "ref": "/configuration/metadata?new"
           }
         },
         {

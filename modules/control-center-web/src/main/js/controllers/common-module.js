@@ -850,8 +850,20 @@ controlCenterModule.service('$common', [
                     }
                 };
             },
-            copyToClipboard: function(text) {
-                window.prompt("Copy to clipboard: Ctrl+C, Enter", text);
+            getQueryVariable: function(name) {
+                var attrs = window.location.search.substring(1).split("&");
+
+                var attr = _.find(attrs, function(attr) {
+                    return attr == name || (attr.indexOf('=') >= 0 && attr.substr(0, attr.indexOf('=')) == name)
+                });
+
+                if (!isDefined(attr))
+                    return undefined;
+
+                if (attr == name)
+                    return true;
+
+                return attr.substr(attr.indexOf('=') + 1);
             }
         }
     }]);
