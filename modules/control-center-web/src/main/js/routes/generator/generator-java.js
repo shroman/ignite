@@ -180,16 +180,12 @@ $generatorJava.listProperty = function (res, varName, obj, propName, dataType, s
 
         res.importClass('java.util.Arrays');
 
-        res.append(varName + '.' + $generatorJava.setterName(propName, setterName) + '(Arrays.asList(');
-
-        for (var i = 0; i < val.length; i++) {
-            if (i > 0)
-                res.append(', ');
-
-            res.append($generatorJava.toJavaCode(val[i], dataType));
-        }
-
-        res.line('));');
+        res.line(varName + '.' + $generatorJava.setterName(propName, setterName) +
+            '(Arrays.asList(' +
+                _.map(val, function (v) {
+                    return $generatorJava.toJavaCode(v, dataType)
+                }).join(', ') +
+            '));');
 
         res.needEmptyLine = true;
     }

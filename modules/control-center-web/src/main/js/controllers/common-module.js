@@ -1342,6 +1342,8 @@ controlCenterModule.service('$preview', ['$timeout', '$interval', function ($tim
             var prevLen = prevContent.length - (prevContent[prevContent.length - 1] == '' ? 1 : 0);
             var newLen = newContent.length - (newContent[newContent.length - 1] == '' ? 1 : 0);
 
+            var removed = newLen < prevLen;
+
             var skipEnd = 0;
 
             var selected = false;
@@ -1390,7 +1392,9 @@ controlCenterModule.service('$preview', ['$timeout', '$interval', function ($tim
                     }
 
                     if (start == end) {
-                        start = Math.max(0, start - 1);
+                        if (removed)
+                            start = Math.max(0, start - 1);
+
                         end = Math.min(newLen + skipEnd, end + 1)
                     }
 
