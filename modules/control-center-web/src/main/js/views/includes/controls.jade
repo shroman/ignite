@@ -151,7 +151,7 @@ mixin details-row
             .col-sm-8
                 +tipField('detail.tip')
                 .input-tip
-                    button.form-control(bs-select data-multiple='1' data-placeholder='{{::detail.placeholder}}' bs-options='item.value as item.label for item in {{detail.items}}' tabindex='-1')&attributes(detailCommon)&attributes(dropdownPlaceholder)
+                    button.form-control(bs-select ng-model-options='{debounce: 150}' data-multiple='1' data-placeholder='{{::detail.placeholder}}' bs-options='item.value as item.label for item in {{detail.items}}' tabindex='-1')&attributes(detailCommon)&attributes(dropdownPlaceholder)
         .group-section(ng-switch-when='table-simple')&attributes(detailCommon)
             .col-sm-12.group(id='{{::detail.model}}')
                 .group-legend
