@@ -55,7 +55,9 @@ router.post('/topology', function (req, res) {
                 });
             });
 
-            res.json(_.uniq(_.flatten(caches)));
+            res.json(_.uniq(_.reject(_.flatten(caches), { mode: 'LOCAL' }), function(cache) {
+                return cache.name;
+            }));
         }, function (err) {
             res.status(500).send(err);
         });
