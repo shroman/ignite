@@ -52,24 +52,25 @@ import java.util.jar.JarFile;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.internal.IgniteKernal;
 import org.apache.ignite.internal.IgnitionEx;
+import org.apache.ignite.internal.portable.api.PortableException;
+import org.apache.ignite.internal.portable.api.PortableIdMapper;
+import org.apache.ignite.internal.portable.api.PortableInvalidClassException;
+import org.apache.ignite.internal.portable.api.PortableMarshaller;
+import org.apache.ignite.internal.portable.api.PortableMetadata;
+import org.apache.ignite.internal.portable.api.PortableSerializer;
+import org.apache.ignite.internal.portable.api.PortableTypeConfiguration;
 import org.apache.ignite.internal.processors.cache.portable.CacheObjectPortableProcessorImpl;
+import org.apache.ignite.internal.processors.platform.dotnet.PlatformDotNetConfiguration;
+import org.apache.ignite.internal.processors.platform.dotnet.PlatformDotNetPortableConfiguration;
+import org.apache.ignite.internal.processors.platform.dotnet.PlatformDotNetPortableTypeConfiguration;
 import org.apache.ignite.internal.util.GridConcurrentHashSet;
+import org.apache.ignite.internal.util.IgniteUtils;
 import org.apache.ignite.internal.util.lang.GridMapEntry;
 import org.apache.ignite.internal.util.typedef.T2;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteBiTuple;
 import org.apache.ignite.marshaller.MarshallerContext;
 import org.apache.ignite.marshaller.optimized.OptimizedMarshaller;
-import org.apache.ignite.internal.portable.api.PortableMarshaller;
-import org.apache.ignite.internal.processors.platform.dotnet.PlatformDotNetConfiguration;
-import org.apache.ignite.internal.processors.platform.dotnet.PlatformDotNetPortableConfiguration;
-import org.apache.ignite.internal.processors.platform.dotnet.PlatformDotNetPortableTypeConfiguration;
-import org.apache.ignite.internal.portable.api.PortableException;
-import org.apache.ignite.internal.portable.api.PortableIdMapper;
-import org.apache.ignite.internal.portable.api.PortableInvalidClassException;
-import org.apache.ignite.internal.portable.api.PortableMetadata;
-import org.apache.ignite.internal.portable.api.PortableSerializer;
-import org.apache.ignite.internal.portable.api.PortableTypeConfiguration;
 import org.jetbrains.annotations.Nullable;
 import org.jsr166.ConcurrentHashMap8;
 
@@ -460,6 +461,18 @@ public class PortableContext implements Externalizable {
         if (desc != null)
             return desc;
 
+        if (ldr == null)
+            ldr = IgniteUtils.gridClassLoader();
+
+        if (userType) {
+            desc = userTypes.get(typeId);
+
+            // If the type hasn't been loaded by default class loader then we mustn't return the descriptor from here
+            // giving a chance to a custom class loader to reload type's class.
+            if (desc != null && ldr == IgniteUtils.gridClassLoader() && desc.describedClass().getClassLoader() == ldr)
+                return desc;
+        }
+
         Class cls;
 
         try {
@@ -468,15 +481,6 @@ public class PortableContext implements Externalizable {
             desc = descByCls.get(cls);
         }
         catch (ClassNotFoundException e) {
-            // Class might have been defined explicitly by user. Probably it makes sense to put such classes in
-            // specific set.
-            if (userType) {
-                desc = userTypes.get(typeId);
-
-                if (desc != null)
-                    return desc;
-            }
-
             throw new PortableInvalidClassException(e);
         }
         catch (IgniteCheckedException e) {
@@ -566,7 +570,8 @@ public class PortableContext implements Externalizable {
             false /* predefined */
         );
 
-        // perform put() instead of putIfAbsent() because "registered" flag may have been changed.
+        // perform put() instead of putIfAbsent() because "registered" flag might have been changed or class loader
+        // might have reloaded described class.
         userTypes.put(typeId, desc);
         descByCls.put(cls, desc);
 
