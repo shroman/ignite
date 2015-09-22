@@ -1342,8 +1342,17 @@ controlCenterModule.service('$preview', ['$timeout', '$interval', function ($tim
             var prevLen = prevContent.length - (prevContent[prevContent.length - 1] == '' ? 1 : 0);
             var newLen = newContent.length - (newContent[newContent.length - 1] == '' ? 1 : 0);
 
+            var skipEnd = 0;
+
             var selected = false;
             var scrollTo = -1;
+
+            while (newContent[newLen - 1] == prevContent[prevLen - 1] && newLen > 0 && prevLen > 0) {
+                prevLen -= 1;
+                newLen -= 1;
+
+                skipEnd += 1;
+            }
 
             while (newIx < newLen || prevIx < prevLen) {
                 var start = -1;
@@ -1351,7 +1360,7 @@ controlCenterModule.service('$preview', ['$timeout', '$interval', function ($tim
 
                 // Find an index of a first line with different text.
                 for (; (newIx < newLen || prevIx < prevLen) && start < 0; newIx++, prevIx++) {
-                    if (newContent[newIx] != prevContent[prevIx]) {
+                    if (newIx >= newLen || prevIx >= prevLen || newContent[newIx] != prevContent[prevIx]) {
                         start = newIx;
 
                         break;
@@ -1382,7 +1391,7 @@ controlCenterModule.service('$preview', ['$timeout', '$interval', function ($tim
 
                     if (start == end) {
                         start = Math.max(0, start - 1);
-                        end = Math.min(newLen, end + 1)
+                        end = Math.min(newLen + skipEnd, end + 1)
                     }
 
                     if (start <= end) {
