@@ -401,6 +401,7 @@ public class CacheConfiguration<K, V> extends MutableConfiguration<K, V> {
         rebalanceDelay = cc.getRebalanceDelay();
         rebalanceOrder = cc.getRebalanceOrder();
         rebalancePoolSize = cc.getRebalanceThreadPoolSize();
+        rebalanceBatchesCount = cc.getRebalanceBatchesCount();
         rebalanceTimeout = cc.getRebalanceTimeout();
         rebalanceThrottle = cc.getRebalanceThrottle();
         readFromBackup = cc.isReadFromBackup();

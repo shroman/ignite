@@ -610,21 +610,16 @@ public class GridDhtPartitionDemander {
 
             d.timeout(cctx.config().getRebalanceTimeout());
 
-            if (d != null) {
-                // Create copy.
-                GridDhtPartitionDemandMessage nextD =
-                    new GridDhtPartitionDemandMessage(d, Collections.<Integer>emptySet());
+            d.topic(GridCachePartitionExchangeManager.rebalanceTopic(idx));
 
-                nextD.topic(GridCachePartitionExchangeManager.rebalanceTopic(idx));
-
-                if (!topologyChanged(fut)) {
-                    // Send demand message.
-                    cctx.io().sendOrderedMessage(node, GridCachePartitionExchangeManager.rebalanceTopic(idx),
-                        nextD, cctx.ioPolicy(), cctx.config().getRebalanceTimeout());
-                }
-                else
-                    fut.cancel();
+            if (!topologyChanged(fut)) {
+                // Send demand message.
+                cctx.io().sendOrderedMessage(node, GridCachePartitionExchangeManager.rebalanceTopic(idx),
+                    d, cctx.ioPolicy(), cctx.config().getRebalanceTimeout());
             }
+            else
+                fut.cancel();
+
         }
         catch (ClusterTopologyCheckedException e) {
             if (log.isDebugEnabled())

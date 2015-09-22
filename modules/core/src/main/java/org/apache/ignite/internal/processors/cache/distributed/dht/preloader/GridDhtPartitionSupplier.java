@@ -200,12 +200,10 @@ class GridDhtPartitionSupplier {
         try {
             SupplyContext sctx = scMap.get(scId);
 
-            if (sctx == null && d.partitions().isEmpty())
+            if (sctx == null && d.partitions() == null)
                 return;
 
-            if (sctx != null && !d.partitions().isEmpty()) {
-                assert false;
-            }
+            assert !(sctx != null && d.partitions() != null);
 
             long bCnt = 0;
 
