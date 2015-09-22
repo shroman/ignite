@@ -234,9 +234,9 @@ controlCenterModule.controller('cachesController', [
                     $scope.spaces = data.spaces;
                     $scope.caches = data.caches;
                     $scope.clusters = data.clusters;
-                    $scope.metadatas = _.map(data.metadatas, function (meta) {
+                    $scope.metadatas = _.sortBy(_.map(data.metadatas, function (meta) {
                         return {value: meta._id, label: meta.valueType, kind: meta.kind, meta: meta}
-                    });
+                    }), 'label');
 
                     // Load page descriptor.
                     $http.get('/models/caches.json')

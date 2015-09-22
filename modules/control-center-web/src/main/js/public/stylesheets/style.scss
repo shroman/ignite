@@ -152,25 +152,25 @@ ul.navbar-nav, .sidebar-nav {
     overflow: auto;
     overflow-x: hidden;
 
-     li > a {
-         display: block;
+    li > a {
+        display: block;
 
-         cursor: default;
-         padding: 3px 5px;
+        //cursor: default;
+        padding: 3px 10px;
 
-         overflow: hidden;
-         white-space: nowrap;
-         text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
 
-         i {
-             float: right;
-             color: $brand-primary;
-             background-color: transparent;
-             line-height: $line-height-base;
-             margin-left: 5px;
-             margin-right: 0px;
-         }
-     }
+        i {
+            float: right;
+            color: $brand-primary;
+            background-color: transparent;
+            line-height: $line-height-base;
+            margin-left: 5px;
+            margin-right: 0;
+        }
+    }
 }
 
 .theme-line .border-left .sidebar-nav {
