@@ -107,7 +107,7 @@ block container
                                             label.tipLabel Refresh rate:
                                             button.btn.btn-default.fa.fa-clock-o.tipLabel(ng-class='{"btn-info": paragraph.rate && paragraph.rate.installed}' bs-popover data-template-url='rate' data-placement='left' data-auto-close='1' data-trigger='click') {{rateAsString(paragraph)}}
                                             label.tipLabel Page size:
-                                            button.btn.btn-default.base-control.tipLabel(ng-model='paragraph.pageSize' bs-options='item for item in pageSizes' bs-select style='margin-right: 0')
+                                            button.tipLabel.select-toggle.btn.btn-default(ng-model='paragraph.pageSize' bs-options='item for item in pageSizes' bs-select)
                                 .col-sm-12(ng-show='paragraph.errMsg')
                                     hr(style='margin-top: 0; margin-bottom: 10px')
                                     .sql-error-result(ng-show='paragraph.errMsg') Error: {{paragraph.errMsg}}

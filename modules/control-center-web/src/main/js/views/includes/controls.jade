@@ -145,13 +145,13 @@ mixin details-row
             .col-sm-8
                 +tipField('detail.tip')
                 .input-tip
-                    button.form-control(id='{{::detail.id}}' bs-select data-placeholder='{{::detail.placeholder}}' bs-options='item.value as item.label for item in {{detail.items}}' tabindex='0')&attributes(detailCommon)&attributes(dropdownPlaceholder)
+                    button.select-toggle.form-control(id='{{::detail.id}}' bs-select data-placeholder='{{::detail.placeholder}}' bs-options='item.value as item.label for item in {{detail.items}}' tabindex='0')&attributes(detailCommon)&attributes(dropdownPlaceholder)
         div(ng-switch-when='dropdown-multiple')
             label(class=lblDetailClasses ng-class='{required: detail.required}') {{::detail.label}}:
             .col-sm-8
                 +tipField('detail.tip')
                 .input-tip
-                    button.form-control(bs-select ng-model-options='{debounce: 500}' data-multiple='1' data-placeholder='{{::detail.placeholder}}' bs-options='item.value as item.label for item in {{detail.items}}' tabindex='-1')&attributes(detailCommon)&attributes(dropdownPlaceholder)
+                    button.select-toggle.form-control(bs-select ng-model-options='{debounce: 500}' data-multiple='1' data-placeholder='{{::detail.placeholder}}' bs-options='item.value as item.label for item in {{detail.items}}' tabindex='-1')&attributes(detailCommon)&attributes(dropdownPlaceholder)
         .group-section(ng-switch-when='table-simple')&attributes(detailCommon)
             .col-sm-12.group(id='{{::detail.model}}')
                 .group-legend
@@ -305,7 +305,7 @@ mixin form-row-custom(lblClasses, fieldClasses, dataSource)
             div(class=fieldClasses)
                 +tipField('field.tip')
                 .input-tip
-                    button.form-control(id='{{::field.id}}' bs-select ng-disabled=fieldDisabled data-placeholder='{{::field.placeholder}}' bs-options='item.value as item.label for item in {{field.items}}' ng-attr-data-container='{{::field.container}}' tabindex='0')&attributes(fieldCommon)&attributes(dropdownPlaceholder)
+                    button.select-toggle.form-control(id='{{::field.id}}' bs-select ng-disabled=fieldDisabled data-placeholder='{{::field.placeholder}}' bs-options='item.value as item.label for item in {{field.items}}' ng-attr-data-container='{{::field.container}}' tabindex='0')&attributes(fieldCommon)&attributes(dropdownPlaceholder)
         div(ng-switch-when='dropdown-multiple' ng-hide=fieldHide)
             dic(class=lblClasses)
                 label(ng-class=fieldRequiredClass) {{::field.label}}:
@@ -313,7 +313,7 @@ mixin form-row-custom(lblClasses, fieldClasses, dataSource)
             div(class=fieldClasses)
                 +tipField('field.tip')
                 .input-tip
-                    button.form-control(id='{{::field.id}}' bs-select ng-disabled='{{field.items}}.length == 0' data-multiple='1' data-placeholder='{{::$eval(field.items).length == 0 ? field.placeholderEmpty || field.placeholder : field.placeholder}}' bs-options='item.value as item.label for item in {{field.items}}' tabindex='-1')&attributes(fieldCommon)&attributes(dropdownPlaceholder)
+                    button.select-toggle.form-control(id='{{::field.id}}' bs-select ng-disabled='{{field.items}}.length == 0' data-multiple='1' data-placeholder='{{::$eval(field.items).length == 0 ? field.placeholderEmpty || field.placeholder : field.placeholder}}' bs-options='item.value as item.label for item in {{field.items}}' tabindex='-1')&attributes(fieldCommon)&attributes(dropdownPlaceholder)
         div(ng-switch-when='dropdown-details' ng-hide=fieldHide)
             - var expanded = 'field.details[' + fieldMdl + '].expanded'
 
@@ -321,7 +321,7 @@ mixin form-row-custom(lblClasses, fieldClasses, dataSource)
             div(class=fieldClasses)
                 +tipField('field.tip')
                 .input-tip
-                    button.form-control(id='{{::field.id}}' bs-select ng-disabled=fieldDisabled data-placeholder='{{::field.placeholder}}' bs-options='item.value as item.label for item in {{field.items}}' tabindex='0')&attributes(fieldCommon)&attributes(dropdownPlaceholder)
+                    button.select-toggle.form-control(id='{{::field.id}}' bs-select ng-disabled=fieldDisabled data-placeholder='{{::field.placeholder}}' bs-options='item.value as item.label for item in {{field.items}}' tabindex='0')&attributes(fieldCommon)&attributes(dropdownPlaceholder)
             a.customize(ng-if='#{fieldMdl} && field.settings && field.details[#{fieldMdl}].fields.length > 0' ng-click='#{expanded} = !#{expanded}') {{#{expanded} ? 'Hide settings' : 'Show settings'}}
             .col-sm-12.panel-details(ng-show='(#{expanded} || !field.settings) && #{fieldMdl}')
                 .details-row(ng-repeat='detail in field.details[#{fieldMdl}].fields')

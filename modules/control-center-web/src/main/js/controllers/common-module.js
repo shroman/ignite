@@ -49,12 +49,12 @@ controlCenterModule.config(function ($tooltipProvider) {
 controlCenterModule.config(function ($selectProvider) {
     angular.extend($selectProvider.defaults, {
         container: 'body',
-        maxLength: '1',
+        maxLength: '5',
         allText: 'Select All',
         noneText: 'Clear All',
         templateUrl: '/select',
         iconCheckmark: 'fa fa-check',
-        caretHtml: '<span class="caret" style="float: right; margin-left: 5px; margin-top: 7px;"></span>'
+        caretHtml: ''
     });
 });
 
