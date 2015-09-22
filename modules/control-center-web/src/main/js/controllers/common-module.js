@@ -1506,6 +1506,64 @@ controlCenterModule.filter('displayValue', function () {
     }
 });
 
+controlCenterModule.filter('clustersSearch', function() {
+    return function(array, query) {
+        if (!angular.isUndefined(array) && !angular.isUndefined(query) && !angular.isUndefined(query.$)) {
+            var filtredArray = [];
+
+            var matchString = query.$.toLowerCase();
+
+            angular.forEach(array, function (row) {
+                var label = (row.name + ', ' + row.discovery.kind).toLowerCase();
+
+                if (label.indexOf(matchString) >= 0)
+                    filtredArray.push(row);
+            });
+
+            return filtredArray;
+        } else
+            return array;
+    }
+});
+
+controlCenterModule.filter('cachesSearch', function() {
+    return function(array, query) {
+        if (!angular.isUndefined(array) && !angular.isUndefined(query) && !angular.isUndefined(query.$)) {
+            var filtredArray = [];
+
+            var matchString = query.$.toLowerCase();
+
+            angular.forEach(array, function (row) {
+                var label = (row.name + ', ' + row.cacheMode + ', ' + atomicityMode).toLowerCase();
+
+                if (label.indexOf(matchString) >= 0)
+                    filtredArray.push(row);
+            });
+
+            return filtredArray;
+        } else
+            return array;
+    }
+});
+
+controlCenterModule.filter('metadatasSearch', function() {
+    return function(array, query) {
+        if (!angular.isUndefined(array) && !angular.isUndefined(query) && !angular.isUndefined(query.$)) {
+            var filtredArray = [];
+
+            var matchString = query.$.toLowerCase();
+
+            angular.forEach(array, function (row) {
+                if (row.valueType.toLowerCase().indexOf(matchString) >= 0)
+                    filtredArray.push(row);
+            });
+
+            return filtredArray;
+        } else
+            return array;
+    }
+});
+
 // Directive to enable validation for IP addresses.
 controlCenterModule.directive('ipaddress', function () {
     const ip = '(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])';

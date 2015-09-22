@@ -435,7 +435,7 @@ mixin form-row-custom(lblClasses, fieldClasses, dataSource)
 
 mixin main-table(title,  rows, focusId, click, rowTemplate)
     .padding-dflt(ng-show='#{rows} && #{rows}.length > 0')
-        table.links(st-table='displayedRows' st-safe-src='#{rows}')
+        table.links(st-set-filter='#{rows}Search' st-table='displayedRows' st-safe-src='#{rows}')
             thead
                 tr
                     th
