@@ -256,6 +256,12 @@ public class GridDhtPartitionDemander {
 
             final SyncFuture oldFut = syncFut;
 
+            if (!oldFut.isDummy() && assigns.topologyVersion().compareTo(oldFut.topologyVersion()) < 0) {
+                U.log(log, "Skipping obsolete (dummy) exchange. [top=" + assigns.topologyVersion() + "]");
+
+                return;
+            }
+
             final SyncFuture fut = new SyncFuture(assigns, cctx, log, oldFut.isDummy());
 
             if (!oldFut.isDummy())
@@ -381,7 +387,7 @@ public class GridDhtPartitionDemander {
 
             U.log(log, "Starting rebalancing [cache=" + cctx.name() + ", mode=" + cfg.getRebalanceMode() +
                 ", fromNode=" + node.id() + ", partitionsCount=" + d.partitions().size() +
-                ", topology=" + d.topologyVersion() + "]");
+                ", topology=" + d.topologyVersion() + ", updateSeq=" + d.updateSequence() + "]");
 
             //Check remote node rebalancing API version.
             if (new Integer(1).equals(node.attribute(IgniteNodeAttributes.REBALANCING_VERSION))) {
@@ -411,19 +417,24 @@ public class GridDhtPartitionDemander {
                         initD.topic(GridCachePartitionExchangeManager.rebalanceTopic(cnt));
 
                         try {
-                            if (!topologyChanged(fut))
+                            if (!topologyChanged(fut)) {
                                 cctx.io().sendOrderedMessage(node, GridCachePartitionExchangeManager.rebalanceTopic(cnt), initD, cctx.ioPolicy(), d.timeout());
-                            else
+
+                                if (log.isDebugEnabled())
+                                    log.debug("Requested rebalancing [from node=" + node.id() + ", listener index=" + cnt + ", partitions count=" + sParts.get(cnt).size() + " (" + partitionsList(sParts.get(cnt)) + ")]");
+
+                            }
+                            else {
                                 fut.cancel();
+
+                                return;
+                            }
                         }
                         catch (IgniteCheckedException ex) {
                             fut.cancel();
 
                             U.error(log, "Failed to send partition demand message to node", ex);
                         }
-
-                        if (log.isDebugEnabled())
-                            log.debug("Requested rebalancing [from node=" + node.id() + ", listener index=" + cnt + ", partitions count=" + sParts.get(cnt).size() + " (" + partitionsList(sParts.get(cnt)) + ")]");
                     }
                 }
             }
@@ -619,12 +630,12 @@ public class GridDhtPartitionDemander {
             }
             else
                 fut.cancel();
-
         }
         catch (ClusterTopologyCheckedException e) {
             if (log.isDebugEnabled())
                 log.debug("Node left during rebalancing [node=" + node.id() +
                     ", msg=" + e.getMessage() + ']');
+
             fut.cancel();
         }
         catch (IgniteCheckedException ex) {
@@ -990,20 +1001,23 @@ public class GridDhtPartitionDemander {
                 if (log.isDebugEnabled())
                     log.debug("Completed sync future.");
 
-                Collection<Integer> m = new HashSet<>();
+                if (cctx.affinity().affinityTopologyVersion().equals(topVer)) {
 
-                for (Map.Entry<UUID, Collection<Integer>> e : missed.entrySet()) {
-                    if (e.getValue() != null && !e.getValue().isEmpty())
-                        m.addAll(e.getValue());
+                    Collection<Integer> m = new HashSet<>();
+
+                    for (Map.Entry<UUID, Collection<Integer>> e : missed.entrySet()) {
+                        if (e.getValue() != null && !e.getValue().isEmpty())
+                            m.addAll(e.getValue());
+                    }
+
+                    if (!m.isEmpty()) {
+                        U.log(log, ("Reassigning partitions that were missed: " + m));
+
+                        cctx.shared().exchange().forceDummyExchange(true, exchFut);
+                    }
+
+                    cctx.shared().exchange().scheduleResendPartitions();
                 }
-
-                if (!m.isEmpty()) {
-                    U.log(log, ("Reassigning partitions that were missed: " + m));
-
-                    cctx.shared().exchange().forceDummyExchange(true, exchFut);
-                }
-
-                cctx.shared().exchange().scheduleResendPartitions();
 
                 onDone();
             }

@@ -172,7 +172,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
                 log.info("Checked " + i * 100 / (TEST_SIZE) + "% entries (" + TEST_SIZE + ").");
 
             assert ignite.cache(name).get(i) != null && ignite.cache(name).get(i).equals(i + name.hashCode()) :
-                "value " + (i + name.hashCode()) + " does not match (" + ignite.cache(name).get(i) + ")";
+                i + " value " + (i + name.hashCode()) + " does not match (" + ignite.cache(name).get(i) + ")";
         }
     }
 
