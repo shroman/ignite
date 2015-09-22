@@ -36,7 +36,13 @@
                     li Refer to&nbsp;
                         b README.txt
                         | &nbsp;for more information.
+                .advanced-options
+                    i.fa.fa-chevron-circle-up(ng-show='agentLoad.showToken' ng-click='agentLoad.showToken = ! agentLoad.showToken')
+                    i.fa.fa-chevron-circle-down(ng-show='!agentLoad.showToken' ng-click='agentLoad.showToken = ! agentLoad.showToken')
+                    a(ng-click='agentLoad.showToken = ! agentLoad.showToken') {{agentLoad.showToken ? 'Hide security token...' : 'Show security token...'}}
+                .details-row(ng-show='agentLoad.showToken')
+                    label.labelField Security token: {{user.token}}
+                    i.tipLabel.fa.fa-clipboard(ng-click-copy='{{user.token}}' bs-tooltip='' data-title='Copy security token to clipboard')
+                    i.tipLabel.fa.fa-question-circle(ng-if=lines bs-tooltip='' data-title='The security token is used for authorization of web agent' type='button')
             .modal-footer
-                label.labelField Security token:
-                a.labelField(ng-click-copy='{{user.token}}' bs-tooltip='' data-title='The security token is used for authorization of web agent.<br/>Click to copy security token to clipboard' data-placement='bottom') {{user.token}}
                 button.btn.btn-primary(ng-click='downloadAgent()') Download zip
