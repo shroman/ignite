@@ -84,7 +84,7 @@ block container
                                             .input-tip
                                                 input.form-control(type='text' st-search placeholder='Filter caches...')
                                             table.links
-                                                tbody
+                                                tbody.scrollable-y(style='max-height: 19em;display:block;')
                                                     tr(ng-repeat='cache in displayedCaches track by cache.name')
                                                         td(style='width: 100%')
                                                             a(ng-class='{active: cache.name == paragraph.cache.name}' ng-click='paragraph.cache = cache') {{$index + 1}}) {{cache.name}}
