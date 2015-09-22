@@ -454,21 +454,11 @@ public class PortableContext implements Externalizable {
     public PortableClassDescriptor descriptorForTypeId(boolean userType, int typeId, ClassLoader ldr) {
         assert typeId != GridPortableMarshaller.UNREGISTERED_TYPE_ID;
 
-        //TODO: IGNITE-1358 (uncomment when fixed)
-        //PortableClassDescriptor desc = userType ? userTypes.get(typeId) : predefinedTypes.get(typeId);
-
-        // As a workaround for IGNITE-1358 we always check the predefined map before.
+        //TODO: As a workaround for IGNITE-1358 we always check the predefined map before without checking 'userType'
         PortableClassDescriptor desc = predefinedTypes.get(typeId);
 
         if (desc != null)
             return desc;
-
-        if (userType) {
-            desc = userTypes.get(typeId);
-
-            if (desc != null)
-                return desc;
-        }
 
         Class cls;
 
@@ -478,6 +468,15 @@ public class PortableContext implements Externalizable {
             desc = descByCls.get(cls);
         }
         catch (ClassNotFoundException e) {
+            // Class might have been defined explicitly by user. Probably it makes sense to put such classes in
+            // specific set.
+            if (userType) {
+                desc = userTypes.get(typeId);
+
+                if (desc != null)
+                    return desc;
+            }
+
             throw new PortableInvalidClassException(e);
         }
         catch (IgniteCheckedException e) {
