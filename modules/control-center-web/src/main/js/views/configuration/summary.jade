@@ -67,7 +67,7 @@ block content
                                     .col-xs-4.col-sm-3.col-md-3
                                         button.form-control(type='button' ng-model='configServer.javaClassServer' bs-select data-placeholder='{{detail.placeholder}}' bs-options='item.value as item.label for item in javaClassItems' data-sort='false')
                                 div(ui-ace='{ onLoad: aceInit, mode: "java" }' ng-model='javaServer')
-                            div(ng-if='pojoAvailable()' bs-pane title='POJO')
+                            div(bs-pane title='POJO')
                                 .details-row
                                     .col-xs-2.col-sm-2.col-md-2
                                         label POJO class:
