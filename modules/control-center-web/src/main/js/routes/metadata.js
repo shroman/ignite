@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+var async = require('async');
 var router = require('express').Router();
 var db = require('../db');
 
@@ -75,60 +76,68 @@ router.post('/list', function (req, res) {
 });
 
 function _save(metas, res) {
-    var total = metas.length;
+    var savedMetas = [];
 
-    var results = [];
-
-    function saveAll() {
-        if (total > 0) {
-            total--;
-
-            var meta = metas.pop();
+    if (metas && metas.length > 0)
+        async.forEachOf(metas, function(meta, idx, callback) {
             var metaId = meta._id;
             var caches = meta.caches;
 
             if (metaId)
                 db.CacheTypeMetadata.update({_id: meta._id}, meta, {upsert: true}, function (err) {
-                    if (db.processed(err, res))
+                    if (err)
+                        callback(err);
+                    else
                         db.Cache.update({_id: {$in: caches}}, {$addToSet: {metadatas: metaId}}, {multi: true}, function (err) {
-                            if (db.processed(err, res))
+                            if (err)
+                                callback(err);
+                            else
                                 db.Cache.update({_id: {$nin: caches}}, {$pull: {metadatas: metaId}}, {multi: true}, function (err) {
-                                    if (db.processed(err, res)) {
-                                        results.push(meta);
+                                    if (err)
+                                        callback(err);
+                                    else {
+                                        savedMetas.push(meta);
 
-                                        saveAll();
+                                        callback();
                                     }
                                 });
                         });
                 });
             else {
                 db.CacheTypeMetadata.findOne({space: meta.space, valueType: meta.valueType}, function (err, metadata) {
-                    if (db.processed(err, res)) {
+                    if (err)
+                        callback(err);
+                    else
                         if (metadata)
-                            return res.status(500).send('Cache type metadata with value type: "' + metadata.valueType + '" already exist.');
+                            callback('Cache type metadata with value type: "' + metadata.valueType + '" already exist.');
 
                         (new db.CacheTypeMetadata(meta)).save(function (err, metadata) {
-                            if (db.processed(err, res)) {
+                            if (err)
+                                callback(err);
+                            else {
                                 metaId = metadata._id;
 
                                 db.Cache.update({_id: {$in: caches}}, {$addToSet: {metadatas: metaId}}, {multi: true}, function (err) {
-                                    if (db.processed(err, res)) {
-                                        results.push(metadata);
+                                    if (err)
+                                        callback(err);
+                                    else {
+                                        savedMetas.push(metadata);
 
-                                        saveAll();
+                                        callback();
                                     }
                                 });
                             }
                         });
-                    }
-                });
-            }
-        }
-        else
-            res.send(results);
-    }
-
-    saveAll();
+                    });
+                }
+        }, function (err) {
+            if (err)
+                res.status(500).send(err);
+            else
+                res.send(savedMetas);
+        });
+    else
+        res.status(500).send('Nothing to save!');
 }
 
 /**

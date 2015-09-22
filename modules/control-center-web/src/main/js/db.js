@@ -393,7 +393,7 @@ exports.upsert = function (model, data, cb) {
 
 exports.processed = function(err, res) {
     if (err) {
-        res.status(500).send(err.message);
+        res.status(500).send(err);
 
         return false;
     }
