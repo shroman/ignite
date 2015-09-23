@@ -22,15 +22,22 @@ mixin lbl(txt)
 block container
     .row(ng-controller='auth')
         .docs-header
-            h1
-                | Apache Ignite Web Console
+            h1 Apache Ignite Web Console
+            hr
         .docs-content
             p Apache Ignite Web Console is utility for the configuration of Apache Ignite<sup>tm</sup> Grid.
-            p With Apache Ignite Web Console you can:
-            ul
-                li Create cluster configurations
-                li Load metadata from database
-                li Execute SQL queries
+            .block-callout-parent
+                table
+                    tbody
+                        tr
+                            td.block-callout-left
+                                i.fa.fa-check-square.block-callout-header-left
+                                label.block-callout-header-left With Apache Ignite Web Console you can:
+                                ul
+                                    li Create cluster configurations
+                                    li Load metadata from database
+                                    li Execute SQL queries
+        hr
         .col-xs-6.col-sm-6.col-md-6(ng-init='loginAction == "login"')
             form(name='loginForm')
                 .modal-body.row
