@@ -555,6 +555,9 @@ controlCenterModule.service('$common', [
                 if ((_.isArray(curValue) || _.isString(curValue)) && (curValue.length == 0) && (srcValue === undefined))
                     curValue = undefined;
 
+                if (_.isBoolean(curValue) && !curValue && srcValue === undefined)
+                    curValue = undefined;
+
                 var isCur = isDefined(curValue);
                 var isSrc = isDefined(srcValue);
 
