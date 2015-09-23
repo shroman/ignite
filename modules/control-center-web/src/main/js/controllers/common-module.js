@@ -1830,9 +1830,11 @@ controlCenterModule.controller('activeLink', [
 controlCenterModule.controller('auth', [
     '$scope', '$modal', '$http', '$window', '$common', '$focus',
     function ($scope, $modal, $http, $window, $common, $focus) {
-        $scope.action = 'login';
+        $scope.loginAction = 'login';
 
         $scope.userDropdown = [{text: 'Profile', href: '/profile'}];
+
+        $focus('login_user_email');
 
         if (!$scope.becomeUsed) {
             if ($scope.user && $scope.user.admin)
@@ -1844,34 +1846,20 @@ controlCenterModule.controller('auth', [
         if ($scope.token && !$scope.error)
             $focus('user_password');
 
-        // Pre-fetch modal dialogs.
-        var loginModal = $modal({scope: $scope, templateUrl: '/login', show: false});
-
-        // Show login modal.
-        $scope.login = function () {
-            loginModal.$promise.then(function () {
-                loginModal.show();
-
-                $focus('user_email');
-            });
-        };
-
         // Try to authorize user with provided credentials.
         $scope.auth = function (action, user_info) {
             $http.post('/' + action, user_info)
                 .success(function () {
-                    loginModal.hide();
-
                     $window.location = '/configuration/clusters';
                 })
-                .error(function (data, status) {
+                .error(function (err, status) {
                     if (status == 403) {
-                        loginModal.hide();
-
                         $window.location = '/password/reset';
                     }
+                    else if (action == 'login')
+                        $common.showPopoverMessage(undefined, undefined, 'login_user_email', err);
                     else
-                        $common.showError(data, 'top', '#errors-container');
+                        $common.showPopoverMessage(undefined, undefined, 'signup_user_email', err);
                 });
         };
 
@@ -1882,7 +1870,7 @@ controlCenterModule.controller('auth', [
                     $common.showInfo('Password successfully changed');
 
                     $scope.user_info = {email: data};
-                    $scope.login();
+                    $window.location = '/';
                 })
                 .error(function (data, state) {
                     $common.showError(data);

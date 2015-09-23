@@ -15,19 +15,20 @@
     limitations under the License.
 
 mixin block-callout(workflowTitle, workflowContent, whatsNextTitle, whatsNextContent)
-    table.block-callout-parent
-        tbody
-            tr(height='100%')
-                td.block-callout-left(width='50%')
-                    i.fa.fa-check-square.block-callout-header-left
-                    label.block-callout-header-left #{workflowTitle}
-                    ul
-                        li(ng-repeat='item in #{workflowContent}' ng-bind='item')
-                td.block-callout-right(width='50%')
-                    i.fa.fa-check-square.block-callout-header-right
-                    label.block-callout-header-right #{whatsNextTitle}
-                    ul
-                        li(ng-repeat='item in #{whatsNextContent}' ng-bind-html='item')
+    .block-callout-parent
+        table
+            tbody
+                tr(height='100%')
+                    td.block-callout-left(width='50%')
+                        i.fa.fa-check-square.block-callout-header-left
+                        label.block-callout-header-left #{workflowTitle}
+                        ul
+                            li(ng-repeat='item in #{workflowContent}' ng-bind='item')
+                    td.block-callout-right(width='50%')
+                        i.fa.fa-check-square.block-callout-header-right
+                        label.block-callout-header-right #{whatsNextTitle}
+                        ul
+                            li(ng-repeat='item in #{whatsNextContent}' ng-bind-html='item')
 
 mixin tipField(lines)
     i.tipField.fa.fa-question-circle(ng-if=lines bs-tooltip='joinTip(#{lines})' type='button')

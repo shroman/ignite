@@ -39,4 +39,4 @@ header#header.header
                     a.dropdown-toggle(data-toggle='dropdown' ng-class='{active: isActive("/profile") || isActive("/admin")}' bs-dropdown='userDropdown' data-placement='bottom-right') {{user.username}}
                         span.caret
                 li.nav-login(ng-if='!user')
-                    a(ng-click='login()') Log In
+                    a(href='/') Log In

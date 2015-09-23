@@ -16,15 +16,65 @@
 
 extends templates/layout
 
+mixin lbl(txt)
+    label.col-xs-5.col-sm-4.required #{txt}
+
 block container
-    .row
+    .row(ng-controller='auth')
+        .docs-header
+            h1
+                | Apache Ignite Web Console
         .docs-content
-            div
-                p
-                    | Apache Ignite<sup>tm</sup> In-Memory Data Fabric is a high-performance,
-                    | integrated and distributed in-memory platform for computing and transacting on large-scale data
-                    | sets in real-time, orders of magnitude faster than possible with traditional disk-based or flash technologies.
-        .block-image.block-display-image
-                img(ng-src='https://www.filepicker.io/api/file/lydEeGB6Rs9hwbpcQxiw' alt='Apache Ignite stack')
-        .text-center(ng-controller='auth')
-            button.btn.btn-primary(ng-click='login()' href='#') Configure Now
+            p Apache Ignite Web Console is utility for the configuration of Apache Ignite<sup>tm</sup> Grid.
+            p With Apache Ignite Web Console you can:
+            ul
+                li Create cluster configurations
+                li Load metadata from database
+                li Execute SQL queries
+        .col-xs-6.col-sm-6.col-md-6(ng-init='loginAction == "login"')
+            form(name='loginForm')
+                .modal-body.row
+                    .col-sm-10.col-sm-offset-1
+                        p(ng-show='loginAction == "password/forgot"')
+                            | That's ok! Simply enter your email below and a reset password link will be sent to you via email. You can then follow that link and select a new password.
+                        .details-row
+                            +lbl('Email:')
+                            .col-xs-7.col-sm-8
+                                input#login_user_email.form-control(enter-focus-next='login_user_password' type='email' ng-model='user_info.email' placeholder='you@domain.com' required on-enter='loginAction == "password/forgot" && loginForm.$valid && auth(loginAction, user_info)')
+                        .details-row(ng-show='loginAction != "password/forgot"')
+                            +lbl('Password:')
+                            .col-xs-7.col-sm-8
+                                input#login_user_password.form-control(type='password' ng-model='user_info.password' placeholder='Password' ng-required='loginAction != "password/forgot"' on-enter='loginAction == "login" && loginForm.$valid && auth(loginAction, user_info)')
+        .col-xs-6.col-sm-6.col-md-6
+            form(name='signupForm')
+                .modal-body.row
+                    .col-sm-10.col-sm-offset-1
+                        .details-row
+                            +lbl('Full Name:')
+                            .col-xs-7.col-sm-8
+                                input#signup_user_name.form-control(enter-focus-next='signup_user_email' type='text' ng-model='user_info.username' placeholder='John Smith' required)
+                        .details-row
+                            +lbl('Email:')
+                            .col-xs-7.col-sm-8
+                                input#signup_user_email.form-control(enter-focus-next='signup_user_password' type='email' ng-model='user_info.email' placeholder='you@domain.com' required on-enter='signupForm.$valid && auth("register", user_info)')
+                        .details-row
+                            +lbl('Password:')
+                            .col-xs-7.col-sm-8
+                                input#signup_user_password.form-control(enter-focus-next='signup_user_confirm' type='password' ng-model='user_info.password' placeholder='Password' required on-enter='signupForm.$valid && auth("register", user_info)')
+                        .details-row
+                            +lbl('Confirm:')
+                            .col-xs-7.col-sm-8
+                                input#signup_user_confirm.form-control(type='password' ng-model='user_info.confirm' match='user_info.password' placeholder='Confirm password' required on-enter='signupForm.$valid && auth("register", user_info)')
+        .col-xs-6.col-sm-6.col-md-6
+            .col-sm-10.col-sm-offset-1
+                .login-footer(ng-show='loginAction == "login"')
+                    a.labelField(ng-click='loginAction = "password/forgot"' on-click-focus='user_email') Forgot password?
+                    button.btn.btn-primary(ng-click='auth(loginAction, user_info)' ng-disabled='loginForm.$invalid') Log In
+                .login-footer(ng-show='loginAction == "password/forgot"')
+                    a.labelField(ng-click='loginAction = "login"' on-click-focus='user_email') Log In
+                    button.btn.btn-primary(ng-click='auth(loginAction, user_info)' ng-disabled='loginForm.$invalid') Send it to me
+        .col-xs-6.col-sm-6.col-md-6
+            .col-sm-10.col-sm-offset-1
+                .login-footer
+                    button#signup.btn.btn-primary(ng-click='auth("register", user_info)' ng-disabled='signupForm.$invalid') Sign In
+
