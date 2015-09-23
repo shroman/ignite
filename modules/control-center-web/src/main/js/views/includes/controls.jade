@@ -458,7 +458,7 @@ mixin groups(groups, dataSource)
             label(id='{{::group.group + "-title"}}')
             i.tipLabel.fa.fa-question-circle(ng-if='group.tip' bs-tooltip='joinTip(group.tip)' type='button')
             i.tipLabel.fa.fa-question-circle.blank(ng-if='!group.tip')
-            i.pull-right.fa.fa-undo(ng-show='resetItemVisible(group)' ng-click='resetItem(group.group);$event.stopPropagation()' bs-tooltip data-title='Undo unsaved changes')
+            i.pull-right.fa.fa-undo(ng-show='group.dirty' ng-click='resetItem(group.group); $event.stopPropagation()' bs-tooltip data-title='Undo unsaved changes')
         .panel-collapse(role='tabpanel' bs-collapse-target id='{{::group.group}}' number='{{::group.number}}')
             .panel-body
                 .col-sm-6(id='{{::group.group + "-left"}}')
@@ -479,18 +479,18 @@ mixin advanced-options-bottom
         a(ng-click='toggleExpanded()') {{ui.expanded ? 'Hide advanced settings...' : 'Show advanced settings...'}}
 
 mixin preview-content(preview, state, mode)
-    -var previewState = preview + 'State'
+    -var previewMode = 'group.preview'
 
-    .preview-content(ng-if='!preview[#{preview}].allDefaults && #{previewState} == #{state}' id='#{id}'
+    .preview-content(ng-if='!preview[#{preview}].allDefaults && #{previewMode} == #{state}' id='#{id}'
         ui-ace='{onLoad: previewInit, onChange: previewChanged, mode: "#{mode}", rendererOptions: {minLines: group.previewMinLines || 3}}' ng-model='preview[#{preview}].#{mode}')
 
 mixin preview(preview, id)
-    -var previewState = preview + 'State'
+    -var previewMode = 'group.preview'
 
-    .preview-panel(ng-init='#{previewState} = false')
+    .preview-panel(ng-init='#{previewMode} = false')
         .preview-legend
-            a(ng-class='{active: !#{previewState}, inactive: #{previewState}}' ng-click='#{previewState} = false') XML&nbsp;
-            a(ng-class='{active: #{previewState}, inactive: !#{previewState}}' ng-click='#{previewState} = true') Java
+            a(ng-class='{active: !#{previewMode}, inactive: #{previewMode}}' ng-click='#{previewMode} = false') XML&nbsp;
+            a(ng-class='{active: #{previewMode}, inactive: !#{previewMode}}' ng-click='#{previewMode} = true') Java
         +preview-content(preview, false, 'xml')
         +preview-content(preview, true, 'java')
         .preview-content-empty(ng-if='preview[#{preview}].allDefaults' id='#{id}')

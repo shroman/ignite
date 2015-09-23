@@ -16,7 +16,8 @@
  */
 
 // Controller for SQL notebook screen.
-controlCenterModule.controller('sqlController', ['$scope', '$window','$controller', '$http', '$timeout', '$common', '$confirm', '$interval', '$popover', '$loading',
+controlCenterModule.controller('sqlController',
+    ['$scope', '$window','$controller', '$http', '$timeout', '$common', '$confirm', '$interval', '$popover', '$loading',
     function ($scope, $window, $controller, $http, $timeout, $common, $confirm, $interval, $popover, $loading) {
     // Initialize the super class and extend it.
     angular.extend(this, $controller('agent-download', {$scope: $scope}));
@@ -152,8 +153,8 @@ controlCenterModule.controller('sqlController', ['$scope', '$window','$controlle
     };
 
     $scope.removeNotebook = function () {
-        $confirm.confirm('Are you sure you want to remove notebook: "' + $scope.notebook.name + '"?').then(
-            function () {
+        $confirm.confirm('Are you sure you want to remove notebook: "' + $scope.notebook.name + '"?')
+            .then(function () {
                 $http.post('/notebooks/remove', {_id: $scope.notebook._id})
                     .success(function () {
                         var idx = _.findIndex($scope.$root.notebooks, function (item) {
@@ -173,8 +174,7 @@ controlCenterModule.controller('sqlController', ['$scope', '$window','$controlle
                     .error(function (errMsg) {
                         $common.showError(errMsg);
                     });
-            }
-        );
+            });
     };
 
     $scope.renameParagraph = function (paragraph, newName) {
@@ -234,22 +234,21 @@ controlCenterModule.controller('sqlController', ['$scope', '$window','$controlle
     };
 
     $scope.removeParagraph = function(paragraph) {
-        $confirm.confirm('Are you sure you want to remove paragraph: "' + paragraph.name + '"?').then(
-            function () {
-                var paragraph_idx = _.findIndex($scope.notebook.paragraphs, function (item) {
-                    return paragraph == item;
-                });
+        $confirm.confirm('Are you sure you want to remove paragraph: "' + paragraph.name + '"?')
+            .then(function () {
+                    var paragraph_idx = _.findIndex($scope.notebook.paragraphs, function (item) {
+                        return paragraph == item;
+                    });
 
-                var panel_idx = _.findIndex($scope.notebook.expandedParagraphs, function (item) {
-                    return paragraph_idx == item;
-                });
+                    var panel_idx = _.findIndex($scope.notebook.expandedParagraphs, function (item) {
+                        return paragraph_idx == item;
+                    });
 
-                if (panel_idx >= 0)
-                    $scope.notebook.expandedParagraphs.splice(panel_idx, 1);
+                    if (panel_idx >= 0)
+                        $scope.notebook.expandedParagraphs.splice(panel_idx, 1);
 
-                $scope.notebook.paragraphs.splice(paragraph_idx, 1);
-            }
-        );
+                    $scope.notebook.paragraphs.splice(paragraph_idx, 1);
+            });
     };
 
     $http.post('/agent/topology')

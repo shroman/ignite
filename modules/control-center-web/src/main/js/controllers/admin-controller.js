@@ -16,7 +16,8 @@
  */
 
 // Controller for Admin screen.
-controlCenterModule.controller('adminController', ['$scope', '$window', '$http', '$common', '$confirm',
+controlCenterModule.controller('adminController',
+    ['$scope', '$window', '$http', '$common', '$confirm',
     function ($scope, $window, $http, $common, $confirm) {
     $scope.users = null;
 
@@ -37,24 +38,25 @@ controlCenterModule.controller('adminController', ['$scope', '$window', '$http',
     };
 
     $scope.removeUser = function (user) {
-        $confirm.confirm('Are you sure you want to remove user: "' + user.username + '"?').then(function () {
-            $http.post('admin/remove', {userId: user._id}).success(
-                function () {
-                    var i = _.findIndex($scope.users, function (u) {
-                        return u._id == user._id;
+        $confirm.confirm('Are you sure you want to remove user: "' + user.username + '"?')
+            .then(function () {
+                $http.post('admin/remove', {userId: user._id}).success(
+                    function () {
+                        var i = _.findIndex($scope.users, function (u) {
+                            return u._id == user._id;
+                        });
+
+                        if (i >= 0)
+                            $scope.users.splice(i, 1);
+
+                        $common.showInfo('User has been removed: "' + user.username + '"');
+                    }).error(function (errMsg, status) {
+                        if (status == 503)
+                            $common.showInfo(errMsg);
+                        else
+                            $common.showError('Failed to remove user: "' + $common.errorMessage(errMsg) + '"');
                     });
-
-                    if (i >= 0)
-                        $scope.users.splice(i, 1);
-
-                    $common.showInfo('User has been removed: "' + user.username + '"');
-                }).error(function (errMsg, status) {
-                    if (status == 503)
-                        $common.showInfo(errMsg);
-                    else
-                        $common.showError('Failed to remove user: "' + $common.errorMessage(errMsg) + '"');
-                });
-        });
+            });
     };
 
     $scope.toggleAdmin = function (user) {

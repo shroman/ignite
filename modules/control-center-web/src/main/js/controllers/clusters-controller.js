@@ -16,12 +16,15 @@
  */
 
 // Controller for Clusters screen.
-controlCenterModule.controller('clustersController', ['$scope', '$controller', '$http', '$timeout', '$common', '$focus', '$confirm', '$copy', '$table', '$preview', '$loading',
-    function ($scope, $controller, $http, $timeout, $common, $focus, $confirm, $copy, $table, $preview, $loading) {
+controlCenterModule.controller('clustersController', [
+    '$scope', '$controller', '$http', '$timeout', '$common', '$focus', '$confirm', '$clone', '$table', '$preview', '$loading', '$unsavedChangesGuard',
+    function ($scope, $controller, $http, $timeout, $common, $focus, $confirm, $clone, $table, $preview, $loading, $unsavedChangesGuard) {
+        $unsavedChangesGuard.install($scope);
+
         // Initialize the super class and extend it.
         angular.extend(this, $controller('save-remove', {$scope: $scope}));
 
-        $scope.ui = $common.formUI(2);
+        $scope.ui = $common.formUI();
 
         $scope.joinTip = $common.joinTip;
         $scope.getModel = $common.getModel;
@@ -35,8 +38,6 @@ controlCenterModule.controller('clustersController', ['$scope', '$controller', '
         $scope.tableStartEdit = $table.tableStartEdit;
         $scope.tableRemove = function (item, field, index) {
             $table.tableRemove(item, field, index);
-
-            $scope.ui.markDirty();
         };
 
         $scope.tableSimpleSave = $table.tableSimpleSave;
@@ -170,6 +171,7 @@ controlCenterModule.controller('clustersController', ['$scope', '$controller', '
                         $scope.general = data.general;
                         $scope.advanced = data.advanced;
 
+                        $scope.ui.addGroups(data.general, data.advanced);
 
                         if ($common.getQueryVariable('new'))
                             $scope.createItem();
@@ -193,10 +195,6 @@ controlCenterModule.controller('clustersController', ['$scope', '$controller', '
                                 selectFirstItem();
                         }
 
-                        $timeout(function() {
-                            $scope.ui.markPristineHard();
-                        });
-
                         $scope.$watch('backupItem', function (val) {
                             if (val) {
                                 var clusterCaches = _.reduce($scope.caches, function(caches, cache){
@@ -206,6 +204,10 @@ controlCenterModule.controller('clustersController', ['$scope', '$controller', '
 
                                     return caches;
                                 }, []);
+
+                                var srcItem = $scope.selectedItem ? $scope.selectedItem : prepareNewItem();
+
+                                $scope.ui.checkDirty(val, srcItem);
 
                                 $scope.preview.general.xml = $generatorXml.clusterCaches(clusterCaches, $generatorXml.clusterGeneral(val)).asString();
                                 $scope.preview.general.java = $generatorJava.clusterCaches(clusterCaches, $generatorJava.clusterGeneral(val)).asString();
@@ -254,8 +256,6 @@ controlCenterModule.controller('clustersController', ['$scope', '$controller', '
                                 $scope.preview.transactions.xml = $generatorXml.clusterTransactions(val).asString();
                                 $scope.preview.transactions.java = $generatorJava.clusterTransactions(val).asString();
                                 $scope.preview.transactions.allDefaults = $common.isEmptyString($scope.preview.transactions.xml);
-
-                                $scope.ui.markDirty();
                             }
                         }, true);
                     })
@@ -292,8 +292,6 @@ controlCenterModule.controller('clustersController', ['$scope', '$controller', '
                     $scope.backupItem = angular.copy(item);
                 else
                     $scope.backupItem = undefined;
-
-                $scope.ui.markPristine(2);
             }
 
             $common.confirmUnsavedChanges($scope.ui.isDirty(), selectItem);
@@ -388,7 +386,7 @@ controlCenterModule.controller('clustersController', ['$scope', '$controller', '
         function save(item) {
             $http.post('clusters/save', item)
                 .success(function (_id) {
-                    $scope.ui.markPristine(0);
+                    $scope.ui.markPristine();
 
                     var idx = _.findIndex($scope.clusters, function (cluster) {
                         return cluster._id == _id;
@@ -401,7 +399,6 @@ controlCenterModule.controller('clustersController', ['$scope', '$controller', '
 
                         $scope.clusters.push(item);
                         $scope.selectItem(item);
-                        $scope.ui.markPristine(1);
                     }
 
                     $common.showInfo('Cluster "' + item.name + '" saved.');
@@ -426,7 +423,7 @@ controlCenterModule.controller('clustersController', ['$scope', '$controller', '
             $table.tableReset();
 
             if (validate($scope.backupItem))
-                $copy.confirm($scope.backupItem.name).then(function (newName) {
+                $clone.confirm($scope.backupItem.name).then(function (newName) {
                     var item = angular.copy($scope.backupItem);
 
                     item._id = undefined;
@@ -442,68 +439,53 @@ controlCenterModule.controller('clustersController', ['$scope', '$controller', '
 
             var selectedItem = $scope.selectedItem;
 
-            $confirm.confirm('Are you sure you want to remove cluster: "' + selectedItem.name + '"?').then(
-                function () {
-                    $scope.ui.markPristine(0);
+            $confirm.confirm('Are you sure you want to remove cluster: "' + selectedItem.name + '"?')
+                .then(function () {
+                        var _id = selectedItem._id;
 
-                    var _id = selectedItem._id;
+                        $http.post('clusters/remove', {_id: _id})
+                            .success(function () {
+                                $common.showInfo('Cluster has been removed: ' + selectedItem.name);
 
-                    $http.post('clusters/remove', {_id: _id})
-                        .success(function () {
-                            $common.showInfo('Cluster has been removed: ' + selectedItem.name);
+                                var clusters = $scope.clusters;
 
-                            var clusters = $scope.clusters;
+                                var idx = _.findIndex(clusters, function (cluster) {
+                                    return cluster._id == _id;
+                                });
 
-                            var idx = _.findIndex(clusters, function (cluster) {
-                                return cluster._id == _id;
+                                if (idx >= 0) {
+                                    clusters.splice(idx, 1);
+
+                                    if (clusters.length > 0)
+                                        $scope.selectItem(clusters[0]);
+                                    else
+                                        $scope.selectItem(undefined, undefined);
+                                }
+                            })
+                            .error(function (errMsg) {
+                                $common.showError(errMsg);
                             });
-
-                            if (idx >= 0) {
-                                clusters.splice(idx, 1);
-
-                                if (clusters.length > 0)
-                                    $scope.selectItem(clusters[0]);
-                                else
-                                    $scope.selectItem(undefined, undefined);
-                            }
-                        })
-                        .error(function (errMsg) {
-                            $common.showError(errMsg);
-                        });
-                }
-            );
+                });
         };
 
         // Remove all clusters from db.
         $scope.removeAllItems = function () {
             $table.tableReset();
 
-            $confirm.confirm('Are you sure you want to remove all clusters?').then(
-                function () {
-                    $scope.ui.markPristine(0);
+            $confirm.confirm('Are you sure you want to remove all clusters?')
+                .then(function () {
+                        $http.post('clusters/remove/all')
+                            .success(function () {
+                                $common.showInfo('All clusters have been removed');
 
-                    $http.post('clusters/remove/all')
-                        .success(function () {
-                            $common.showInfo('All clusters have been removed');
+                                $scope.clusters = [];
 
-                            $scope.clusters = [];
-
-                            $scope.selectItem(undefined, undefined);
-                        })
-                        .error(function (errMsg) {
-                            $common.showError(errMsg);
-                        });
-                }
-            );
-        };
-
-        $scope.resetItemVisible = function (group) {
-            var resetTo = $scope.selectedItem;
-
-            if (!$common.isDefined(resetTo))
-                resetTo = prepareNewItem();
-
-            return $common.resetItemVisible(group, $scope.backupItem, resetTo);
+                                $scope.selectItem(undefined, undefined);
+                            })
+                            .error(function (errMsg) {
+                                $common.showError(errMsg);
+                            });
+                });
         };
 
         $scope.resetItem = function (group) {

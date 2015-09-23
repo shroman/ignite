@@ -15,7 +15,8 @@
  * limitations under the License.
  */
 
-var controlCenterModule = angular.module('ignite-web-control-center', ['ngAnimate', 'smart-table', 'mgcrea.ngStrap', 'ui.ace', 'ngSanitize', 'treeControl', 'unsavedChanges', 'darthwade.loading']);
+var controlCenterModule = angular.module('ignite-web-control-center',
+    ['ngAnimate', 'smart-table', 'mgcrea.ngStrap', 'ui.ace', 'ngSanitize', 'treeControl', 'darthwade.loading']);
 
 // Modal popup configuration.
 controlCenterModule.config(function ($modalProvider) {
@@ -74,12 +75,6 @@ controlCenterModule.config(function($modalProvider) {
         animation: 'am-fade-and-scale'
     });
 });
-
-// Unsaved changes configuration.
-controlCenterModule.config(['unsavedWarningsConfigProvider', function(unsavedWarningsConfigProvider) {
-    unsavedWarningsConfigProvider.navigateMessage = 'Unsaved changes will be discarded.';
-    unsavedWarningsConfigProvider.reloadMessage = 'Unsaved changes will be discarded.';
-}]);
 
 // Common functions to be used in controllers.
 controlCenterModule.service('$common', [
@@ -517,16 +512,6 @@ controlCenterModule.service('$common', [
             return false;
         }
 
-        function markDirty (form) {
-            if (isDefined(form))
-                form.$setDirty();
-        }
-
-        function markPristine (form) {
-            if (isDefined(form))
-                form.$setPristine();
-        }
-
         function getModel(obj, field) {
             var path = field.path;
 
@@ -549,6 +534,47 @@ controlCenterModule.service('$common', [
             }
 
             return root;
+        }
+
+        function checkGroupDirty(group, curItem, srcItem) {
+            function _compareField(field) {
+                var curModel = getModel(curItem, field);
+                var srcModel = getModel(srcItem, field);
+
+                if (field.model == 'kind' && isDefined(curModel.kind)) {
+                    if (curModel.kind != srcModel.kind)
+                        return true;
+
+                    if (_compareFields(field.details[curModel.kind].fields))
+                        return true;
+                }
+
+                var curValue = curModel[field.model];
+                var srcValue = srcModel[field.model];
+
+                var isCur = isDefined(curValue);
+                var isSrc = isDefined(srcValue);
+
+                if ((isCur && !isSrc) || (!isCur && isSrc) || (isCur && isSrc && !angular.equals(curValue, srcValue)))
+                    return true;
+
+                return false;
+            }
+
+            function _compareFields(fields) {
+                for (var fldIx = 0; fldIx < fields.length; fldIx++) {
+                    var field = fields[fldIx];
+
+                    if (_compareField(field))
+                        return true;
+                }
+
+                return false;
+            }
+
+            group.dirty = _compareFields(group.fields);
+
+            return group.dirty;
         }
 
         return {
@@ -725,44 +751,6 @@ controlCenterModule.service('$common', [
 
                 document.body.removeChild(file);
             },
-            resetItemVisible: function (group, curItem, srcItem) {
-                function _compareField(field) {
-                    var curModel = getModel(curItem, field);
-                    var srcModel = getModel(srcItem, field);
-
-                    if (field.model == 'kind' && isDefined(curModel.kind)) {
-                        if (curModel.kind != srcModel.kind)
-                            return true;
-
-                        if (_compareFields(field.details[curModel.kind].fields))
-                            return true;
-                    }
-
-                    var curValue = curModel[field.model];
-                    var srcValue = srcModel[field.model];
-
-                    var isCur = isDefined(curValue);
-                    var isSrc = isDefined(srcValue);
-
-                    if ((isCur && !isSrc) || (!isCur && isSrc) || (isCur && isSrc && !_.isEqual(curValue, srcValue)))
-                        return true;
-
-                    return false;
-                }
-
-                function _compareFields(fields) {
-                    for (var fldIx = 0; fldIx < fields.length; fldIx++) {
-                        var field = fields[fldIx];
-
-                        if (_compareField(field))
-                            return true;
-                    }
-
-                    return false;
-                }
-
-                return _compareFields(group.fields);
-            },
             resetItem: function (backupItem, selectedItem, groups, group) {
                 function restoreFields(fields) {
                     // Reset fields by one.
@@ -814,39 +802,33 @@ controlCenterModule.service('$common', [
                     }
                 }
             },
-            formUI: function (initialDirtyCnt) {
+            formUI: function () {
                 return {
                     ready: false,
                     expanded: false,
-                    dirty: initialDirtyCnt,
+                    groups: [],
+                    addGroups: function (general, advanced) {
+                        if (general)
+                            $.merge(this.groups, general);
+
+                        if (advanced)
+                            $.merge(this.groups, advanced);
+                    },
                     isDirty: function () {
-                        return this.dirty < 0;
+                        return _.findIndex(this.groups, function (group) {
+                            return group.dirty;
+                        }) >= 0;
                     },
-                    markDirty: function () {
-                        this.dirty--;
-
-                        if (isDefined(this.inputForm)) {
-                            if (this.dirty < 0)
-                                markDirty(this.inputForm);
-                            else
-                                markPristine(this.inputForm);
-                        }
+                    markPristine: function () {
+                        this.groups.forEach(function (group) {
+                            group.dirty = false;
+                        })
                     },
-                    markPristineHard: function() {
-                        if (isDefined(this.inputForm))
-                            markPristine(this.inputForm);
-                    },
-                    markPristine: function (dirtyCnt) {
-                        this.dirty = dirtyCnt;
-
-                        if (isDefined(this.inputForm))
-                            markPristine(this.inputForm);
-                    },
-                    noSubmit: function() {
-                        if (this.dirty < 0)
-                            markDirty(this.inputForm);
-                        else
-                            markPristine(this.inputForm);
+                    checkDirty: function(curItem, srcItem) {
+                        this.groups.forEach(function(group) {
+                            if (checkGroupDirty(group, curItem, srcItem))
+                                dirty = true;
+                        });
                     }
                 };
             },
@@ -874,19 +856,28 @@ controlCenterModule.service('$confirm', function ($modal, $rootScope, $q) {
 
     var deferred;
 
-    // Configure title of cancel button.
-    scope.cancelTitle = 'Cancel';
+    var confirmModal = $modal({templateUrl: '/confirm', scope: scope, placement: 'center', show: false});
 
-    scope.ok = function () {
-        deferred.resolve();
+    scope.confirmOk = function () {
+        deferred.reject('cancelled');
 
         confirmModal.hide();
     };
 
-    var confirmModal = $modal({templateUrl: '/confirm', scope: scope, placement: 'center', show: false});
+    scope.confirmOk = function () {
+        deferred.resolve(true);
+
+        confirmModal.hide();
+    };
+
+    scope.confirmCancel = function () {
+        deferred.resolve(false);
+
+        confirmModal.hide();
+    };
 
     confirmModal.confirm = function (content) {
-        scope.content = content || 'Confirm deletion?';
+        scope.content = content || 'Confirm?';
 
         deferred = $q.defer();
 
@@ -897,6 +888,24 @@ controlCenterModule.service('$confirm', function ($modal, $rootScope, $q) {
 
     return confirmModal;
 });
+
+// Confirm change location.
+controlCenterModule.service('$unsavedChangesGuard', function () {
+    return {
+        install: function ($scope) {
+            $scope.$on("$destroy", function() {
+                window.onbeforeunload = null;
+            });
+
+            window.onbeforeunload = function(){
+                return $scope.ui && $scope.ui.isDirty()
+                    ? 'You have unsaved changes.\n\nAre you sure you want to discard them?'
+                    : undefined;
+            };
+        }
+    }
+});
+
 
 // Service for confirm or skip several steps.
 controlCenterModule.service('$confirmBatch', function ($rootScope, $modal,  $q) {
@@ -984,7 +993,7 @@ controlCenterModule.service('$confirmBatch', function ($rootScope, $modal,  $q) 
 });
 
 // 'Clone' popup service.
-controlCenterModule.service('$copy', function ($modal, $rootScope, $q) {
+controlCenterModule.service('$clone', function ($modal, $rootScope, $q) {
     var scope = $rootScope.$new();
 
     var deferred;
