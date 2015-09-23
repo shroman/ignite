@@ -2,17 +2,14 @@
   "screenTip": {
     "workflowTitle": "On This Screen:",
     "workflowContent": [
-      "<ul>",
-      "  <li>Configure Clusters</li>",
-      "  <li>Link Clusters to Caches</li>",
-      "</ul>"
+      "Configure Clusters",
+      "Link Clusters to Caches",
+      "More info..."
     ],
     "whatsNextTitle": "Next Steps:",
     "whatsNextContent": [
-      "<ul>",
-      "  <li>Continue to <a href='/configuration/caches'>Caches</a></li>",
-      "  <li>Continue to <a href='/configuration/summary'>Summary</a></li>",
-      "</ul>"
+      "Continue to <a href='/configuration/caches'>Caches</a>",
+      "Continue to <a href='/configuration/summary'>Summary</a>"
     ]
   },
   "general": [

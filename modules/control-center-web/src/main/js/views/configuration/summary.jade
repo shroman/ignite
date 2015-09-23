@@ -41,7 +41,7 @@ block content
         h1 Configurations Summary
         hr
     .docs-body(ng-controller='summaryController')
-        +block-callout('{{screenTip.workflowTitle}}', 'joinTip(screenTip.workflowContent)', '{{screenTip.whatsNextTitle}}', 'joinTip(screenTip.whatsNextContent)')
+        +block-callout('{{screenTip.workflowTitle}}', 'screenTip.workflowContent', '{{screenTip.whatsNextTitle}}', 'screenTip.whatsNextContent')
         .padding-dflt(ng-if='clusters.length == 0')
             | You have no clusters configured. Please configure them &nbsp;
             a(href='clusters') here.

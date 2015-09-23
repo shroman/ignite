@@ -2,18 +2,15 @@
   "screenTip": {
     "workflowTitle": "On This Screen:",
     "workflowContent": [
-      "<ul>",
-      "  <li>Manually enter Metadata</li>",
-      "  <li>Load Metadata from Database</li>",
-      "</ul><br/>"
+      "Manually enter Metadata",
+      "Load Metadata from Database",
+      "More info..."
     ],
     "whatsNextTitle": "Next Steps:",
     "whatsNextContent": [
-      "<ul>",
-      "  <li>Continue to <a href='/configuration/summary'>Summary</a></li>",
-      "  <li>Back to <a href='/configuration/caches'>Caches</a></li>",
-      "  <li>Back to <a href='/configuration/clusters'>Clusters</a></li>",
-      "</ul>"
+      "Continue to <a href='/configuration/summary'>Summary</a>",
+      "Back to <a href='/configuration/caches'>Caches</a>",
+      "Back to <a href='/configuration/clusters'>Clusters</a>"
     ]
   },
   "metadata": [

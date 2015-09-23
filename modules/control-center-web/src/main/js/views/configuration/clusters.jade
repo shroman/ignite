@@ -28,7 +28,7 @@ block content
     .docs-body(ng-controller='clustersController')
         div(dw-loading='loadingClustersScreen' dw-loading-options='{text: "Loading clusters screen..."}')
             div(ng-if='ui.ready')
-                +block-callout('{{screenTip.workflowTitle}}', 'joinTip(screenTip.workflowContent)', '{{screenTip.whatsNextTitle}}', 'joinTip(screenTip.whatsNextContent)')
+                +block-callout('{{screenTip.workflowTitle}}', 'screenTip.workflowContent', '{{screenTip.whatsNextTitle}}', 'screenTip.whatsNextContent')
                 +main-table('Clusters:', 'clusters', 'clusterName', 'selectItem(row)', '{{$index + 1}}) {{row.name}}, {{row.discovery.kind | displayValue:discoveries:"Discovery not set"}}')
                 .padding-top-dflt(bs-affix)
                     .panel-tip-container(data-placement='bottom' bs-tooltip data-title='Create new cluster')

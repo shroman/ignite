@@ -2,19 +2,16 @@
   "screenTip": {
     "workflowTitle": "On This Screen:",
     "workflowContent": [
-      "<ul>",
-      "  <li>Download XML Config</li>",
-      "  <li>Download Java Code</li>",
-      "  <li>Download Docker File</li>",
-      "</ul>"
+      "Download XML Config",
+      "Download Java Code",
+      "Download Docker File",
+      "More info..."
     ],
     "whatsNextTitle": "Next Steps:",
     "whatsNextContent": [
-      "<ul>",
-      "  <li>Deploy Ignite Servers</li>",
-      "  <li>Connect Ignite Clients</li>",
-      "  <li>Analyze with SQL</li>",
-      "</ul>"
+      "Deploy Ignite Servers",
+      "Connect Ignite Clients",
+      "Analyze with SQL"
     ]
   },
   "clientFields": [

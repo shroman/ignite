@@ -1290,31 +1290,26 @@ a {
 }
 
 .block-callout-parent {
-    overflow: hidden;
+    table {
+        width: 100%
+    }
 }
 
 .block-callout {
     border-left: 5px solid;
-    display: inline-block;
     vertical-align: top;
-    width: 50%;
 
     i {
         padding: 10px 5px 0 10px;
     }
 
-    ul {
-        padding-left: 20px;
-        margin-bottom: 0;
-    }
-
-    p {
-        padding: 5px 0 10px 10px;
-        margin: 0;
-    }
-
     label {
         font-weight: bold;
+    }
+
+    ul {
+        padding: 5px 0 10px 20px;
+        margin: 0 0 0 10px;
     }
 }
 
