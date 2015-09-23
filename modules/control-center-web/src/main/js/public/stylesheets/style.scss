@@ -326,8 +326,8 @@ h1, h2, h3, h4, h5, h6 {
 .login-footer {
     @extend .modal-footer;
 
-    margin-left: 20px;
-    margin-right: 20px;
+    padding-left: 8px;
+    padding-right: 4px;
 }
 
 .modal-body {
@@ -1296,6 +1296,8 @@ a {
 }
 
 .block-callout-parent {
+    margin-top: 10px;
+
     table {
         width: 100%
     }
@@ -1489,6 +1491,10 @@ a {
 
 .page-loading-overlay {
     background-color: rgba(255, 255, 255, 1) !important;
+}
+
+.dw-loading {
+    min-height: 200px;
 }
 
 .dw-loading > .dw-loading-body > .dw-loading-text {
