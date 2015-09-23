@@ -82,6 +82,9 @@ public class PortableContext implements Externalizable {
     private static final long serialVersionUID = 0L;
 
     /** */
+    private static final ClassLoader dfltLdr = U.gridClassLoader();
+
+    /** */
     static final PortableIdMapper DFLT_ID_MAPPER = new IdMapperWrapper(null);
 
     /** */
@@ -463,14 +466,14 @@ public class PortableContext implements Externalizable {
             return desc;
 
         if (ldr == null)
-            ldr = IgniteUtils.gridClassLoader();
+            ldr = dfltLdr;
 
         if (userType) {
             desc = userTypesMap(ldr).get(typeId);
 
             // If the type hasn't been loaded by default class loader then we mustn't return the descriptor from here
             // giving a chance to a custom class loader to reload type's class.
-            if (desc != null && ldr.equals(IgniteUtils.gridClassLoader()))
+            if (desc != null && ldr.equals(dfltLdr))
                 return desc;
         }
 
@@ -482,28 +485,15 @@ public class PortableContext implements Externalizable {
             desc = descByCls.get(cls);
         }
         catch (ClassNotFoundException e) {
-            if (userType && !ldr.equals(IgniteUtils.gridClassLoader())) {
-                // Type name can be not registered in a system cache. Try to get from local map.
-                desc = userTypesMap(ldr).get(typeId);
-
-                if (desc != null)
-                    return desc;
-
-                // Class might have been loaded by default class loader.
-                desc = userTypesMap(IgniteUtils.gridClassLoader()).get(typeId);
-
-                if (desc != null) {
-                    U.log(null, "Unable to load type's class with required class loader. Using type's class " +
-                        "loaded by system class loader [typeId=" + typeId + ", ldr=" + ldr + ", cls=" +
-                        desc.describedClass().getName());
-
-                    return desc;
-                }
-            }
+            if (userType && !ldr.equals(dfltLdr) && (desc = descriptorLoadingFailover(typeId, ldr)) != null)
+                return desc;
 
             throw new PortableInvalidClassException(e);
         }
         catch (IgniteCheckedException e) {
+            if (userType && !ldr.equals(dfltLdr) && (desc = descriptorLoadingFailover(typeId, ldr)) != null)
+                return desc;
+
             throw new PortableException("Failed resolve class for ID: " + typeId, e);
         }
 
@@ -512,6 +502,29 @@ public class PortableContext implements Externalizable {
 
             assert desc.typeId() == typeId;
         }
+
+        return desc;
+    }
+
+    /**
+     * The method must be used in case when it wasn't possible to load user type's class using custom class loader.
+     *
+     * There are several reasons why this may happen. First, type's name can be not registered in a system cache.
+     * Second, class might have been predefined explicitly and loaded by default class loader.
+     *
+     * @param typeId Type ID.
+     * @param ldr Class loader that failed to load type's class.
+     * @return Type descriptor on success, {@code null} on failure.
+     */
+    private PortableClassDescriptor descriptorLoadingFailover(int typeId, ClassLoader ldr) {
+        assert !ldr.equals(dfltLdr);
+
+        // Type name can be not registered in a system cache. Try to get from local map.
+        PortableClassDescriptor desc = userTypesMap(ldr).get(typeId);
+
+        if (desc == null)
+            // Class might have been loaded by default class loader.
+            desc = descriptorForTypeId(true, typeId, dfltLdr);
 
         return desc;
     }
