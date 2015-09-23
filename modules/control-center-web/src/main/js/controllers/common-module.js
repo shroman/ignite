@@ -1507,6 +1507,16 @@ controlCenterModule.filter('displayValue', function () {
 });
 
 controlCenterModule.filter('clustersSearch', function() {
+    var discoveries = {
+        'Vm': 'static ips',
+        'Multicast': 'multicast',
+        'S3': 'aws s3',
+        'Cloud': 'apache jclouds',
+        'GoogleStorage': 'google cloud storage',
+        'Jdbc': 'jdbc',
+        'SharedFs': 'shared filesystem'
+    };
+
     return function(array, query) {
         if (!angular.isUndefined(array) && !angular.isUndefined(query) && !angular.isUndefined(query.$)) {
             var filtredArray = [];
@@ -1514,7 +1524,7 @@ controlCenterModule.filter('clustersSearch', function() {
             var matchString = query.$.toLowerCase();
 
             angular.forEach(array, function (row) {
-                var label = (row.name + ', ' + row.discovery.kind).toLowerCase();
+                var label = (row.name + ', ' + discoveries[row.discovery.kind]).toLowerCase();
 
                 if (label.indexOf(matchString) >= 0)
                     filtredArray.push(row);
