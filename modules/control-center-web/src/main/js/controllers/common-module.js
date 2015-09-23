@@ -1833,11 +1833,11 @@ controlCenterModule.controller('activeLink', [
 controlCenterModule.controller('auth', [
     '$scope', '$modal', '$http', '$window', '$common', '$focus',
     function ($scope, $modal, $http, $window, $common, $focus) {
-        $scope.loginAction = 'login';
+        $scope.action = 'login';
 
         $scope.userDropdown = [{text: 'Profile', href: '/profile'}];
 
-        $focus('login_user_email');
+        $focus('user_email');
 
         if (!$scope.becomeUsed) {
             if ($scope.user && $scope.user.admin)
@@ -1859,10 +1859,8 @@ controlCenterModule.controller('auth', [
                     if (status == 403) {
                         $window.location = '/password/reset';
                     }
-                    else if (action == 'login')
-                        $common.showPopoverMessage(undefined, undefined, 'login_user_email', err);
                     else
-                        $common.showPopoverMessage(undefined, undefined, 'signup_user_email', err);
+                        $common.showPopoverMessage(undefined, undefined, 'user_email', err);
                 });
         };
 
