@@ -443,7 +443,7 @@ mixin form-row-custom(lblClasses, fieldClasses, dataSource)
                                         input#newGroupName.form-control(type='text' ng-model='field.newGroupName' placeholder='Group name' on-enter='tableGroupSaveVisible(field, -1) && tableGroupSave(field, -1)' on-escape='tableReset()')
 
 mixin main-table(title,  rows, focusId, click, rowTemplate)
-    .padding-dflt(ng-show='#{rows} && #{rows}.length > 0')
+    .padding-bottom-dflt(ng-show='#{rows} && #{rows}.length > 0')
         table.links(st-set-filter='#{rows}Search' st-table='displayedRows' st-safe-src='#{rows}')
             thead
                 tr

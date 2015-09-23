@@ -39,9 +39,9 @@ mixin btn-download(side)
 block content
     .docs-header
         h1 Configurations Summary
-        hr
-    .docs-body(ng-controller='summaryController')
+    .docs-body(dw-loading='loadingSummaryScreen' dw-loading-options='{text: "Loading summary screen..."}' ng-controller='summaryController')
         +block-callout('{{screenTip.workflowTitle}}', 'screenTip.workflowContent', '{{screenTip.whatsNextTitle}}', 'screenTip.whatsNextContent')
+        hr
         .padding-dflt(ng-if='clusters.length == 0')
             | You have no clusters configured. Please configure them &nbsp;
             a(href='clusters') here.

@@ -24,11 +24,11 @@ include ../includes/controls
 block content
     .docs-header
         h1 Create and Configure Cache Type Metadata
-        hr
     .docs-body(ng-controller='metadataController')
         div(dw-loading='loadingMetadataScreen' dw-loading-options='{text: "Loading metadata screen..."}')
             div(ng-if='ui.ready')
                 +block-callout('{{screenTip.workflowTitle}}', 'screenTip.workflowContent', '{{screenTip.whatsNextTitle}}', 'screenTip.whatsNextContent')
+                hr
                 +main-table('Types metadata:', 'metadatas', 'metadataName', 'selectItem(row)', '{{$index + 1}}) {{row.valueType}}')
                 .padding-top-dflt(bs-affix)
                     .panel-tip-container(data-placement='bottom' bs-tooltip data-title='Create new metadata')

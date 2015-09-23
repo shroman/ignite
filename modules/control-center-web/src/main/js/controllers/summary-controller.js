@@ -16,7 +16,7 @@
  */
 
 // Controller for Summary screen.
-controlCenterModule.controller('summaryController', ['$scope', '$http', '$common', function ($scope, $http, $common) {
+controlCenterModule.controller('summaryController', ['$scope', '$http', '$common', '$loading', function ($scope, $http, $common, $loading) {
     $scope.joinTip = $common.joinTip;
     $scope.getModel = $common.getModel;
 
@@ -161,38 +161,44 @@ controlCenterModule.controller('summaryController', ['$scope', '$http', '$common
         return $common.isDefined($generatorJava.metadatas) && $generatorJava.metadatas.length > 0;
     };
 
-    $http.post('clusters/list').success(function (data) {
-        $scope.clusters = data.clusters;
+    $loading.start('loadingSummaryScreen');
 
-        if ($scope.clusters.length > 0) {
-            // Populate clusters with caches.
-            _.forEach($scope.clusters, function (cluster) {
-                cluster.caches = _.filter(data.caches, function (cache) {
-                    return _.contains(cluster.caches, cache._id);
-                });
-            });
+    $http.post('clusters/list')
+        .success(function (data) {
+            $scope.clusters = data.clusters;
 
-            var restoredId = sessionStorage.summarySelectedId;
-
-            var selectIdx = 0;
-
-            if (restoredId) {
-                var idx = _.findIndex($scope.clusters, function (cluster) {
-                    return cluster._id == restoredId;
+            if ($scope.clusters.length > 0) {
+                // Populate clusters with caches.
+                _.forEach($scope.clusters, function (cluster) {
+                    cluster.caches = _.filter(data.caches, function (cache) {
+                        return _.contains(cluster.caches, cache._id);
+                    });
                 });
 
-                if (idx >= 0)
-                    selectIdx = idx;
-                else
-                    delete sessionStorage.summarySelectedId;
+                var restoredId = sessionStorage.summarySelectedId;
+
+                var selectIdx = 0;
+
+                if (restoredId) {
+                    var idx = _.findIndex($scope.clusters, function (cluster) {
+                        return cluster._id == restoredId;
+                    });
+
+                    if (idx >= 0)
+                        selectIdx = idx;
+                    else
+                        delete sessionStorage.summarySelectedId;
+                }
+
+                $scope.selectItem($scope.clusters[selectIdx]);
+
+                $scope.$watch('selectedItem', function (val) {
+                    if (val)
+                        sessionStorage.summarySelectedId = val._id;
+                }, true);
             }
-
-            $scope.selectItem($scope.clusters[selectIdx]);
-
-            $scope.$watch('selectedItem', function (val) {
-                if (val)
-                    sessionStorage.summarySelectedId = val._id;
-            }, true);
-        }
-    });
+        })
+        .finally(function () {
+            $loading.finish('loadingSummaryScreen');
+        });
 }]);
