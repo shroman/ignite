@@ -25,7 +25,7 @@ block content
     .docs-header
         h1 Create and Configure Ignite Caches
     .docs-body(ng-controller='cachesController')
-        div(dw-loading='loadingCachesScreen' dw-loading-options='{text: "Loading caches screen..."}')
+        div(dw-loading='loadingCachesScreen' dw-loading-options='{text: "Loading caches screen...", className: "page-loading-overlay"}')
             div(ng-if='ui.ready')
                 +block-callout('{{screenTip.workflowTitle}}', 'screenTip.workflowContent', '{{screenTip.whatsNextTitle}}', 'screenTip.whatsNextContent')
                 hr

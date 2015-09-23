@@ -25,7 +25,7 @@ block content
     .docs-header
         h1 Create and Configure Cache Type Metadata
     .docs-body(ng-controller='metadataController')
-        div(dw-loading='loadingMetadataScreen' dw-loading-options='{text: "Loading metadata screen..."}')
+        div(dw-loading='loadingMetadataScreen' dw-loading-options='{text: "Loading metadata screen...", className: "page-loading-overlay"}')
             div(ng-if='ui.ready')
                 +block-callout('{{screenTip.workflowTitle}}', 'screenTip.workflowContent', '{{screenTip.whatsNextTitle}}', 'screenTip.whatsNextContent')
                 hr
