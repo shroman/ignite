@@ -423,7 +423,7 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
                 U.error(log, "Failed to get result value for cache entry: " + cached, e);
             }
             catch (GridCacheEntryRemovedException e) {
-                assert false : "Got entry removed exception while holding transactional lock on entry: " + e;
+                assert false : "Got entry removed exception while holding transactional lock on entry [e=" + e + ", cached=" + cached + ']';
             }
             catch (GridCacheFilterFailedException e) {
                 assert false : "Got filter failed exception with fail fast false " + e;

@@ -51,6 +51,7 @@ import org.apache.ignite.internal.util.tostring.GridToStringInclude;
 import org.apache.ignite.internal.util.typedef.C1;
 import org.apache.ignite.internal.util.typedef.CI1;
 import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.P1;
 import org.apache.ignite.internal.util.typedef.X;
 import org.apache.ignite.internal.util.typedef.internal.CU;
 import org.apache.ignite.internal.util.typedef.internal.S;
@@ -71,9 +72,8 @@ import static org.apache.ignite.transactions.TransactionState.PREPARING;
  */
 public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAdapter
     implements GridCacheMvccFuture<IgniteInternalTx> {
-    /** */
-    @GridToStringInclude
-    private Collection<IgniteTxKey> lockKeys = new GridConcurrentHashSet<>();
+
+    private KeyLockFuture keyLockFut = new KeyLockFuture();
 
     /**
      * @param cctx Context.
@@ -91,10 +91,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
             log.debug("Transaction future received owner changed callback: " + entry);
 
         if ((entry.context().isNear() || entry.context().isLocal()) && owner != null && tx.hasWriteKey(entry.txKey())) {
-            lockKeys.remove(entry.txKey());
-
-            // This will check for locks.
-            onDone();
+            keyLockFut.onKeyLocked(entry.txKey());
 
             return true;
         }
@@ -178,24 +175,6 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
         }
     }
 
-    /**
-     * @return {@code True} if all locks are owned.
-     */
-    private boolean checkLocks() {
-        boolean locked = lockKeys.isEmpty();
-
-        if (locked) {
-            if (log.isDebugEnabled())
-                log.debug("All locks are acquired for near prepare future: " + this);
-        }
-        else {
-            if (log.isDebugEnabled())
-                log.debug("Still waiting for locks [fut=" + this + ", keys=" + lockKeys + ']');
-        }
-
-        return locked;
-    }
-
     /** {@inheritDoc} */
     @Override public void onResult(UUID nodeId, GridNearTxPrepareResponse res) {
         if (!isDone()) {
@@ -215,8 +194,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
 
     /** {@inheritDoc} */
     @Override public boolean onDone(IgniteInternalTx t, Throwable err) {
-        // If locks were not acquired yet, delay completion.
-        if (isDone() || (err == null && !checkLocks()))
+        if (isDone())
             return false;
 
         this.err.compareAndSet(null, err);
@@ -333,7 +311,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
 
             if (invalidCaches != null) {
                 onDone(new IgniteCheckedException("Failed to perform cache operation (cache topology is not valid): " +
-                    invalidCaches.toString()));
+                    invalidCaches));
 
                 return;
             }
@@ -458,20 +436,13 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
         catch (TransactionTimeoutException | TransactionOptimisticException e) {
             onError(cctx.localNodeId(), null, e);
         }
-        catch (IgniteCheckedException e) {
-            onDone(e);
-        }
     }
 
     /**
      * @param reads Read entries.
      * @param writes Write entries.
-     * @throws IgniteCheckedException If failed.
      */
-    private void prepare(
-        Iterable<IgniteTxEntry> reads,
-        Iterable<IgniteTxEntry> writes
-    ) throws IgniteCheckedException {
+    private void prepare(Iterable<IgniteTxEntry> reads, Iterable<IgniteTxEntry> writes) {
         AffinityTopologyVersion topVer = tx.topologyVersion();
 
         assert topVer.topologyVersion() > 0;
@@ -529,6 +500,10 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
                 cur = updated;
             }
         }
+
+        keyLockFut.onAllKeysAdded();
+
+        add(keyLockFut);
 
         if (isDone()) {
             if (log.isDebugEnabled())
@@ -681,7 +656,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
 
         if (cacheCtx.isNear() || cacheCtx.isLocal()) {
             if (waitLock && entry.explicitVersion() == null)
-                lockKeys.add(entry.txKey());
+                keyLockFut.addLockKey(entry.txKey());
         }
 
         if (cur == null || !cur.node().id().equals(primary.id()) || cur.near() != cacheCtx.isNear()) {
@@ -725,16 +700,23 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
 
     /** {@inheritDoc} */
     @Override public String toString() {
-        Collection<String> futs = F.viewReadOnly(futures(), new C1<IgniteInternalFuture<?>, String>() {
-            @Override public String apply(IgniteInternalFuture<?> f) {
-                return "[node=" + ((MiniFuture)f).node().id() +
-                    ", loc=" + ((MiniFuture)f).node().isLocal() +
-                    ", done=" + f.isDone() + "]";
-            }
-        });
+        Collection<String> futs = F.viewReadOnly(futures(),
+            new C1<IgniteInternalFuture<?>, String>() {
+                @Override public String apply(IgniteInternalFuture<?> f) {
+                    return "[node=" + ((MiniFuture)f).node().id() +
+                        ", loc=" + ((MiniFuture)f).node().isLocal() +
+                        ", done=" + f.isDone() + "]";
+                }
+            },
+            new P1<IgniteInternalFuture<IgniteInternalTx>>() {
+                @Override public boolean apply(IgniteInternalFuture<IgniteInternalTx> f) {
+                    return f instanceof MiniFuture;
+                }
+            });
 
         return S.toString(GridNearOptimisticTxPrepareFuture.class, this,
             "innerFuts", futs,
+            "keyLockFut", keyLockFut,
             "tx", tx,
             "super", super.toString());
     }
@@ -890,6 +872,70 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
         /** {@inheritDoc} */
         @Override public String toString() {
             return S.toString(MiniFuture.class, this, "done", isDone(), "cancelled", isCancelled(), "err", error());
+        }
+    }
+
+    /**
+     * Keys lock future.
+     */
+    private class KeyLockFuture extends GridFutureAdapter<IgniteInternalTx> {
+        /** */
+        @GridToStringInclude
+        private Collection<IgniteTxKey> lockKeys = new GridConcurrentHashSet<>();
+
+        /** */
+        private volatile boolean allKeysAdded;
+
+        /**
+         * @param key Key to track for locking.
+         */
+        private void addLockKey(IgniteTxKey key) {
+            assert !allKeysAdded;
+
+            lockKeys.add(key);
+        }
+
+        /**
+         * @param key Locked keys.
+         */
+        private void onKeyLocked(IgniteTxKey key) {
+            lockKeys.remove(key);
+
+            checkLocks();
+        }
+
+        /**
+         * Moves future to the ready state.
+         */
+        private void onAllKeysAdded() {
+            allKeysAdded = true;
+
+            checkLocks();
+        }
+
+        /**
+         * @return {@code True} if all locks are owned.
+         */
+        private boolean checkLocks() {
+            boolean locked = lockKeys.isEmpty();
+
+            if (locked && allKeysAdded) {
+                if (log.isDebugEnabled())
+                    log.debug("All locks are acquired for near prepare future: " + this);
+
+                onDone(tx);
+            }
+            else {
+                if (log.isDebugEnabled())
+                    log.debug("Still waiting for locks [fut=" + this + ", keys=" + lockKeys + ']');
+            }
+
+            return locked;
+        }
+
+        /** {@inheritDoc} */
+        @Override public String toString() {
+            return S.toString(KeyLockFuture.class, this, super.toString());
         }
     }
 }
