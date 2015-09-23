@@ -679,7 +679,7 @@ controlCenterModule.controller('metadataController', [
                 function selectItem() {
                     $table.tableReset();
 
-                    $scope.selectedItem = item;
+                    $scope.selectedItem = angular.copy(item);
 
                     if (item && item._id)
                         sessionStorage.lastSelectedMetadata = angular.toJson(item._id);

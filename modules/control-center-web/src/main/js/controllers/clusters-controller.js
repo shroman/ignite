@@ -275,7 +275,7 @@ controlCenterModule.controller('clustersController', [
             function selectItem() {
                 $table.tableReset();
 
-                $scope.selectedItem = item;
+                $scope.selectedItem = angular.copy(item);
 
                 if (item && item._id)
                     sessionStorage.lastSelectedCluster = angular.toJson(item._id);
@@ -393,13 +393,13 @@ controlCenterModule.controller('clustersController', [
                     });
 
                     if (idx >= 0)
-                        angular.extend($scope.clusters[idx], item);
+                        $scope.clusters[idx] = item;
                     else {
                         item._id = _id;
-
                         $scope.clusters.push(item);
-                        $scope.selectItem(item);
                     }
+
+                    $scope.selectItem(item);
 
                     $common.showInfo('Cluster "' + item.name + '" saved.');
                 })

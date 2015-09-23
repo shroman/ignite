@@ -352,7 +352,7 @@ controlCenterModule.controller('cachesController', [
                 function selectItem() {
                     $table.tableReset();
 
-                    $scope.selectedItem = item;
+                    $scope.selectedItem = angular.copy(item);
 
                     if (item)
                         sessionStorage.lastSelectedCache = angular.toJson(item._id);
@@ -471,13 +471,13 @@ controlCenterModule.controller('cachesController', [
                         });
 
                         if (idx >= 0)
-                            angular.extend($scope.caches[idx], item);
+                            $scope.caches[idx] = item;
                         else {
                             item._id = _id;
-
                             $scope.caches.push(item);
-                            $scope.selectItem(item);
                         }
+
+                        $scope.selectItem(item);
 
                         $common.showInfo('Cache "' + item.name + '" saved.');
                     })
