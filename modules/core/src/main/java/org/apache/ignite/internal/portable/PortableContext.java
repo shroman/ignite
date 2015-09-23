@@ -482,6 +482,25 @@ public class PortableContext implements Externalizable {
             desc = descByCls.get(cls);
         }
         catch (ClassNotFoundException e) {
+            if (userType && !ldr.equals(IgniteUtils.gridClassLoader())) {
+                // Type name can be not registered in a system cache. Try to get from local map.
+                desc = userTypesMap(ldr).get(typeId);
+
+                if (desc != null)
+                    return desc;
+
+                // Class might have been loaded by default class loader.
+                desc = userTypesMap(IgniteUtils.gridClassLoader()).get(typeId);
+
+                if (desc != null) {
+                    U.log(null, "Unable to load type's class with required class loader. Using type's class " +
+                        "loaded by system class loader [typeId=" + typeId + ", ldr=" + ldr + ", cls=" +
+                        desc.describedClass().getName());
+
+                    return desc;
+                }
+            }
+
             throw new PortableInvalidClassException(e);
         }
         catch (IgniteCheckedException e) {
