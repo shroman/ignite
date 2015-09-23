@@ -46,12 +46,12 @@ public class AgentConfiguration {
 
     /** */
     @Parameter(names = {"-s", "--server-uri"}, description = "URI for connect to Ignite Web Console via " +
-        "web-socket protocol, for example: wss://webconsole.my-company.com:3001")
+        "web-socket protocol, default value: wss://localhost:3001")
     private String srvUri;
 
     /** */
     @Parameter(names = {"-n", "--node-uri"},
-        description = "URI for connect to Ignite REST server, for example: http://localhost:8080")
+        description = "URI for connect to Ignite REST server, default value: http://localhost:8080")
     private String nodeUri;
 
     /** */
@@ -59,19 +59,19 @@ public class AgentConfiguration {
     private String cfgPath;
 
     /** */
-    @Parameter(names = {"-drv", "--driver-folder"},
-        description = "Path to folder with JDBC drivers, for example: /home/user/jdbc-drivers")
+    @Parameter(names = {"-d", "--driver-folder"},
+        description = "Path to folder with JDBC drivers, default value: ./jdbc-drivers")
     private String driversFolder;
 
     /** */
     @Parameter(names = { "-tm", "--test-drive-metadata" },
         description = "Start H2 database with sample tables in same process. " +
-            "JDBC URL for connect to sample database: jdbc:h2:mem:test-drive-db")
+            "JDBC URL for connecting to sample database: jdbc:h2:mem:test-drive-db")
     private Boolean meta;
 
     /** */
     @Parameter(names = { "-ts", "--test-drive-sql" },
-        description = "Create cache and populate it with sample data for use in query.")
+        description = "Create cache and populate it with sample data for use in query")
     private Boolean sql;
 
     /** */

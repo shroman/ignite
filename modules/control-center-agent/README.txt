@@ -8,10 +8,10 @@ Two main functions of Ignite Web Agent:
     You may need to specify URI for connect to Ignite REST server via "-n" option.
 
  2. Proxy between Ignite Web Console and user RDBMS to collect database metadata for later CacheTypeMetadata configuration.
-    You may need to copy JDBC driver into "./jdbc-drivers" subfolder or specify path via "-drv" option.
+    You may need to copy JDBC driver into "./jdbc-drivers" subfolder or specify path via "-d" option.
 
 Usage example:
-    ignite-control-center-agent.sh -t 1a2b3c4d5f -s wss://webconsole.example.com
+    ignite-control-center-agent.sh -t 1a2b3c4d5f -s wss://console.example.com
 
 Test drive of Ignite Web Agent:
     In order to simplify evaluation two test drive modes were implemented:
@@ -55,38 +55,29 @@ Configuration file:
 
     Example configuration file:
         token=1a2b3c4d5f
-        serverURI=wss://webconsole.example.com:3001
+        serverURI=wss://console.example.com:3001
         test-drive-sql=true
 
 Options:
     -h, --help
-       Print this help message.
-
+       Print this help message
     -c, --config
-       Path to optional configuration file.
-
-    -drv, --driver-folder
-       Path to folder with JDBC drivers, for example "/home/user/drivers".
-       Default: "./jdbc-drivers".
-
+       Path to configuration file
+    -d, --driver-folder
+       Path to folder with JDBC drivers, default value: ./jdbc-drivers
     -n, --node-uri
-       URI for connect to Ignite REST server, for example: "http://localhost:8080".
-       Default: "http://localhost:8080".
-
-    -t, --token
-       User's security token.
-
+       URI for connect to Ignite REST server, default value:
+       http://localhost:8080
     -s, --server-uri
-       URI for connect to Ignite Web Agent, for example: "wss://webconsole.example.com:3001".
-       Default: "wss://localhost:3001".
-
+       URI for connect to Ignite Web Console via web-socket protocol, default
+       value: wss://localhost:3001
     -tm, --test-drive-metadata
-       Start H2 database with sample tables in same process.
-       JDBC URL for connect to sample database: jdbc:h2:mem:test-drive-db
-
+       Start H2 database with sample tables in same process. JDBC URL for
+       connecting to sample database: jdbc:h2:mem:test-drive-db
     -ts, --test-drive-sql
-       Create cache and populate it with sample data for use in query.
-
+       Create cache and populate it with sample data for use in query
+    -t, --token
+       User's security token
 
 Ignite Web Agent Build Instructions
 ==============================================
