@@ -471,7 +471,7 @@ controlCenterModule.controller('cachesController', [
                         });
 
                         if (idx >= 0)
-                            $scope.caches[idx] = item;
+                            angular.extend($scope.caches[idx], item);
                         else {
                             item._id = _id;
                             $scope.caches.push(item);

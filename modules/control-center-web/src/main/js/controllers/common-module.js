@@ -552,7 +552,7 @@ controlCenterModule.service('$common', [
                 var curValue = curModel[field.model];
                 var srcValue = srcModel[field.model];
 
-                if (typeof(curValue) == 'string' && (curValue.length == 0) && (srcValue === undefined))
+                if ((_.isArray(curValue) || _.isString(curValue)) && (curValue.length == 0) && (srcValue === undefined))
                     curValue = undefined;
 
                 var isCur = isDefined(curValue);

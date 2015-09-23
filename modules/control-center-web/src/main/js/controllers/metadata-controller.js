@@ -798,7 +798,7 @@ controlCenterModule.controller('metadataController', [
                         });
 
                         if (idx >= 0)
-                            $scope.metadatas[idx] = savedMeta;
+                            angular.extend($scope.metadatas[idx], savedMeta);
                         else
                             $scope.metadatas.push(savedMeta);
 

@@ -393,7 +393,7 @@ controlCenterModule.controller('clustersController', [
                     });
 
                     if (idx >= 0)
-                        $scope.clusters[idx] = item;
+                        angular.extend($scope.clusters[idx], item);
                     else {
                         item._id = _id;
                         $scope.clusters.push(item);
