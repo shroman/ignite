@@ -131,7 +131,12 @@ class GridDhtPartitionSupplier {
     private static void clearContexts(
         ConcurrentHashMap8<T4, SupplyContext> map, IgniteLogger log, GridCacheContext<?, ?> cctx) {
         for (Map.Entry<T4, SupplyContext> entry : map.entrySet()) {
-            clearContext(map, entry.getKey(), entry.getValue(), log, cctx);
+            T4 t = entry.getKey();
+
+            SupplyContext sc = entry.getValue();
+
+            if (t.get3() != null && !t.get3().equals(cctx.affinity().affinityTopologyVersion()) && sc != null)
+                clearContext(map, t, sc, log);
         }
     }
 
@@ -139,34 +144,31 @@ class GridDhtPartitionSupplier {
      * Clear context.
      *
      * @param map Context map.
+     * @param t id.
+     * @param sc Supply context.
      * @param log Logger.
+     * @return true in case context was removed.
      */
     private static boolean clearContext(
-        ConcurrentHashMap8<T4, SupplyContext> map,
-        T4 t,
-        SupplyContext sc,
-        IgniteLogger log,
-        GridCacheContext<?, ?> cctx) {
+        final ConcurrentHashMap8<T4, SupplyContext> map,
+        final T4 t,
+        final SupplyContext sc,
+        final IgniteLogger log) {
+        final Iterator it = sc.entryIt;
 
-        if (!t.get3().equals(cctx.affinity().affinityTopologyVersion()) && sc != null) {
-            Iterator it = sc.entryIt;
-
-            if (it != null && it instanceof GridCloseableIterator && !((GridCloseableIterator)it).isClosed()) {
-                try {
-                    synchronized (map) {
-                        if (!((GridCloseableIterator)it).isClosed())
-                            ((GridCloseableIterator)it).close();
-                    }
-                }
-                catch (IgniteCheckedException e) {
-                    log.error("Iterator close failed.", e);
+        if (it != null && it instanceof GridCloseableIterator && !((GridCloseableIterator)it).isClosed()) {
+            try {
+                synchronized (it) {
+                    if (!((GridCloseableIterator)it).isClosed())
+                        ((GridCloseableIterator)it).close();
                 }
             }
-
-            return map.remove(t, sc);
+            catch (IgniteCheckedException e) {
+                log.error("Iterator close failed.", e);
+            }
         }
 
-        return false;
+        return map.remove(t, sc);
     }
 
     /**
@@ -527,6 +529,9 @@ class GridDhtPartitionSupplier {
         try {
             if (log.isDebugEnabled())
                 log.debug("Replying to partition demand [node=" + n.id() + ", demand=" + d + ", supply=" + s + ']');
+
+            if (!cctx.affinity().affinityTopologyVersion().equals(d.topologyVersion()))
+                return true;
 
             cctx.io().sendOrderedMessage(n, d.topic(), s, cctx.ioPolicy(), d.timeout());
 

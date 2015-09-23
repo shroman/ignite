@@ -64,11 +64,11 @@ import org.apache.ignite.internal.util.tostring.GridToStringExclude;
 import org.apache.ignite.internal.util.tostring.GridToStringInclude;
 import org.apache.ignite.internal.util.typedef.CI1;
 import org.apache.ignite.internal.util.typedef.CI2;
+import org.apache.ignite.internal.util.typedef.T3;
 import org.apache.ignite.internal.util.typedef.internal.CU;
 import org.apache.ignite.internal.util.typedef.internal.LT;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
-import org.apache.ignite.lang.IgniteBiTuple;
 import org.apache.ignite.lang.IgnitePredicate;
 import org.apache.ignite.lang.IgniteUuid;
 import org.apache.ignite.thread.IgniteThread;
@@ -391,7 +391,7 @@ public class GridDhtPartitionDemander {
 
             //Check remote node rebalancing API version.
             if (new Integer(1).equals(node.attribute(IgniteNodeAttributes.REBALANCING_VERSION))) {
-                fut.appendPartitions(node.id(), d.partitions());
+                fut.appendPartitions(node.id(), d.partitions(), d.updateSequence());
 
                 int lsnrCnt = cctx.gridConfig().getRebalanceThreadPoolSize();
 
@@ -418,10 +418,13 @@ public class GridDhtPartitionDemander {
 
                         try {
                             if (!topologyChanged(fut)) {
-                                cctx.io().sendOrderedMessage(node, GridCachePartitionExchangeManager.rebalanceTopic(cnt), initD, cctx.ioPolicy(), d.timeout());
+                                cctx.io().sendOrderedMessage(node,
+                                    GridCachePartitionExchangeManager.rebalanceTopic(cnt), initD, cctx.ioPolicy(), d.timeout());
 
                                 if (log.isDebugEnabled())
-                                    log.debug("Requested rebalancing [from node=" + node.id() + ", listener index=" + cnt + ", partitions count=" + sParts.get(cnt).size() + " (" + partitionsList(sParts.get(cnt)) + ")]");
+                                    log.debug("Requested rebalancing [from node=" + node.id() + ", listener index=" +
+                                        cnt + ", partitions count=" + sParts.get(cnt).size() +
+                                        " (" + partitionsList(sParts.get(cnt)) + ")]");
 
                             }
                             else {
@@ -441,7 +444,7 @@ public class GridDhtPartitionDemander {
             else {
                 DemandWorker dw = new DemandWorker(dmIdx.incrementAndGet(), fut);
 
-                fut.appendPartitions(node.id(), d.partitions());
+                fut.appendPartitions(node.id(), d.partitions(), d.updateSequence());
 
                 dw.run(node, d);
             }
@@ -513,7 +516,7 @@ public class GridDhtPartitionDemander {
 
         assert node != null;
 
-        if (!fut.topologyVersion().equals(topVer) || topologyChanged(fut))
+        if (!fut.topologyVersion().equals(topVer) || topologyChanged(fut) || !fut.isActual(id, supply.updateSequence()))
             return;
 
         if (log.isDebugEnabled())
@@ -744,7 +747,7 @@ public class GridDhtPartitionDemander {
     /**
      *
      */
-    public static class SyncFuture extends GridFutureAdapter<Object> {
+    public static class SyncFuture extends GridFutureAdapter<Boolean> {
         /** */
         private static final long serialVersionUID = 1L;
 
@@ -757,8 +760,8 @@ public class GridDhtPartitionDemander {
         /** */
         private final IgniteLogger log;
 
-        /** Remaining. */
-        private final Map<UUID, IgniteBiTuple<Long, Collection<Integer>>> remaining = new HashMap<>();
+        /** Remaining. T3: startTime, partitions, updateSequence */
+        private final Map<UUID, T3<Long, Collection<Integer>, Long>> remaining = new HashMap<>();
 
         /** Missed. */
         private final Map<UUID, Collection<Integer>> missed = new HashMap<>();
@@ -819,6 +822,17 @@ public class GridDhtPartitionDemander {
         }
 
         /**
+         * @param nodeId Node id.
+         * @param updateSeq Update sequence.
+         * @return true in case future created for specified updateSeq, false in other case.
+         */
+        private boolean isActual(UUID nodeId, long updateSeq) {
+            T3<Long, Collection<Integer>, Long> t = remaining.get(nodeId);
+
+            return t != null ? t.get3().equals(updateSeq) : false;
+        }
+
+        /**
          * @return Is dummy (created at demander creation).
          */
         private boolean isDummy() {
@@ -829,11 +843,11 @@ public class GridDhtPartitionDemander {
          * @param nodeId Node id.
          * @param parts Parts.
          */
-        private void appendPartitions(UUID nodeId, Collection<Integer> parts) {
+        private void appendPartitions(UUID nodeId, Collection<Integer> parts, long updateSeq) {
             lock.lock();
 
             try {
-                remaining.put(nodeId, new IgniteBiTuple<>(U.currentTimeMillis(), parts));
+                remaining.put(nodeId, new T3<>(U.currentTimeMillis(), parts, updateSeq));
             }
             finally {
                 lock.unlock();
@@ -1014,12 +1028,16 @@ public class GridDhtPartitionDemander {
                         U.log(log, ("Reassigning partitions that were missed: " + m));
 
                         cctx.shared().exchange().forceDummyExchange(true, exchFut);
+
+                        onDone(false); //Finished but has missed partitions and forced dummy exchange
+
+                        return;
                     }
 
                     cctx.shared().exchange().scheduleResendPartitions();
                 }
 
-                onDone();
+                onDone(true);
             }
         }
     }
