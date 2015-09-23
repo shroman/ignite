@@ -267,10 +267,13 @@ controlCenterModule.controller('sqlController', ['$scope', '$window','$controlle
 
 
     var _columnFilter = function(paragraph) {
-        return !paragraph.disabledSystemColumns && paragraph.systemColumns ? _allColumn : _hideColumn;
+        return paragraph.disabledSystemColumns || paragraph.systemColumns ? _allColumn : _hideColumn;
     };
 
     $scope.toggleSystemColumns = function (paragraph) {
+        if (paragraph.disabledSystemColumns)
+            return;
+
         paragraph.systemColumns = !paragraph.systemColumns;
 
         paragraph.columnFilter = _columnFilter(paragraph);

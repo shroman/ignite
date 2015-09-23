@@ -394,6 +394,14 @@ button, a.btn {
     > button, a.btn {
         margin-right: 0;
     }
+
+    .btn + .btn {
+        margin-left: 0;
+    }
+
+    > .btn-primary:not(.dropdown-toggle) {
+        border-right-color: black;
+    }
 }
 
 h1,
