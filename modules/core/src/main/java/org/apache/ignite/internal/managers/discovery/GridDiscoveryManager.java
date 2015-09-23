@@ -1587,6 +1587,25 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
     }
 
     /**
+     * @param node Node to check.
+     * @return Cache names accessible on the given node.
+     */
+    public Collection<String> nodeCaches(ClusterNode node) {
+        Collection<String> cacheNames = new ArrayList<>(registeredCaches.size());
+
+        for (Map.Entry<String, CachePredicate> entry : registeredCaches.entrySet()) {
+            String cacheName = entry.getKey();
+
+            CachePredicate filter = entry.getValue();
+
+            if (filter != null && filter.cacheNode(node))
+                cacheNames.add(cacheName);
+        }
+
+        return cacheNames;
+    }
+
+    /**
      * Checks if cache with given name has at least one node with near cache enabled.
      *
      * @param cacheName Cache name.

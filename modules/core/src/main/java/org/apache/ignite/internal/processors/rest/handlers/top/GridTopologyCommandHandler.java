@@ -31,7 +31,8 @@ import org.apache.ignite.cluster.ClusterMetrics;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.internal.GridKernalContext;
 import org.apache.ignite.internal.IgniteInternalFuture;
-import org.apache.ignite.internal.processors.cache.GridCacheAttributes;
+import org.apache.ignite.internal.processors.cache.GridCacheProcessor;
+import org.apache.ignite.internal.processors.cache.IgniteInternalCache;
 import org.apache.ignite.internal.processors.port.GridPortRecord;
 import org.apache.ignite.internal.processors.rest.GridRestCommand;
 import org.apache.ignite.internal.processors.rest.GridRestProtocol;
@@ -194,23 +195,27 @@ public class GridTopologyCommandHandler extends GridRestCommandHandlerAdapter {
         nodeBean.setTcpAddresses(nonEmptyList(node.<Collection<String>>attribute(ATTR_REST_TCP_ADDRS)));
         nodeBean.setTcpHostNames(nonEmptyList(node.<Collection<String>>attribute(ATTR_REST_TCP_HOST_NAMES)));
 
-        GridCacheAttributes[] caches = node.attribute(ATTR_CACHE);
+        Collection<String> cacheNames = ctx.discovery().nodeCaches(node);
 
-        if (!F.isEmpty(caches)) {
-            Map<String, String> cacheMap = new HashMap<>();
+        Map<String, String> cacheMap = U.newHashMap(cacheNames.size());
 
-            for (GridCacheAttributes cacheAttr : caches) {
-                if (ctx.cache().systemCache(cacheAttr.cacheName()))
-                    continue;
+        GridCacheProcessor cacheProc = ctx.cache();
 
-                if (cacheAttr.cacheName() != null)
-                    cacheMap.put(cacheAttr.cacheName(), cacheAttr.cacheMode().toString());
-                else
-                    nodeBean.setDefaultCacheMode(cacheAttr.cacheMode().toString());
-            }
+        for (String cacheName : cacheNames) {
+            IgniteInternalCache<?, ?> cache = cacheProc.cache(cacheName);
 
-            nodeBean.setCaches(cacheMap);
+            if (cacheProc.systemCache(cache.name()))
+                continue;
+
+            String mode = cache.configuration().getCacheMode().toString();
+
+            if (cache.name() != null)
+                cacheMap.put(cache.name(), mode);
+            else
+                nodeBean.setDefaultCacheMode(mode);
         }
+
+        nodeBean.setCaches(cacheMap);
 
         if (mtr) {
             ClusterMetrics metrics = node.metrics();

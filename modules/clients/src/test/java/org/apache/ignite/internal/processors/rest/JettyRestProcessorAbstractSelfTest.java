@@ -39,6 +39,7 @@ import org.apache.ignite.cache.query.annotations.QuerySqlField;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.internal.processors.rest.handlers.GridRestCommandHandler;
 import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.lang.IgniteBiPredicate;
 import org.apache.ignite.testframework.GridTestUtils;
 
 import static org.apache.ignite.IgniteSystemProperties.IGNITE_JETTY_PORT;
@@ -902,6 +903,20 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
     /**
      * @throws Exception If failed.
      */
+    public void testMetadata() throws Exception {
+        String ret = content(F.asMap("cmd", GridRestCommand.CACHE_METADATA.key()));
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        info("Cache metadata result: " + ret);
+
+        jsonEquals(ret, pattern("\\{.+\\}", true));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testTopology() throws Exception {
         String ret = content(F.asMap("cmd", GridRestCommand.TOPOLOGY.key(), "attr", "false", "mtr", "false"));
 
@@ -1044,6 +1059,52 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         assertEquals(2, items.size());
 
         assertFalse(queryCursorFound());
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testQueryScan() throws Exception {
+        Map<String, String> params = new HashMap<>();
+        params.put("cmd", GridRestCommand.EXECUTE_SCAN_QUERY.key());
+        params.put("pageSize", "10");
+        params.put("cacheName", "person");
+        params.put("classname", ScanFilter.class.getName());
+
+        String ret = content(params);
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        JSONObject json = JSONObject.fromObject(ret);
+
+        List items = (List)((Map)json.get("response")).get("items");
+
+        assertEquals(2, items.size());
+
+        assertFalse(queryCursorFound());
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testIncorrectQueryScan() throws Exception {
+        Map<String, String> params = new HashMap<>();
+        params.put("cmd", GridRestCommand.EXECUTE_SCAN_QUERY.key());
+        params.put("pageSize", "10");
+        params.put("cacheName", "person");
+        params.put("classname", ScanFilter.class.getName() + 1);
+
+        String ret = content(params);
+
+        assertNotNull(ret);
+        assertTrue(!ret.isEmpty());
+
+        JSONObject json = JSONObject.fromObject(ret);
+
+        String err = (String)json.get("error");
+
+        assertTrue(err.contains("Failed to find target class"));
     }
 
     /**
@@ -1314,6 +1375,16 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
          */
         public Integer getId() {
             return id;
+        }
+    }
+
+    /**
+     * Test filter for scan query.
+     */
+    public static class ScanFilter implements IgniteBiPredicate<Integer, Person> {
+        /** {@inheritDoc} */
+        @Override public boolean apply(Integer integer, Person person) {
+            return person.salary > 1000;
         }
     }
 }
