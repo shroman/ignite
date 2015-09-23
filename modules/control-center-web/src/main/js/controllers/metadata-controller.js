@@ -17,15 +17,17 @@
 
 // Controller for Metadata screen.
 controlCenterModule.controller('metadataController', [
-        '$scope', '$controller', '$http', '$modal', '$common', '$timeout', '$focus', '$confirm', '$confirmBatch', '$copy', '$table', '$preview', '$loading',
-        function ($scope, $controller, $http, $modal, $common, $timeout, $focus, $confirm, $confirmBatch, $copy, $table, $preview, $loading) {
+        '$scope', '$controller', '$http', '$modal', '$common', '$timeout', '$focus', '$confirm', '$confirmBatch', '$clone', '$table', '$preview', '$loading', '$unsavedChangesGuard',
+        function ($scope, $controller, $http, $modal, $common, $timeout, $focus, $confirm, $confirmBatch, $clone, $table, $preview, $loading, $unsavedChangesGuard) {
+            $unsavedChangesGuard.install($scope);
+
             // Initialize the super class and extend it.
             angular.extend(this, $controller('save-remove', {$scope: $scope}));
 
             // Initialize the super class and extend it.
             angular.extend(this, $controller('agent-download', {$scope: $scope}));
 
-            $scope.ui = $common.formUI(1);
+            $scope.ui = $common.formUI();
 
             $scope.agentGoal = 'load metadata from database schema';
             $scope.agentTestDriveOption = '--test-drive-metadata';
@@ -43,8 +45,6 @@ controlCenterModule.controller('metadataController', [
             $scope.tableStartEdit = $table.tableStartEdit;
             $scope.tableRemove = function (item, field, index) {
                 $table.tableRemove(item, field, index);
-
-                $scope.ui.markDirty();
             };
 
             $scope.tableSimpleSave = $table.tableSimpleSave;
@@ -371,7 +371,6 @@ controlCenterModule.controller('metadataController', [
                                 lastItem = $scope.metadatas[0];
 
                             $scope.selectItem(lastItem);
-                            $scope.ui.markPristine(1);
 
                             $common.showInfo('Cache type metadata loaded from database.');
                         })
@@ -536,11 +535,12 @@ controlCenterModule.controller('metadataController', [
                 var itemsToConfirm = _.filter(batch, function (item) { return item.confirm; });
 
                 if (itemsToConfirm.length > 0)
-                    $confirmBatch.confirm(overwriteMessage, itemsToConfirm).then(function () {
-                        _saveBatch(_.filter(batch, function (item) {return !item.skip}));
-                    }, function () {
-                        $common.showError('Cache type metadata loading interrupted by user.');
-                    });
+                    $confirmBatch.confirm(overwriteMessage, itemsToConfirm)
+                        .then(function () {
+                            _saveBatch(_.filter(batch, function (item) {return !item.skip}));
+                        }, function () {
+                            $common.showError('Cache type metadata loading interrupted by user.');
+                        });
                 else
                     _saveBatch(batch);
             }
@@ -598,6 +598,8 @@ controlCenterModule.controller('metadataController', [
                             $scope.metadata = data.metadata;
                             $scope.metadataDb = data.metadataDb;
 
+                            $scope.ui.groups = data.metadata;
+
                             if ($common.getQueryVariable('new'))
                                 $scope.createItem();
                             else {
@@ -622,12 +624,14 @@ controlCenterModule.controller('metadataController', [
 
                             $timeout(function () {
                                 $scope.$apply();
-
-                                $scope.ui.markPristineHard();
                             });
 
                             $scope.$watch('backupItem', function (val) {
                                 if (val) {
+                                    var srcItem = $scope.selectedItem ? $scope.selectedItem : prepareNewItem();
+
+                                    $scope.ui.checkDirty(val, srcItem);
+
                                     $scope.preview.general.xml = $generatorXml.metadataGeneral(val).asString();
                                     $scope.preview.general.java = $generatorJava.metadataGeneral(val).asString();
                                     $scope.preview.general.allDefaults = $common.isEmptyString($scope.preview.general.xml);
@@ -639,8 +643,6 @@ controlCenterModule.controller('metadataController', [
                                     $scope.preview.store.xml = $generatorXml.metadataStore(val).asString();
                                     $scope.preview.store.java = $generatorJava.metadataStore(val).asString();
                                     $scope.preview.store.allDefaults = $common.isEmptyString($scope.preview.store.xml);
-
-                                    $scope.ui.markDirty();
                                 }
                             }, true);
                         })
@@ -694,8 +696,6 @@ controlCenterModule.controller('metadataController', [
                         $scope.backupItem = angular.copy(item);
                     else
                         $scope.backupItem = undefined;
-
-                    $scope.ui.markPristine(1);
                 }
 
                 $common.confirmUnsavedChanges($scope.ui.isDirty(), selectItem);
@@ -705,9 +705,9 @@ controlCenterModule.controller('metadataController', [
                     : 'New metadata';
             };
 
-            function prepareNewItem() {
+            $scope.prepareNewItem = function () {
                 return {space: $scope.spaces[0]._id, caches: []};
-            }
+            };
 
             // Add new metadata.
             $scope.createItem = function () {
@@ -789,7 +789,7 @@ controlCenterModule.controller('metadataController', [
 
                 $http.post('metadata/save', item)
                     .success(function (res) {
-                        $scope.ui.markPristine(0);
+                        $scope.ui.markPristine();
 
                         var savedMeta = res[0];
 
@@ -803,7 +803,6 @@ controlCenterModule.controller('metadataController', [
                             $scope.metadatas.push(savedMeta);
 
                         $scope.selectItem(savedMeta);
-                        $scope.ui.markPristine(1);
 
                         $common.showInfo('Cache type metadata"' + item.valueType + '" saved.');
                     })
@@ -827,7 +826,7 @@ controlCenterModule.controller('metadataController', [
                 $table.tableReset();
 
                 if (validate($scope.backupItem))
-                    $copy.confirm($scope.backupItem.valueType).then(function (newName) {
+                    $clone.confirm($scope.backupItem.valueType).then(function (newName) {
                         var item = angular.copy($scope.backupItem);
 
                         item._id = undefined;
@@ -843,34 +842,32 @@ controlCenterModule.controller('metadataController', [
 
                 var selectedItem = $scope.selectedItem;
 
-                $confirm.confirm('Are you sure you want to remove cache type metadata: "' + selectedItem.valueType + '"?').then(
-                    function () {
-                        var _id = selectedItem._id;
+                $confirm.confirm('Are you sure you want to remove cache type metadata: "' + selectedItem.valueType + '"?')
+                    .then(function () {
+                            var _id = selectedItem._id;
 
-                        $http.post('metadata/remove', {_id: _id})
-                            .success(function () {
-                                $scope.ui.markPristine(0);
+                            $http.post('metadata/remove', {_id: _id})
+                                .success(function () {
+                                    $common.showInfo('Cache type metadata has been removed: ' + selectedItem.valueType);
 
-                                $common.showInfo('Cache type metadata has been removed: ' + selectedItem.valueType);
+                                    var metadatas = $scope.metadatas;
 
-                                var metadatas = $scope.metadatas;
+                                    var idx = _.findIndex(metadatas, function (metadata) {
+                                        return metadata._id == _id;
+                                    });
 
-                                var idx = _.findIndex(metadatas, function (metadata) {
-                                    return metadata._id == _id;
+                                    if (idx >= 0) {
+                                        metadatas.splice(idx, 1);
+
+                                        if (metadatas.length > 0)
+                                            $scope.selectItem(metadatas[0]);
+                                        else
+                                            $scope.selectItem(undefined, undefined);
+                                    }
+                                })
+                                .error(function (errMsg) {
+                                    $common.showError(errMsg);
                                 });
-
-                                if (idx >= 0) {
-                                    metadatas.splice(idx, 1);
-
-                                    if (metadatas.length > 0)
-                                        $scope.selectItem(metadatas[0]);
-                                    else
-                                        $scope.selectItem(undefined, undefined);
-                                }
-                            })
-                            .error(function (errMsg) {
-                                $common.showError(errMsg);
-                            });
                     });
             };
 
@@ -878,23 +875,20 @@ controlCenterModule.controller('metadataController', [
             $scope.removeAllItems = function () {
                 $table.tableReset();
 
-                $confirm.confirm('Are you sure you want to remove all metadata?').then(
-                    function () {
-                        $scope.ui.markPristine(0);
+                $confirm.confirm('Are you sure you want to remove all metadata?')
+                    .then(function () {
+                            $http.post('metadata/remove/all')
+                                .success(function () {
+                                    $common.showInfo('All metadata have been removed');
 
-                        $http.post('metadata/remove/all')
-                            .success(function () {
-                                $common.showInfo('All metadata have been removed');
+                                    $scope.metadatas = [];
 
-                                $scope.metadatas = [];
-
-                                $scope.selectItem(undefined, undefined);
-                            })
-                            .error(function (errMsg) {
-                                $common.showError(errMsg);
-                            });
-                    }
-                );
+                                    $scope.selectItem(undefined, undefined);
+                                })
+                                .error(function (errMsg) {
+                                    $common.showError(errMsg);
+                                });
+                    });
             };
 
             $scope.tableSimpleValid = function (item, field, name, index) {
@@ -1178,17 +1172,6 @@ controlCenterModule.controller('metadataController', [
                 $table.tableReset();
 
                 group.fields.splice(index, 1);
-
-                $scope.ui.markDirty();
-            };
-
-            $scope.resetItemVisible = function (group) {
-                var resetTo = $scope.selectedItem;
-
-                if (!$common.isDefined(resetTo))
-                    resetTo = prepareNewItem();
-
-                return $common.resetItemVisible(group, $scope.backupItem, resetTo);
             };
 
             $scope.resetItem = function (group) {

@@ -38,7 +38,7 @@ block content
                     +save-remove-buttons('metadata')
                     br
                     hr
-                form.form-horizontal(name='ui.inputForm' ng-if='backupItem' ng-submit='ui.noSubmit()' novalidate unsaved-warning-form)
+                form.form-horizontal(name='ui.inputForm' ng-if='backupItem' novalidate unsaved-warning-form)
                     .panel-group(bs-collapse ng-model='panels.activePanels' data-allow-multiple='true')
                         +groups('metadata', 'backupItem')
                     .section
