@@ -110,7 +110,8 @@ public class PortableContext implements Externalizable {
     private final ConcurrentMap<Class<?>, PortableClassDescriptor> descByCls = new ConcurrentHashMap8<>();
 
     /** */
-    private final ConcurrentMap<Integer, PortableClassDescriptor> userTypes = new ConcurrentHashMap8<>(0);
+    private final ConcurrentMap<ClassLoader, ConcurrentMap<Integer, PortableClassDescriptor>> userTypes
+        = new ConcurrentHashMap8<>(0);
 
     /** */
     private final Map<Integer, PortableClassDescriptor> predefinedTypes = new HashMap<>();
@@ -465,11 +466,11 @@ public class PortableContext implements Externalizable {
             ldr = IgniteUtils.gridClassLoader();
 
         if (userType) {
-            desc = userTypes.get(typeId);
+            desc = userTypesMap(ldr).get(typeId);
 
             // If the type hasn't been loaded by default class loader then we mustn't return the descriptor from here
             // giving a chance to a custom class loader to reload type's class.
-            if (desc != null && ldr == IgniteUtils.gridClassLoader() && desc.describedClass().getClassLoader() == ldr)
+            if (desc != null && ldr.equals(IgniteUtils.gridClassLoader()))
                 return desc;
         }
 
@@ -572,7 +573,8 @@ public class PortableContext implements Externalizable {
 
         // perform put() instead of putIfAbsent() because "registered" flag might have been changed or class loader
         // might have reloaded described class.
-        userTypes.put(typeId, desc);
+        userTypesMap(IgniteUtils.detectClassLoader(cls)).put(typeId, desc);
+
         descByCls.put(cls, desc);
 
         // TODO uncomment for https://issues.apache.org/jira/browse/IGNITE-1377
@@ -646,8 +648,13 @@ public class PortableContext implements Externalizable {
         if (idMapper != null)
             return idMapper;
 
-        if (userTypes.containsKey(typeId) || predefinedTypes.containsKey(typeId))
+        if (predefinedTypes.containsKey(typeId))
             return DFLT_ID_MAPPER;
+
+        for (ConcurrentMap<Integer, PortableClassDescriptor> types : userTypes.values()) {
+            if (types.containsKey(typeId))
+                return DFLT_ID_MAPPER;
+        }
 
         return BASIC_CLS_ID_MAPPER;
     }
@@ -789,7 +796,8 @@ public class PortableContext implements Externalizable {
 
             fieldsMeta = desc.fieldsMeta();
 
-            userTypes.put(id, desc);
+            userTypesMap(IgniteUtils.detectClassLoader(cls)).put(id, desc);
+
             descByCls.put(cls, desc);
         }
 
@@ -936,6 +944,45 @@ public class PortableContext implements Externalizable {
 
         return h;
     }
+
+    /**
+     * Undeployment callback invoked when class loader is being undeployed.
+     *
+     * Some marshallers may want to clean their internal state that uses the undeployed class loader somehow.
+     *
+     * @param ldr Class loader being undeployed.
+     */
+    public void onUndeploy(ClassLoader ldr) {
+        userTypes.remove(ldr);
+
+        for (Class<?> cls : descByCls.keySet()) {
+            if (ldr.equals(cls.getClassLoader()))
+                descByCls.remove(cls);
+        }
+
+        U.clearClassCache(ldr);
+    }
+
+    /**
+     * Returns user type map for specific class loader.
+     *
+     * @param ldr Class loader that loaded user type's class.
+     * @return User type map.
+     */
+    private ConcurrentMap<Integer, PortableClassDescriptor> userTypesMap(ClassLoader ldr) {
+        ConcurrentMap<Integer, PortableClassDescriptor> ldrMap = userTypes.get(ldr);
+
+        if (ldrMap == null) {
+            ConcurrentMap<Integer, PortableClassDescriptor> old = userTypes.putIfAbsent(ldr,
+                ldrMap = new ConcurrentHashMap8<>());
+
+            if (old != null)
+                ldrMap = old;
+        }
+
+        return ldrMap;
+    }
+
 
     /**
      */
