@@ -1459,7 +1459,7 @@ controlCenterModule.service('$preview', ['$timeout', '$interval', function ($tim
     }
 }]);
 
-controlCenterModule.service('ngCopy', ['$window', function ($window) {
+controlCenterModule.service('ngCopy', ['$window', '$common', function ($window, $common) {
     var body = angular.element($window.document.body);
 
     var textArea = angular.element('<textarea/>');
@@ -1477,7 +1477,9 @@ controlCenterModule.service('ngCopy', ['$window', function ($window) {
         textArea[0].select();
 
         try {
-            if (!document.execCommand('copy'))
+            if (document.execCommand('copy'))
+                $common.showInfo('Value copied to clipboard');
+            else
                 window.prompt("Copy to clipboard: Ctrl+C, Enter", toCopy);
         } catch (err) {
             window.prompt("Copy to clipboard: Ctrl+C, Enter", toCopy);
