@@ -395,11 +395,11 @@ button, a.btn {
         margin-right: 0;
     }
 
-    .btn + .btn {
+    button.btn + .btn {
         margin-left: 0;
     }
 
-    > .btn-primary:not(.dropdown-toggle) {
+    > button.btn-primary:not(.dropdown-toggle) {
         border-right-color: black;
     }
 }
@@ -621,6 +621,11 @@ button.form-control {
 
     input[type="text"] {
         font-weight: normal;
+    }
+
+    input[type="radio"] {
+        margin-left: 1px;
+        margin-right: 5px;
     }
 
     tbody {

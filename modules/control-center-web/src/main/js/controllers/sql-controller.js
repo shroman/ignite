@@ -253,9 +253,13 @@ controlCenterModule.controller('sqlController',
 
     $http.post('/agent/topology')
         .success(function (caches) {
-            _.sortBy(caches, 'name').map(function (cache) {
-                $scope.caches.push(cache);
-            })
+            $scope.caches = _.sortBy(caches, 'name');
+
+            if ($scope.caches.length > 0)
+                _.forEach($scope.notebook.paragraphs, function (paragraph) {
+                    if (!paragraph.cacheName || !_.find($scope.caches, {name: paragraph.cacheName}))
+                        paragraph.cacheName = $scope.caches[0].name;
+                });
         })
         .error(function (err, status) {
             if (status == 503)
@@ -349,7 +353,7 @@ controlCenterModule.controller('sqlController',
     $scope.execute = function (paragraph) {
         _saveNotebook();
 
-        paragraph.queryArgs = { query: paragraph.query, pageSize: paragraph.pageSize, cacheName: paragraph.cache.name };
+        paragraph.queryArgs = { query: paragraph.query, pageSize: paragraph.pageSize, cacheName: paragraph.cacheName };
 
         $http.post('/agent/query', paragraph.queryArgs)
             .success(function (res) {
@@ -369,7 +373,7 @@ controlCenterModule.controller('sqlController',
 
         _cancelRefresh(paragraph);
 
-        $http.post('/agent/query', {query: 'EXPLAIN ' + paragraph.query, pageSize: paragraph.pageSize, cacheName: paragraph.cache.name})
+        $http.post('/agent/query', {query: 'EXPLAIN ' + paragraph.query, pageSize: paragraph.pageSize, cacheName: paragraph.cacheName})
             .success(_processQueryResult(paragraph))
             .error(function (errMsg) {
                 paragraph.errMsg = errMsg;
@@ -381,7 +385,7 @@ controlCenterModule.controller('sqlController',
 
         _cancelRefresh(paragraph);
 
-        $http.post('/agent/scan', {pageSize: paragraph.pageSize, cacheName: paragraph.cache.name})
+        $http.post('/agent/scan', {pageSize: paragraph.pageSize, cacheName: paragraph.cacheName})
             .success(_processQueryResult(paragraph))
             .error(function (errMsg) {
                 paragraph.errMsg = errMsg;
@@ -389,7 +393,7 @@ controlCenterModule.controller('sqlController',
     };
 
     $scope.nextPage = function(item) {
-        $http.post('/agent/query/fetch', {queryId: item.queryId, pageSize: item.pageSize, cacheName: item.cache.name})
+        $http.post('/agent/query/fetch', {queryId: item.queryId, pageSize: item.pageSize, cacheName: item.cacheName})
             .success(function (res) {
                 item.page++;
 
@@ -446,7 +450,7 @@ controlCenterModule.controller('sqlController',
     };
 
     $scope.exportAll = function(paragraph) {
-        $http.post('/agent/query/getAll', {query: paragraph.query, cacheName: paragraph.cache.name})
+        $http.post('/agent/query/getAll', {query: paragraph.query, cacheName: paragraph.cacheName})
             .success(function (item) {
                 _export(paragraph.name + '-all.csv', item.meta, item.rows);
             })

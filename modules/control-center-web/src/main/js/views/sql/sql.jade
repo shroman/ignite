@@ -39,11 +39,11 @@ block container
                         h1.col-sm-6(ng-hide='notebook.edit')
                             label {{notebook.name}}
                             .btn-group
-                                +btn-toolbar('fa-pencil', 'notebook.edit = true;notebook.edit_name = notebook.name', 'Rename notebook')
+                                +btn-toolbar('fa-pencil', 'notebook.edit = true;notebook.editName = notebook.name', 'Rename notebook')
                                 +btn-toolbar('fa-trash', 'removeNotebook()', 'Remove notebook')
                         h1.col-sm-6(ng-show='notebook.edit')
-                            input.sql-name-input(ng-model='notebook.edit_name' required on-enter='renameNotebook(notebook.edit_name)' on-escape='notebook.edit = false;')
-                            i.tipLabel.fa.fa-floppy-o(ng-show='notebook.edit_name' ng-click='renameNotebook(notebook.edit_name)' bs-tooltip data-title='Save notebook name' data-trigger='hover')
+                            input.sql-name-input(ng-model='notebook.editName' required on-enter='renameNotebook(notebook.editName)' on-escape='notebook.edit = false;')
+                            i.tipLabel.fa.fa-floppy-o(ng-show='notebook.editName' ng-click='renameNotebook(notebook.editName)' bs-tooltip data-title='Save notebook name' data-trigger='hover')
                         .pull-right
                             +btn-toolbar('fa-plus', 'addParagraph()', 'Add new query')
                     hr
@@ -55,10 +55,10 @@ block container
                                     a {{paragraph.name}}
 
                                     .btn-group(ng-hide='notebook.paragraphs.length > 1')
-                                        +btn-toolbar('fa-pencil', 'paragraph.edit = true; paragraph.edit_name = paragraph.name; $event.stopPropagation();', 'Rename paragraph')
+                                        +btn-toolbar('fa-pencil', 'paragraph.edit = true; paragraph.editName = paragraph.name; $event.stopPropagation();', 'Rename paragraph')
 
                                     .btn-group(ng-show='notebook.paragraphs.length > 1' ng-click='$event.stopPropagation();')
-                                        +btn-toolbar('fa-pencil', 'paragraph.edit = true; paragraph.edit_name = paragraph.name;', 'Rename paragraph')
+                                        +btn-toolbar('fa-pencil', 'paragraph.edit = true; paragraph.editName = paragraph.name;', 'Rename paragraph')
                                         +btn-toolbar('fa-remove', 'removeParagraph(paragraph)', 'Remove paragraph')
 
                                     .pull-right
@@ -69,8 +69,8 @@ block container
                                             +btn-toolbar-data('fa-line-chart', 'line', 'Show line chart.<br/>By default first column - X values, second column - Y values.<br/>In case of one column it will be treated as Y values.')
                                             +btn-toolbar-data('fa-area-chart', 'area', 'Show area chart.<br/>By default first column - X values, second column - Y values.<br/>In case of one column it will be treated as Y values.')
                                 div(ng-show='paragraph.edit')
-                                    input.sql-name-input(ng-model='paragraph.edit_name' required ng-click='$event.stopPropagation();' on-enter='renameParagraph(paragraph, paragraph.edit_name)' on-escape='paragraph.edit = false')
-                                    i.tipLabel.fa.fa-floppy-o(ng-show='paragraph.edit_name' ng-click='renameParagraph(paragraph, paragraph.edit_name); $event.stopPropagation();' bs-tooltip data-title='Save paragraph name' data-trigger='hover')
+                                    input.sql-name-input(ng-model='paragraph.editName' required ng-click='$event.stopPropagation();' on-enter='renameParagraph(paragraph, paragraph.editName)' on-escape='paragraph.edit = false')
+                                    i.tipLabel.fa.fa-floppy-o(ng-show='paragraph.editName' ng-click='renameParagraph(paragraph, paragraph.editName); $event.stopPropagation();' bs-tooltip data-title='Save paragraph name' data-trigger='hover')
                             .panel-collapse(role='tabpanel' bs-collapse-target)
                                 .col-sm-12(ng-show='paragraph.editor')
                                     .col-xs-8.col-sm-9(style='border-right: 1px solid #eee')
@@ -84,12 +84,11 @@ block container
                                             .input-tip
                                                 input.form-control(type='text' st-search placeholder='Filter caches...')
                                             table.links
-                                                tbody.scrollable-y(style='max-height: 19em;display:block;')
+                                                tbody.scrollable-y(style='max-height: 19em;display:block;' ng-model='paragraph.cacheName' bs-radio-group)
                                                     tr(ng-repeat='cache in displayedCaches track by cache.name')
                                                         td(style='width: 100%')
-                                                            a(ng-class='{active: cache.name == paragraph.cache.name}' ng-click='paragraph.cache = cache') {{$index + 1}}) {{cache.name}}
-                                                        td(style='width: 15px')
-                                                            i.fa.fa-info-circle(bs-popover data-template-url='cache-metadata', data-placement='left', data-trigger='click')
+                                                            input.labelField(type='radio' value='{{cache.name}}')
+                                                            a(bs-popover data-template-url='cache-metadata', data-placement='auto', data-trigger='click') {{cache.name}}
                                         .empty-caches(ng-show='displayedCaches.length == 0 && caches.length != 0')
                                             label Wrong caches filter
                                         .empty-caches(ng-show='caches.length == 0')
