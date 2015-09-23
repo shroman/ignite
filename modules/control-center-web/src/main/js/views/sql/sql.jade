@@ -126,10 +126,13 @@ block container
                                                     button.btn.btn-primary(id='export-item-dropdown' data-toggle='dropdown' data-container='body' bs-dropdown='exportDropdown' data-placement='bottom-right')
                                                         span.caret
                                         .sql-table-wrapper
-                                            table.table.table-condensed
+                                            table.table.table-condensed(st-table='displayedResult' st-safe-src='paragraph.rows' float-thead='floatTheadOptions')
+                                                thead
+                                                    tr
+                                                        th(ng-repeat='col in paragraph.meta track by $index' ng-if='paragraph.columnFilter(col)' bs-tooltip='columnToolTip(col)' data-placement='bottom') {{col.fieldName}}
                                                 tbody
-                                                    tr(ng-repeat='row in paragraph.rows')
-                                                        td(ng-repeat='val in row') {{::val}}
+                                                    tr(ng-repeat='row in displayedResult track by $index')
+                                                        td(ng-repeat='val in row track by $index' ng-if='paragraph.columnFilter(paragraph.meta[$index])') {{ val }}
                                     div(ng-show='paragraph.chart() && paragraph.nonEmpty()')
                                         .chart-settings-link
                                             i.fa.fa-chevron-circle-down
