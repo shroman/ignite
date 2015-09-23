@@ -26,6 +26,10 @@ controlCenterModule.controller('clustersController', [
 
         $scope.ui = $common.formUI();
 
+        $scope.showMoreInfo = function () {
+            $common.showInfo('TODO: show modal with more info');
+        };
+
         $scope.joinTip = $common.joinTip;
         $scope.getModel = $common.getModel;
         $scope.compactJavaName = $common.compactJavaName;

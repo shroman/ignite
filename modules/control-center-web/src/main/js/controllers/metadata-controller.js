@@ -29,6 +29,10 @@ controlCenterModule.controller('metadataController', [
 
             $scope.ui = $common.formUI();
 
+            $scope.showMoreInfo = function () {
+                $common.showInfo('TODO: show modal with more info');
+            };
+
             $scope.agentGoal = 'load metadata from database schema';
             $scope.agentTestDriveOption = '--test-drive-metadata';
 

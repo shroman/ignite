@@ -20,6 +20,10 @@ controlCenterModule.controller('summaryController', ['$scope', '$http', '$common
     $scope.joinTip = $common.joinTip;
     $scope.getModel = $common.getModel;
 
+    $scope.showMoreInfo = function () {
+        $common.showInfo('TODO: show modal with more info');
+    };
+
     $scope.javaClassItems = [
         {label: 'snippet', value: 1},
         {label: 'factory class', value: 2}
