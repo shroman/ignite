@@ -16,13 +16,13 @@
  */
 
 // Controller for Summary screen.
-controlCenterModule.controller('summaryController', ['$scope', '$http', '$common', '$loading', function ($scope, $http, $common, $loading) {
+controlCenterModule.controller('summaryController', [
+    '$scope', '$http', '$common', '$loading', '$message',
+    function ($scope, $http, $common, $loading, $message) {
     $scope.joinTip = $common.joinTip;
     $scope.getModel = $common.getModel;
 
-    $scope.showMoreInfo = function () {
-        $common.showInfo('TODO: show modal with more info');
-    };
+    $scope.showMoreInfo = $message.message;
 
     $scope.javaClassItems = [
         {label: 'snippet', value: 1},
@@ -57,6 +57,7 @@ controlCenterModule.controller('summaryController', ['$scope', '$http', '$common
     $http.get('/models/summary.json')
         .success(function (data) {
             $scope.screenTip = data.screenTip;
+            $scope.moreInfo = data.moreInfo;
             $scope.clientFields = data.clientFields;
         })
         .error(function (errMsg) {

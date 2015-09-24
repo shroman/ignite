@@ -17,8 +17,8 @@
 
 // Controller for Clusters screen.
 controlCenterModule.controller('clustersController', [
-    '$scope', '$controller', '$http', '$timeout', '$common', '$focus', '$confirm', '$clone', '$table', '$preview', '$loading', '$unsavedChangesGuard',
-    function ($scope, $controller, $http, $timeout, $common, $focus, $confirm, $clone, $table, $preview, $loading, $unsavedChangesGuard) {
+    '$scope', '$controller', '$http', '$timeout', '$common', '$focus', '$confirm', '$message', '$clone', '$table', '$preview', '$loading', '$unsavedChangesGuard',
+    function ($scope, $controller, $http, $timeout, $common, $focus, $confirm, $message, $clone, $table, $preview, $loading, $unsavedChangesGuard) {
         $unsavedChangesGuard.install($scope);
 
         // Initialize the super class and extend it.
@@ -26,9 +26,7 @@ controlCenterModule.controller('clustersController', [
 
         $scope.ui = $common.formUI();
 
-        $scope.showMoreInfo = function () {
-            $common.showInfo('TODO: show modal with more info');
-        };
+        $scope.showMoreInfo = $message.message;
 
         $scope.joinTip = $common.joinTip;
         $scope.getModel = $common.getModel;
@@ -172,6 +170,7 @@ controlCenterModule.controller('clustersController', [
                 $http.get('/models/clusters.json')
                     .success(function (data) {
                         $scope.screenTip = data.screenTip;
+                        $scope.moreInfo = data.moreInfo;
                         $scope.general = data.general;
                         $scope.advanced = data.advanced;
 

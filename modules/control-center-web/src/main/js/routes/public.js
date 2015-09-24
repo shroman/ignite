@@ -34,6 +34,11 @@ router.get('/validation-error', function (req, res) {
 });
 
 // GET confirmation dialog.
+router.get('/message', function (req, res) {
+    res.render('templates/message', {});
+});
+
+// GET confirmation dialog.
 router.get('/confirm', function (req, res) {
     res.render('templates/confirm', {});
 });

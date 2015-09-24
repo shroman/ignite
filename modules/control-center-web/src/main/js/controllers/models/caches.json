@@ -14,6 +14,12 @@
       "Back to <a href='/configuration/clusters'>Clusters</a>"
     ]
   },
+  "moreInfo": {
+    "title": "Caches page",
+    "content": ["Manage you cluster's caches on current page.",
+      "Caches can be linked with specified <a href='/configuration/clusters'>clusters</a> and <a href='/configuration/metadata'>metadata</a>",
+      "Generated cluster with caches configuration available on <a href='/configuration/summary'>summary</a> page."]
+  },
   "general": [
     {
       "label": "General",

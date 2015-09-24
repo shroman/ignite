@@ -17,8 +17,8 @@
 
 // Controller for Metadata screen.
 controlCenterModule.controller('metadataController', [
-        '$scope', '$controller', '$http', '$modal', '$common', '$timeout', '$focus', '$confirm', '$confirmBatch', '$clone', '$table', '$preview', '$loading', '$unsavedChangesGuard',
-        function ($scope, $controller, $http, $modal, $common, $timeout, $focus, $confirm, $confirmBatch, $clone, $table, $preview, $loading, $unsavedChangesGuard) {
+    '$scope', '$controller', '$http', '$modal', '$common', '$timeout', '$focus', '$confirm', '$confirmBatch', '$message', '$clone', '$table', '$preview', '$loading', '$unsavedChangesGuard',
+    function ($scope, $controller, $http, $modal, $common, $timeout, $focus, $confirm, $confirmBatch, $message, $clone, $table, $preview, $loading, $unsavedChangesGuard) {
             $unsavedChangesGuard.install($scope);
 
             // Initialize the super class and extend it.
@@ -29,9 +29,7 @@ controlCenterModule.controller('metadataController', [
 
             $scope.ui = $common.formUI();
 
-            $scope.showMoreInfo = function () {
-                $common.showInfo('TODO: show modal with more info');
-            };
+            $scope.showMoreInfo = $message.message;
 
             $scope.agentGoal = 'load metadata from database schema';
             $scope.agentTestDriveOption = '--test-drive-metadata';
@@ -377,6 +375,8 @@ controlCenterModule.controller('metadataController', [
                             $scope.selectItem(lastItem);
 
                             $common.showInfo('Cache type metadata loaded from database.');
+
+                            $scope.panels.activePanels = [0, 1, 2];
                         })
                         .error(function (errMsg) {
                             $common.showError(errMsg);
@@ -599,6 +599,7 @@ controlCenterModule.controller('metadataController', [
                     $http.get('/models/metadata.json')
                         .success(function (data) {
                             $scope.screenTip = data.screenTip;
+                            $scope.moreInfo = data.moreInfo;
                             $scope.metadata = data.metadata;
                             $scope.metadataDb = data.metadataDb;
 

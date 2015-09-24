@@ -895,6 +895,22 @@ controlCenterModule.service('$confirm', function ($modal, $rootScope, $q) {
     return confirmModal;
 });
 
+// Show modal message service.
+controlCenterModule.service('$message', function ($modal, $rootScope) {
+    var scope = $rootScope.$new();
+
+    var messageModal = $modal({templateUrl: '/message', scope: scope, placement: 'center', show: false});
+
+    messageModal.message = function (title, content) {
+        scope.title = title || 'Message';
+        scope.content = content.join('<br/>') || '...';
+
+        messageModal.show();
+    };
+
+    return messageModal;
+});
+
 // Confirm change location.
 controlCenterModule.service('$unsavedChangesGuard', function () {
     return {

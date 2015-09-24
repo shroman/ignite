@@ -17,8 +17,8 @@
 
 // Controller for Caches screen.
 controlCenterModule.controller('cachesController', [
-        '$scope', '$controller', '$http', '$timeout', '$common', '$focus', '$confirm', '$clone', '$table', '$preview', '$loading', '$unsavedChangesGuard',
-        function ($scope, $controller, $http, $timeout, $common, $focus, $confirm, $clone, $table, $preview, $loading, $unsavedChangesGuard) {
+    '$scope', '$controller', '$http', '$timeout', '$common', '$focus', '$confirm', '$message', '$clone', '$table', '$preview', '$loading', '$unsavedChangesGuard',
+    function ($scope, $controller, $http, $timeout, $common, $focus, $confirm, $message, $clone, $table, $preview, $loading, $unsavedChangesGuard) {
             $unsavedChangesGuard.install($scope);
 
             // Initialize the super class and extend it.
@@ -26,9 +26,7 @@ controlCenterModule.controller('cachesController', [
 
             $scope.ui = $common.formUI();
 
-            $scope.showMoreInfo = function () {
-                $common.showInfo('TODO: show modal with more info');
-            };
+            $scope.showMoreInfo = $message.message;
 
             $scope.joinTip = $common.joinTip;
             $scope.getModel = $common.getModel;
@@ -246,6 +244,7 @@ controlCenterModule.controller('cachesController', [
                     $http.get('/models/caches.json')
                         .success(function (data) {
                             $scope.screenTip = data.screenTip;
+                            $scope.moreInfo = data.moreInfo;
                             $scope.general = data.general;
                             $scope.advanced = data.advanced;
 
@@ -412,6 +411,11 @@ controlCenterModule.controller('cachesController', [
                 if (item.memoryMode == 'OFFHEAP_TIERED' && item.offHeapMaxMemory == null)
                     return showPopoverMessage($scope.panels, 'memory', 'offHeapMaxMemory',
                         'Off-heap max memory should be specified');
+
+                if (item.memoryMode == 'ONHEAP_TIERED' && item.offHeapMaxMemory > 0 &&
+                        !$common.isDefined(item.evictionPolicy.kind)) {
+                    return showPopoverMessage($scope.panels, 'memory', 'evictionPolicy', 'Eviction policy should not be configured');
+                }
 
                 var cacheStoreFactorySelected = item.cacheStoreFactory && item.cacheStoreFactory.kind;
 

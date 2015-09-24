@@ -12,6 +12,11 @@
       "Continue to <a href='/configuration/summary'>Summary</a>"
     ]
   },
+  "moreInfo": {
+    "title": "Clusters page",
+    "content": ["Manage you clusters on current page.",
+      "Generated clusters configuration available on <a href='/configuration/summary'>summary</a> page."]
+  },
   "general": [
     {
       "label": "General",

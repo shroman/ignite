@@ -13,6 +13,12 @@
       "Back to <a href='/configuration/clusters'>Clusters</a>"
     ]
   },
+  "moreInfo": {
+    "title": "Metadata page",
+    "content": ["Manage you type metadata on current page.",
+      "Metadata can be assigned to specified <a href='/configuration/caches'>caches</a>.",
+      "Generated cluster with caches with metadata configuration available on <a href='/configuration/summary'>summary</a> page."]
+  },
   "metadata": [
     {
       "label": "Metadata common",
