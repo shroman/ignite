@@ -40,14 +40,6 @@ controlCenterModule.controller('sqlController',
 
     $scope.exportDropdown = [{ 'text': 'Export all', 'click': 'exportAll(paragraph)'}];
 
-    $scope.floatTheadOptions = {
-        autoReflow: true,
-        useAbsolutePositioning: true,
-        scrollContainer: function($table) {
-            return $table.closest(".sql-table-wrapper");
-        }
-    };
-
     $scope.treeOptions = {
         nodeChildren: "children",
         dirSelectable: false,
@@ -75,6 +67,14 @@ controlCenterModule.controller('sqlController',
         paragraph.nonEmpty = function () {
             return this.rows && this.rows.length > 0;
         };
+
+        Object.defineProperty(paragraph, 'gridOptions', { value: {
+            enableColResize: true,
+            columnDefs: [
+                {headerName: "Test", valueGetter: 'data[0]'}
+            ],
+            rowData: null
+        }});
     }
 
     $scope.aceInit = function (paragraph) {
@@ -163,7 +163,7 @@ controlCenterModule.controller('sqlController',
     };
 
     $scope.removeNotebook = function () {
-        $confirm.confirm('Are you sure you want to remove notebook: "' + $scope.notebook.name + '"?')
+        $confirm.confirm('Are you sure you want to remove: "' + $scope.notebook.name + '"?')
             .then(function () {
                 $http.post('/notebooks/remove', {_id: $scope.notebook._id})
                     .success(function () {
@@ -244,7 +244,7 @@ controlCenterModule.controller('sqlController',
     };
 
     $scope.removeParagraph = function(paragraph) {
-        $confirm.confirm('Are you sure you want to remove paragraph: "' + paragraph.name + '"?')
+        $confirm.confirm('Are you sure you want to remove: "' + paragraph.name + '"?')
             .then(function () {
                     var paragraph_idx = _.findIndex($scope.notebook.paragraphs, function (item) {
                         return paragraph == item;
@@ -314,14 +314,23 @@ controlCenterModule.controller('sqlController',
 
                 paragraph.meta = res.meta;
 
+                var columnDefs = [];
+
                 var idx = 0;
 
                 _.forEach(res.meta, function (meta) {
+                    columnDefs.push({
+                        headerName: meta.fieldName,
+                        valueGetter: 'JSON.stringify(data[' + idx + '])'
+                    });
+
                     var col = {value: idx++, label: meta.fieldName};
 
                     if (paragraph.disabledSystemColumns || _hideColumn(meta))
                         paragraph.chartColumns.push(col);
                 });
+
+                paragraph.gridOptions.api.setColumnDefs(columnDefs);
 
                 paragraph.chartColX = _selectAxis(paragraph.chartColumns, paragraph.chartColX, 0);
                 paragraph.chartColY = _selectAxis(paragraph.chartColumns, paragraph.chartColY, 1);
@@ -336,6 +345,10 @@ controlCenterModule.controller('sqlController',
             delete paragraph.errMsg;
 
             paragraph.rows = res.rows;
+
+            paragraph.gridOptions.api.setRowData(res.rows);
+
+            paragraph.gridOptions.api.sizeColumnsToFit();
 
             if (paragraph.result == 'none')
                 paragraph.result = 'table';

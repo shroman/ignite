@@ -16,7 +16,7 @@
  */
 
 var controlCenterModule = angular.module('ignite-web-control-center',
-    ['ngAnimate', 'smart-table', 'mgcrea.ngStrap', 'ui.ace', 'ngSanitize', 'treeControl', 'darthwade.loading']);
+    ['ngAnimate', 'smart-table', 'mgcrea.ngStrap', 'ui.ace', 'ngSanitize', 'treeControl', 'darthwade.loading', 'agGrid']);
 
 // Modal popup configuration.
 controlCenterModule.config(function ($modalProvider) {
@@ -1800,40 +1800,6 @@ controlCenterModule.directive('onClickFocus', function ($focus) {
         scope.$on('$destroy', function () {
             elem.off('click');
         });
-    };
-});
-
-// FloatThead wrapper for AngularJS.
-controlCenterModule.directive('floatThead', function ($timeout, $log) {
-    // Usage:
-    // Specify float-thead on any table element and optionally pass through a floatThead options object to initialize the library.
-    // Optionally specify st-safe-src to have the directive watch any objects for changes and call 'reflow' on floatThead.
-    // You can also manually trigger a reflow by triggering an event on the table element called 'update', eg: jQuery('.table').trigger('update');
-    return {
-        require: '?stSafeSrc',
-        link: function (scope, element, attrs) {
-            jQuery(element).floatThead(scope.$eval(attrs.floatThead));
-
-            if (attrs.stSafeSrc) {
-                // Set $watch to do a deep watch on the ngModel (collection) by specifying true as a 3rd parameter
-                scope.$watch(attrs.stSafeSrc, function () {
-                    jQuery(element).floatThead('reflow');
-                }, true);
-            } else {
-                $log.info('floatThead: stSafeSrc not provided!');
-            }
-
-            element.bind('update', function () {
-                $timeout(function() {
-                    jQuery(element).floatThead('reflow');
-                }, 0);
-            });
-
-            element.bind('$destroy', function() {
-                jQuery(element).floatThead('destroy');
-            });
-        },
-        restrict: 'A'
     };
 });
 
