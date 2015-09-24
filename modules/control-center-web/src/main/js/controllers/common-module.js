@@ -1895,7 +1895,7 @@ controlCenterModule.controller('agent-download', [
 
             var lnk = document.createElement('a');
 
-            lnk.setAttribute('href', '/agent/ignite-web-agent-1.4.0-SNAPSHOT.zip');
+            lnk.setAttribute('href', '/agent/ignite-web-agent-1.5.0-SNAPSHOT.zip');
             lnk.style.display = 'none';
 
             document.body.appendChild(lnk);
