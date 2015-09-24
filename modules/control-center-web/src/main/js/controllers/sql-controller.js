@@ -348,7 +348,9 @@ controlCenterModule.controller('sqlController',
 
             paragraph.gridOptions.api.setRowData(res.rows);
 
-            paragraph.gridOptions.api.sizeColumnsToFit();
+            setTimeout(function () {
+                paragraph.gridOptions.api.sizeColumnsToFit();
+            }, 1);
 
             if (paragraph.result == 'none')
                 paragraph.result = 'table';

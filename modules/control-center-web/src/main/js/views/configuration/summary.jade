@@ -65,7 +65,7 @@ block content
                                     .col-xs-2.col-sm-2.col-md-1
                                         label Generate:
                                     .col-xs-4.col-sm-3.col-md-3
-                                        button.form-control(type='button' ng-model='configServer.javaClassServer' bs-select data-placeholder='{{detail.placeholder}}' bs-options='item.value as item.label for item in javaClassItems' data-sort='false')
+                                        button.select-toggle.form-control(type='button' ng-model='configServer.javaClassServer' bs-select data-placeholder='{{detail.placeholder}}' bs-options='item.value as item.label for item in javaClassItems' data-sort='false')
                                 div(ui-ace='{ onLoad: aceInit, mode: "java" }' ng-model='javaServer')
                             div(bs-pane title='POJO' ng-show='pojoAvailable()')
                                 .details-row

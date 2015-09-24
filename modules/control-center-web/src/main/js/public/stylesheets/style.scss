@@ -358,9 +358,6 @@ h1, h2, h3, h4, h5, h6 {
         display: inline-block;
         vertical-align: middle;
         float: none;
-
-        padding-left: 0 !important;
-        padding-right: 0 !important;
     }
 
     input[type="checkbox"] {
@@ -472,11 +469,6 @@ button.form-control {
 }
 
 .theme-line .paragraphs {
-    [class*="col-"] {
-        padding-left: 0;
-        padding-right: 0;
-    }
-
     .panel-group .panel + .panel {
         margin-top: 30px;
     }
@@ -581,11 +573,6 @@ button.form-control {
 
 .theme-line .panel-body {
     padding: 10px 20px;
-
-    [class*="col-"] {
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-    }
 }
 
 .theme-line .main-content a.customize {
@@ -814,11 +801,6 @@ button.form-control {
 
 
 .theme-line table.sql-results {
-    [class*="col-"] {
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-    }
-
     margin: 0;
 
     td {
@@ -1528,7 +1510,7 @@ button.dropdown-toggle {
 }
 
 button.select-toggle {
-    padding-right: 12px;
+    padding-right: 15px;
 }
 
 button.select-toggle::after {
@@ -1542,12 +1524,16 @@ button.select-toggle::after {
     border-right: 0.3em solid transparent;
     border-left: 0.3em solid transparent;
     position: absolute;
-    right: 22px;
+    right: 5px;
     top: 50%;
     transform: translateY(-50%);
 }
 
-button.select-toggle.btn::after {
+button.btn.select-toggle::after {
+    right: 15px;
+}
+
+.input-tip > button.select-toggle::after {
     right: 20px;
 }
 
@@ -1606,7 +1592,7 @@ treecontrol.tree-classic {
     }
 
     .ag-cell {
-        padding: 3px 6px !important;
+        padding: 3px 6px;
         border-right: 1px solid #ccc
     }
 
