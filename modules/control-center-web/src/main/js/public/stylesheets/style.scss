@@ -954,6 +954,11 @@ button.form-control {
     padding: 5px;
 }
 
+.popover:focus {
+    outline: none;
+    border: 1px solid $btn-default-border;
+}
+
 .theme-line .popover.settings {
     .close {
         position: absolute;
@@ -967,6 +972,19 @@ button.form-control {
 
     min-width: 305px;
 
+    .popover-title {
+        color: black;
+
+        line-height: $line-height-base;
+
+        padding: 8px 20px 8px 10px;
+
+        white-space: nowrap;
+        overflow: hidden;
+        -o-text-overflow: ellipsis;
+        text-overflow: ellipsis;
+    }
+
     > .popover-content {
         overflow: scroll;
 
@@ -975,6 +993,14 @@ button.form-control {
 
         min-width: 300px;
         max-width: 300px;
+
+        .content-empty {
+            display: block;
+            text-align: center;
+            line-height: 380px;
+
+            color: $input-color-placeholder;
+        }
     }
 
     label.clickable {

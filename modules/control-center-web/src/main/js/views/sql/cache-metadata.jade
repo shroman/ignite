@@ -12,14 +12,15 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 .popover.cache-metadata(tabindex='-1' dw-loading='loadingCacheMetadata' dw-loading-options='{text: ""}' ng-init='tryLoadMetadata(cache)')
-    .arrow
-    h3.popover-title(style='color: black') Cache metadata
+    h3.popover-title Metadata for: <b>{{cache.name}}</b></br>Cache mode: <b>{{cache.mode}}</b>
     button.close(id='cache-metadata-close' type='button' ng-click='$hide()') &times;
-    .popover-content
+    .popover-content(ng-if='cache.metadata && cache.metadata.length > 0')
         treecontrol.tree-classic(tree-model='cache.metadata' options='treeOptions')
             label.clickable(ng-if='node.type == "type"' ng-dblclick='dblclickMetadata(paragraph, node)') {{node.name}}
             label.clickable(ng-if='node.type == "field"' ng-dblclick='dblclickMetadata(paragraph, node)') {{node.name}} [{{node.clazz}}]
             label(ng-if='node.type == "indexes"') {{node.name}}
             label(ng-if='node.type == "index"') {{node.name}}
             label(ng-if='node.type == "index-field"') {{node.name}} [{{node.order ? 'ASC' : 'DESC'}}]
+    .popover-content(ng-if='!cache.metadata || cache.metadata.length == 0')
+        label.content-empty No types found
     h3.popover-footer Double click to paste into editor

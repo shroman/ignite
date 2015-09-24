@@ -50,7 +50,7 @@ controlCenterModule.controller('sqlController',
 
     $scope.treeOptions = {
         nodeChildren: "children",
-        dirSelectable: true,
+        dirSelectable: false,
         injectClasses: {
             iExpanded: "fa fa-minus-square-o",
             iCollapsed: "fa fa-plus-square-o"
