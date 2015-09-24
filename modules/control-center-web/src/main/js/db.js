@@ -352,10 +352,7 @@ var NotebookSchema = new Schema({
         result: {type: String, enum: ['none', 'table', 'bar', 'pie', 'line', 'area']},
         pageSize: Number,
         hideSystemColumns: Boolean,
-        cache: {
-            name: String,
-            mode: {type: String, enum: ['PARTITIONED', 'REPLICATED', 'LOCAL']}
-        },
+        cacheName: String,
         rate: {
             value: Number,
             unit: Number
