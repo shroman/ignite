@@ -18,9 +18,9 @@
     .modal-dialog
         .modal-content
             .modal-header
-                button.close(type='button' ng-click='$hide()' aria-hidden='true') &times;
+                button.close(ng-click='$hide()' aria-hidden='true') &times;
                 h4.modal-title {{title}}
             .modal-body(ng-show='content')
                 p(ng-bind-html='content' style='text-align: left;')
             .modal-footer
-                button.btn.btn-primary(id='confirm-btn-confirm' type='button' ng-click='$hide()') Ok
+                button.btn.btn-primary(id='confirm-btn-confirm' ng-click='$hide()') Ok

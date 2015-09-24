@@ -18,7 +18,7 @@
     .modal-dialog
         .modal-content
             .modal-header
-                button.close(type='button' ng-click='$hide()') &times;
+                button.close(ng-click='$hide()') &times;
                 h4.modal-title Clone
             form.form-horizontal(name='ui.inputForm' novalidate)
                 .modal-body.row
@@ -28,5 +28,5 @@
                         .col-sm-9
                             input.form-control(id='copy-new-name' type='text' ng-model='newName' required auto-focus)
             .modal-footer
-                button.btn.btn-default(id='copy-btn-cancel' type='button' ng-click='$hide()') Cancel
-                button.btn.btn-primary(id='copy-btn-confirm' type='button' ng-disabled='ui.inputForm.$invalid' ng-click='ok(newName)') Confirm
+                button.btn.btn-default(id='copy-btn-cancel' ng-click='$hide()') Cancel
+                button.btn.btn-primary(id='copy-btn-confirm' ng-disabled='ui.inputForm.$invalid' ng-click='ok(newName)') Confirm

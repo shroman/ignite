@@ -49,7 +49,7 @@ block container
                             label {{profileUser.token}}
                             i.tipLabel.fa.fa-refresh(ng-click='generateToken()' bs-tooltip data-title='Generate random security token')
                             i.tipLabel.fa.fa-clipboard(ng-click-copy='{{profileUser.token}}' bs-tooltip data-title='Copy security token to clipboard')
-                            i.tipLabel.fa.fa-question-circle(ng-if=lines bs-tooltip='' data-title='The security token is used for authorization of web agent' type='button')
+                            i.tipLabel.fa.fa-question-circle(ng-if=lines bs-tooltip='' data-title='The security token is used for authorization of web agent')
                         .details-row
                             .advanced-options
                                 i.fa.fa-chevron-circle-up(ng-show='profileUser.changePassword' ng-click='profileUser.changePassword = ! profileUser.changePassword')

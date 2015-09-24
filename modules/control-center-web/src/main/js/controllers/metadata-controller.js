@@ -710,9 +710,9 @@ controlCenterModule.controller('metadataController', [
                     : 'New metadata';
             };
 
-            $scope.prepareNewItem = function () {
+            function prepareNewItem() {
                 return {space: $scope.spaces[0]._id, caches: []};
-            };
+            }
 
             // Add new metadata.
             $scope.createItem = function () {

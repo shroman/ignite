@@ -1484,7 +1484,44 @@ a {
 }
 
 .chart-settings {
+    margin: 10px 5px 5px 5px !important;
+}
+
+.chart-settings-columns-list {
+    border: 1px solid $ignite-border-color;
+    list-style: none;
+    margin-bottom: 10px;
+    min-height: 30px;
+    max-height: 200px;
     padding: 5px;
+
+    overflow: auto;
+
+    li {
+        float: left;
+    }
+
+    li:nth-child(even) {
+        margin-right: 0;
+    }
+
+    .fa-close {
+        margin-left: 10px;
+    }
+}
+
+.btn-chart-column {
+    border-radius: 3px;
+    font-size: 12px;
+    margin: 3px 3px;
+    padding: 1px 5px;
+    line-height: 1.5;
+    cursor: default;
+}
+
+.btn-chart-column-movable {
+    @extend .btn-chart-column;
+    cursor: move;
 }
 
 .page-loading-overlay {

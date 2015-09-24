@@ -17,7 +17,7 @@
 .popover.settings(tabindex='-1' style='width: 200px')
     .arrow
     h3.popover-title(style='color: black') Refresh rate
-    button.close(id='paragraph-rate-close' type='button' ng-click='$hide()') &times;
+    button.close(id='paragraph-rate-close' ng-click='$hide()') &times;
     .popover-content
         form(name='popoverForm')
             .form-group(style='padding: 5px')
@@ -26,6 +26,6 @@
                 .col-sm-8(style='padding-left: 5px')
                     button.form-control.select-toggle(id='paragraph-unit' ng-init='unit = paragraph.rate.unit' ng-model='unit' required placeholder='Time unit' bs-select bs-options='item.value as item.label for item in timeUnit' data-container='false' tabindex='0')
             .form-actions(style='margin-top: 30px; padding: 5px')
-                button.btn.btn-primary(id='paragraph-rate-start' ng-disabled='popoverForm.$invalid' type='button' ng-click='startRefresh(paragraph, value, unit); $hide()') Start
-                button.btn.btn-primary.btn-default(id='paragraph-rate-stop' type='button' ng-click='stopRefresh(paragraph); $hide()' ng-disabled='!paragraph.rate.installed') Stop
+                button.btn.btn-primary(id='paragraph-rate-start' ng-disabled='popoverForm.$invalid' ng-click='startRefresh(paragraph, value, unit); $hide()') Start
+                button.btn.btn-primary.btn-default(id='paragraph-rate-stop' ng-click='stopRefresh(paragraph); $hide()' ng-disabled='!paragraph.rate.installed') Stop
 

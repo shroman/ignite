@@ -18,10 +18,10 @@
     .modal-dialog
         .modal-content
             .modal-header
-                button.close(type='button' ng-click='confirmCancel()' aria-hidden='true') &times;
+                button.close(ng-click='confirmCancel()' aria-hidden='true') &times;
                 h4.modal-title Confirmation
             .modal-body(ng-show='content')
                 p(ng-bind-html='content' style='text-align: center;')
             .modal-footer
-                button.btn.btn-default(id='confirm-btn-cancel' type='button' ng-click='confirmCancel()') Cancel
-                button.btn.btn-primary(id='confirm-btn-confirm' type='button' ng-click='confirmOk()') Confirm
+                button.btn.btn-default(id='confirm-btn-cancel' ng-click='confirmCancel()') Cancel
+                button.btn.btn-primary(id='confirm-btn-confirm' ng-click='confirmOk()') Confirm

@@ -17,21 +17,23 @@
 .popover.settings(tabindex='-1' style='width: 250px')
     .arrow
     h3.popover-title(style='color: black') Chart settings
-    button.close(id='chart-settings-close' type='button' ng-click='$hide()') &times;
+    button.close(id='chart-settings-close' ng-click='$hide()') &times;
     .popover-content
         form.form-horizontal.chart-settings(name='chartSettingsForm' novalidate)
-            .form-group
-                .settings-row
-                    .col-sm-2
-                        label X:
-                    .col-sm-10
-                        button.form-control(id='chart-settings-X' ng-model='paragraph.chartColX' data-placeholder='Col X' bs-select bs-options='item as item.label for item in paragraph.chartColumns' data-container='false' tabindex='0')
-                .settings-row
-                    .col-sm-2
-                        label Y:
-                    .col-sm-10
-                        button.form-control(id='chart-settings-Y' ng-model='paragraph.chartColY' data-placeholder='Col Y' bs-select bs-options='item as item.label for item in paragraph.chartColumns' data-container='false' tabindex='1')
-            .form-actions
-                button.btn.btn-primary(id='chart-settings-apply' ng-disabled='chartSettingsForm.$invalid' type='button' ng-click='applyChartSettings(paragraph); $hide()') Apply
-                button.btn.btn-primary(id='chart-settings-cancel' type='button' ng-click='$hide()') Cancel
+            .form-group.chart-settings
+                label All columns
+                ul.chart-settings-columns-list( dnd-list='paragraph.chartColumns' dnd-allowed-types='[]')
+                    li(ng-repeat='col in paragraph.chartColumns track by $index')
+                        .btn.btn-default.btn-chart-column-movable(dnd-draggable='col' dnd-effect-allowed='copy' dnd-dragstart='chartSettingsDragStart(paragraph)') {{col.label}}
+                label X axis
+                ul.chart-settings-columns-list(id='chart-settings-keys' dnd-list='paragraph.chartKeyCols' dnd-drop='acceptKeyColumn(event, index, item, external, type, allowedType)')
+                    li(ng-repeat='col in paragraph.chartKeyCols track by $index')
+                        .btn.btn-info.btn-chart-column {{col.label}}
+                            i.fa.fa-close(ng-click='removeKeyColumn(paragraph, $index)')
+                label Y axis
+                ul.chart-settings-columns-list(id='chart-settings-vals' dnd-list='paragraph.chartValCols' dnd-drop='acceptValColumn(event, index, item, external, type, allowedType)')
+                    li(ng-repeat='col in paragraph.chartValCols track by $index')
+                        .btn.btn-success.btn-chart-column {{col.label}}
+                            i.fa.fa-close(ng-click='removeValColumn(paragraph, $index)')
+    h3.popover-footer Drag columns to axis
 

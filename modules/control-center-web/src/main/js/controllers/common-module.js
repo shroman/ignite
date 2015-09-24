@@ -16,7 +16,7 @@
  */
 
 var controlCenterModule = angular.module('ignite-web-control-center',
-    ['ngAnimate', 'smart-table', 'mgcrea.ngStrap', 'ui.ace', 'ngSanitize', 'treeControl', 'darthwade.loading', 'agGrid']);
+    ['ngAnimate', 'smart-table', 'mgcrea.ngStrap', 'ui.ace', 'ngSanitize', 'treeControl', 'darthwade.loading', 'agGrid', 'dndLists']);
 
 // Modal popup configuration.
 controlCenterModule.config(function ($modalProvider) {

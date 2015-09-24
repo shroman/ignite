@@ -18,7 +18,7 @@
     .modal-dialog
         .modal-content
             .modal-header
-                button.close(type='button' ng-click='cancel()' aria-hidden='true') &times;
+                button.close(ng-click='cancel()' aria-hidden='true') &times;
                 h4.modal-title Confirmation
             .modal-body(ng-show='batchConfirm.content')
                 p(ng-bind-html='batchConfirm.content' style='text-align: center')
@@ -27,6 +27,6 @@
                     label
                         input(type='checkbox' ng-model='batchConfirm.applyToAll')
                         | Apply to all
-                button.btn.btn-default(id='batch-confirm-btn-cancel' type='button' ng-click='batchConfirm.cancel()') Cancel
-                button.btn.btn-default(id='batch-confirm-btn-cancel' type='button' ng-click='batchConfirm.skip()') Skip
-                button.btn.btn-primary(id='batch-confirm-btn-overwrite' type='button' ng-click='batchConfirm.overwrite()') Overwrite
+                button.btn.btn-default(id='batch-confirm-btn-cancel' ng-click='batchConfirm.cancel()') Cancel
+                button.btn.btn-default(id='batch-confirm-btn-cancel' ng-click='batchConfirm.skip()') Skip
+                button.btn.btn-primary(id='batch-confirm-btn-overwrite' ng-click='batchConfirm.overwrite()') Overwrite

@@ -24,6 +24,45 @@ controlCenterModule.controller('sqlController',
     $scope.agentGoal = 'execute sql statements';
     $scope.agentTestDriveOption = '--test-drive-sql';
 
+    var chartSettingsParagraph = null;
+
+    $scope.chartSettingsDragStart = function (paragraph) {
+        chartSettingsParagraph = paragraph;
+    };
+
+    $scope.removeKeyColumn = function (paragraph, index) {
+        paragraph.chartKeyCols.splice(index, 1);
+
+        $scope.applyChartSettings(paragraph);
+    };
+
+    $scope.removeValColumn = function (paragraph, index) {
+        paragraph.chartValCols.splice(index, 1);
+
+        $scope.applyChartSettings(paragraph);
+    };
+
+    function acceptColumn(cols, droppedCol) {
+        var accepted = _.findIndex(cols, function (col) {
+                return col.label == droppedCol.label;
+            }) < 0;
+
+        if (accepted)
+            $timeout(function () {
+                $scope.applyChartSettings(chartSettingsParagraph);
+            });
+
+        return accepted ? droppedCol : false;
+    }
+
+    $scope.acceptKeyColumn = function(event, index, item, external, type, allowedType) {
+        return acceptColumn(chartSettingsParagraph.chartKeyCols, item);
+    };
+
+    $scope.acceptValColumn = function(event, index, item, external, type, allowedType) {
+        return acceptColumn(chartSettingsParagraph.chartValCols, item);
+    };
+
     $scope.joinTip = $common.joinTip;
 
     $scope.caches = [];
@@ -66,6 +105,10 @@ controlCenterModule.controller('sqlController',
 
         paragraph.nonEmpty = function () {
             return this.rows && this.rows.length > 0;
+        };
+
+        paragraph.hasChartColumns = function () {
+            return !$common.isEmptyArray(this.chartKeyCols) && !$common.isEmptyArray(this.chartValCols);
         };
 
         Object.defineProperty(paragraph, 'gridOptions', { value: {
@@ -288,23 +331,38 @@ controlCenterModule.controller('sqlController',
         paragraph.columnFilter = _columnFilter(paragraph);
     };
 
-    var _selectAxis = function (cols, col, dfltIdx) {
-        if (col) {
-            var idx = _.findIndex(cols, function (item) {
-                return item.label == col.label;
+    function _retainColumns(allCols, curCols, dfltIdx) {
+        var retainedCols = [];
+
+        var allColsLen = allCols.length;
+
+        if (allColsLen > 0) {
+            curCols.forEach(function (curCol) {
+                var idx = _.findIndex(allCols, function (allCol) {
+                    return allCol.label == curCol.label;
+                });
+
+                if (idx >= 0)
+                    retainedCols.push(allCols[idx]);
             });
 
-            if (idx >= 0)
-                return cols[idx];
+            if ($common.isEmptyArray(retainedCols))
+                retainedCols.push(allCols[dfltIdx < allColsLen ? dfltIdx : 0]);
         }
 
-        return cols.length >= dfltIdx ? cols[dfltIdx] : null;
-    };
+        return retainedCols;
+    }
 
     var _processQueryResult = function (paragraph) {
         return function (res) {
             paragraph.meta = [];
             paragraph.chartColumns = [];
+
+            if (!$common.isDefined(paragraph.chartKeyCols))
+                paragraph.chartKeyCols = [];
+
+            if (!$common.isDefined(paragraph.chartValCols ))
+                paragraph.chartValCols = [];
 
             if (res.meta) {
                 paragraph.disabledSystemColumns = res.meta.length == 2 &&
@@ -332,8 +390,8 @@ controlCenterModule.controller('sqlController',
 
                 paragraph.gridOptions.api.setColumnDefs(columnDefs);
 
-                paragraph.chartColX = _selectAxis(paragraph.chartColumns, paragraph.chartColX, 0);
-                paragraph.chartColY = _selectAxis(paragraph.chartColumns, paragraph.chartColY, 1);
+                paragraph.chartKeyCols = _retainColumns(paragraph.chartColumns, paragraph.chartKeyCols, 0);
+                paragraph.chartValCols = _retainColumns(paragraph.chartColumns, paragraph.chartValCols, 1);
             }
 
             paragraph.page = 1;
@@ -581,16 +639,24 @@ controlCenterModule.controller('sqlController',
     }
 
     function _chartDatum(key, paragraph) {
-        var index = 0;
+        var values = [];
 
-        var values = _.map(paragraph.rows, function (row) {
-            return {
-                x: _chartNumber(row, paragraph.chartColX.value, index++),
-                y: _chartNumber(row, paragraph.chartColY.value, 0)
-            }
-        });
+         if (paragraph.hasChartColumns()) {
+             var index = 0;
+
+             values = _.map(paragraph.rows, function (row) {
+                 return {
+                     x: _chartNumber(row, paragraph.chartKeyCols[0].value, index++),
+                     y: _chartNumber(row, paragraph.chartValCols[0].value, 0)
+                 }
+             });
+         }
 
         return [{key: key, values: values}];
+    }
+
+    function _colLabel(col) {
+        return col.label;
     }
 
     function _insertChart(paragraph, datum, chart) {
@@ -599,15 +665,15 @@ controlCenterModule.controller('sqlController',
         var xAxisLabel = 'X';
         var yAxisLabel = 'Y';
 
-        _.forEach(paragraph.chartColumns, function (col) {
-            if (col == paragraph.chartColX)
-                xAxisLabel = col.label;
-
-            if (col == paragraph.chartColY)
-                yAxisLabel = col.label;
-        });
+        if (paragraph.hasChartColumns()) {
+            xAxisLabel = _.map(paragraph.chartKeyCols, _colLabel).join(', ');
+            yAxisLabel = _.map(paragraph.chartValCols, _colLabel).join(', ');
+        }
 
         $timeout(function() {
+            // Remove previous chart.
+            d3.selectAll('#' + chartId + ' svg > *').remove();
+
             chart.height(400);
 
             if (chart.xAxis)
@@ -615,9 +681,6 @@ controlCenterModule.controller('sqlController',
 
             if (chart.yAxis)
                 chart.yAxis.axisLabel(yAxisLabel);
-
-            // Remove previous chart.
-            d3.selectAll('#' + chartId + ' svg > *').remove();
 
             // Insert new chart.
             d3.select('#' + chartId + ' svg')
@@ -660,11 +723,14 @@ controlCenterModule.controller('sqlController',
                 .y(function (d) { return d.value;})
                 .margin({left: 70});
 
-            var values = _.map(paragraph.rows, function (row) {
-                return {
-                    label: _chartLabel(row, paragraph.chartColX.value, index++),
-                    value: _chartNumber(row, paragraph.chartColY.value, 0)
-                }
+            var values = [];
+
+            if (paragraph.hasChartColumns())
+                values = _.map(paragraph.rows, function (row) {
+                    return {
+                        label: _chartLabel(row, paragraph.chartKeyCols[0].value, index++),
+                        value: _chartNumber(row, paragraph.chartValCols[0].value, 0)
+                    };
             });
 
             _insertChart(paragraph, [{key: 'bar', values: values}], chart);
@@ -677,10 +743,10 @@ controlCenterModule.controller('sqlController',
         nv.addGraph(function() {
             var chart = nv.models.pieChart()
                     .x(function (row) {
-                        return _chartLabel(row, paragraph.chartColX.value, index++);
+                        return _chartLabel(row, paragraph.chartKeyCols[0].value, index++);
                     })
                     .y(function (row) {
-                        return _chartNumber(row, paragraph.chartColY.value, 0);
+                        return _chartNumber(row, paragraph.chartValCols[0].value, 0);
                     })
                 .showLabels(true)
                 .labelThreshold(.05)
@@ -688,7 +754,12 @@ controlCenterModule.controller('sqlController',
                 .donut(true)
                 .donutRatio(0.35);
 
-            _insertChart(paragraph, paragraph.rows, chart);
+            var datum = [];
+
+            if (paragraph.hasChartColumns())
+                datum = paragraph.rows;
+
+            _insertChart(paragraph, datum, chart);
         });
     }
 
