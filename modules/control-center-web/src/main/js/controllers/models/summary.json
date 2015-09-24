@@ -31,7 +31,7 @@
       "model": "nearStartSize",
       "placeholder": 375000,
       "tip": [
-        "Initial cache size for near cache which will be used to pre-create internal hash table after start."
+        "Initial cache size for near cache which will be used to pre-create internal hash table after start"
       ]
     },
     {
@@ -43,7 +43,7 @@
       "placeholder": "Choose eviction policy",
       "items": "evictionPolicies",
       "tip": [
-        "Cache expiration policy."
+        "Cache expiration policy"
       ],
       "details": {
         "LRU": {
@@ -56,7 +56,7 @@
               "model": "batchSize",
               "placeholder": 1,
               "tip": [
-                "Number of entries to remove on shrink."
+                "Number of entries to remove on shrink"
               ]
             },
             {
@@ -66,7 +66,7 @@
               "model": "maxMemorySize",
               "placeholder": 0,
               "tip": [
-                "Maximum allowed cache size in bytes."
+                "Maximum allowed cache size in bytes"
               ]
             },
             {
@@ -76,7 +76,7 @@
               "model": "maxSize",
               "placeholder": 100000,
               "tip": [
-                "Maximum allowed size of cache before entry will start getting evicted."
+                "Maximum allowed size of cache before entry will start getting evicted"
               ]
             }
           ]
@@ -91,7 +91,7 @@
               "model": "maxSize",
               "placeholder": 100000,
               "tip": [
-                "Maximum allowed size of cache before entry will start getting evicted."
+                "Maximum allowed size of cache before entry will start getting evicted"
               ]
             }
           ]
@@ -106,7 +106,7 @@
               "model": "batchSize",
               "placeholder": 1,
               "tip": [
-                "Number of entries to remove on shrink."
+                "Number of entries to remove on shrink"
               ]
             },
             {
@@ -116,7 +116,7 @@
               "model": "maxMemorySize",
               "placeholder": 0,
               "tip": [
-                "Maximum allowed cache size in bytes."
+                "Maximum allowed cache size in bytes"
               ]
             },
             {
@@ -126,7 +126,7 @@
               "model": "maxSize",
               "placeholder": 100000,
               "tip": [
-                "Maximum allowed size of cache before entry will start getting evicted."
+                "Maximum allowed size of cache before entry will start getting evicted"
               ]
             }
           ]
@@ -141,7 +141,7 @@
               "model": "batchSize",
               "placeholder": 1,
               "tip": [
-                "Number of entries to remove on shrink."
+                "Number of entries to remove on shrink"
               ]
             },
             {
@@ -151,7 +151,7 @@
               "model": "maxMemorySize",
               "placeholder": 0,
               "tip": [
-                "Maximum allowed cache size in bytes."
+                "Maximum allowed cache size in bytes"
               ]
             },
             {
@@ -161,7 +161,7 @@
               "model": "maxSize",
               "placeholder": 100000,
               "tip": [
-                "Maximum allowed size of cache before entry will start getting evicted."
+                "Maximum allowed size of cache before entry will start getting evicted"
               ]
             }
           ]

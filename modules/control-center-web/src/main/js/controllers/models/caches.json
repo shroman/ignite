@@ -42,7 +42,7 @@
           "placeholderEmpty": "No clusters configured",
           "items": "clusters",
           "tip": [
-            "Select clusters to start in cluster or add a new cluster."
+            "Associate clusters with the current cache"
           ],
           "addLink": {
             "label": "Add cluster(s)",
@@ -58,7 +58,7 @@
           "placeholderEmpty": "No metadata configured",
           "items": "metadatas",
           "tip": [
-            "Select cache type metadata to describe types in cache."
+            "Select cache type metadata to describe types in cache"
           ],
           "addLink": {
             "label": "Add metadata(s)",
@@ -75,9 +75,9 @@
           "tip": [
             "Cache modes:",
             "<ul>",
-            "  <li>Partitioned - in this mode the overall key set will be divided into partitions and all partitions will be split equally between participating nodes.</li>",
-            "  <li>Replicated - in this mode all the keys are distributed to all participating nodes.</li>",
-            "  <li>Local - in this mode caches residing on different grid nodes will not know about each other.</li>",
+            "  <li>Partitioned - in this mode the overall key set will be divided into partitions and all partitions will be split equally between participating nodes</li>",
+            "  <li>Replicated - in this mode all the keys are distributed to all participating nodes</li>",
+            "  <li>Local - in this mode caches residing on different grid nodes will not know about each other</li>",
             "</ul>"
           ]
         },
@@ -91,8 +91,8 @@
           "tip": [
             "Atomicity:",
             "<ul>",
-            "  <li>Transactional - in this mode specified fully ACID-compliant transactional cache behavior.</li>",
-            "  <li>Atomic - in this mode distributed transactions and distributed locking are not supported.</li>",
+            "  <li>Transactional - in this mode specified fully ACID-compliant transactional cache behavior</li>",
+            "  <li>Atomic - in this mode distributed transactions and distributed locking are not supported</li>",
             "</ul>"
           ]
         },
@@ -104,7 +104,7 @@
           "hide": "backupItem.cacheMode != 'PARTITIONED'",
           "placeholder": 0,
           "tip": [
-            "Number of nodes used to back up single partition for partitioned cache."
+            "Number of nodes used to back up single partition for partitioned cache"
           ]
         },
         {
@@ -115,8 +115,8 @@
           "placeholder": true,
           "hide": "!backupItem.backups || backupItem.cacheMode == 'LOCAL'",
           "tip": [
-            "Flag indicating whether data can be read from backup.",
-            "If not set then always get data from primary node (never from backup)."
+            "Flag indicating whether data can be read from backup",
+            "If not set then always get data from primary node (never from backup)"
           ]
         },
         {
@@ -126,8 +126,8 @@
           "model": "copyOnRead",
           "placeholder": true,
           "tip": [
-            "Flag indicating whether copy of of the value stored in cache should be created for cache operation implying return value.",
-            "Also if this flag is set copies are created for values passed to CacheInterceptor and to CacheEntryProcessor."
+            "Flag indicating whether copy of of the value stored in cache should be created for cache operation implying return value",
+            "Also if this flag is set copies are created for values passed to CacheInterceptor and to CacheEntryProcessor"
           ]
         },
         {
@@ -136,8 +136,8 @@
           "type": "check",
           "model": "invalidate",
           "tip": [
-            "Invalidation flag for near cache entries in transaction.",
-            "If set then values will be invalidated (nullified) upon commit in near cache."
+            "Invalidation flag for near cache entries in transaction",
+            "If set then values will be invalidated (nullified) upon commit in near cache"
           ]
         }
       ]
@@ -146,7 +146,7 @@
       "label": "Memory",
       "group": "memory",
       "tip": [
-        "Cache memory settings."
+        "Cache memory settings"
       ],
       "fields": [
         {
@@ -159,14 +159,14 @@
           "tip": [
             "Memory modes:",
             "<ul>",
-            "  <li>ONHEAP_TIERED - entries are cached on heap memory first.",
+            "  <li>ONHEAP_TIERED - entries are cached on heap memory first",
             "    <ul>",
-            "      <li>If offheap memory is enabled and eviction policy evicts an entry from heap memory, entry will be moved to offheap memory. If offheap memory is disabled, then entry is simply discarded.</li>",
-            "      <li>If swap space is enabled and offheap memory fills up, then entry will be evicted into swap space. If swap space is disabled, then entry will be discarded. If swap is enabled and offheap memory is disabled, then entry will be evicted directly from heap memory into swap.</li>",
+            "      <li>If offheap memory is enabled and eviction policy evicts an entry from heap memory, entry will be moved to offheap memory. If offheap memory is disabled, then entry is simply discarded</li>",
+            "      <li>If swap space is enabled and offheap memory fills up, then entry will be evicted into swap space. If swap space is disabled, then entry will be discarded. If swap is enabled and offheap memory is disabled, then entry will be evicted directly from heap memory into swap</li>",
             "    </ul>",
             "  </li>",
-            "  <li>OFFHEAP_TIERED - works the same as ONHEAP_TIERED, except that entries never end up in heap memory and get stored in offheap memory right away. Entries get cached in offheap memory first and then get evicted to swap, if one is configured.</li>",
-            "  <li>OFFHEAP_VALUES - entry keys will be stored on heap memory, and values will be stored in offheap memory. Note that in this mode entries can be evicted only to swap.</li>",
+            "  <li>OFFHEAP_TIERED - works the same as ONHEAP_TIERED, except that entries never end up in heap memory and get stored in offheap memory right away. Entries get cached in offheap memory first and then get evicted to swap, if one is configured</li>",
+            "  <li>OFFHEAP_VALUES - entry keys will be stored on heap memory, and values will be stored in offheap memory. Note that in this mode entries can be evicted only to swap</li>",
             "</ul>"
           ]
         },
@@ -179,12 +179,12 @@
           "placeholder": -1,
           "hide": "backupItem.memoryMode == 'OFFHEAP_VALUES'",
           "tip": [
-            "Sets maximum amount of memory available to off-heap storage.",
+            "Sets maximum amount of memory available to off-heap storage",
             "Possible values are:",
             "<ul>",
-            "  <li>-1 - means that off-heap storage is disabled.</li>",
-            "  <li>0 - Ignite will not limit off-heap storage (it's up to user to properly add and remove entries from cache to ensure that off-heap storage does not grow infinitely.</li>",
-            "  <li>Any positive value specifies the limit of off-heap storage in bytes.</li>",
+            "  <li>-1 - means that off-heap storage is disabled</li>",
+            "  <li>0 - Ignite will not limit off-heap storage (it's up to user to properly add and remove entries from cache to ensure that off-heap storage does not grow infinitely</li>",
+            "  <li>Any positive value specifies the limit of off-heap storage in bytes</li>",
             "</ul>"
           ]
         },
@@ -199,7 +199,7 @@
           "items": "evictionPolicies",
           "hide": "backupItem.memoryMode == 'OFFHEAP_TIERED'",
           "tip": [
-            "Optional cache eviction policy. Must be set for entries to be evicted from on-heap to off-heap or swap."
+            "Optional cache eviction policy. Must be set for entries to be evicted from on-heap to off-heap or swap"
           ],
           "details": {
             "LRU": {
@@ -212,7 +212,7 @@
                   "model": "batchSize",
                   "placeholder": 1,
                   "tip": [
-                    "Number of entries to remove on shrink."
+                    "Number of entries to remove on shrink"
                   ]
                 },
                 {
@@ -222,7 +222,7 @@
                   "model": "maxMemorySize",
                   "placeholder": 0,
                   "tip": [
-                    "Maximum allowed cache size in bytes."
+                    "Maximum allowed cache size in bytes"
                   ]
                 },
                 {
@@ -232,7 +232,7 @@
                   "model": "maxSize",
                   "placeholder": 100000,
                   "tip": [
-                    "Maximum allowed size of cache before entry will start getting evicted."
+                    "Maximum allowed size of cache before entry will start getting evicted"
                   ]
                 }
               ]
@@ -247,7 +247,7 @@
                   "model": "maxSize",
                   "placeholder": 100000,
                   "tip": [
-                    "Maximum allowed size of cache before entry will start getting evicted."
+                    "Maximum allowed size of cache before entry will start getting evicted"
                   ]
                 }
               ]
@@ -262,7 +262,7 @@
                   "model": "batchSize",
                   "placeholder": 1,
                   "tip": [
-                    "Number of entries to remove on shrink."
+                    "Number of entries to remove on shrink"
                   ]
                 },
                 {
@@ -272,7 +272,7 @@
                   "model": "maxMemorySize",
                   "placeholder": 0,
                   "tip": [
-                    "Maximum allowed cache size in bytes."
+                    "Maximum allowed cache size in bytes"
                   ]
                 },
                 {
@@ -282,7 +282,7 @@
                   "model": "maxSize",
                   "placeholder": 100000,
                   "tip": [
-                    "Maximum allowed size of cache before entry will start getting evicted."
+                    "Maximum allowed size of cache before entry will start getting evicted"
                   ]
                 }
               ]
@@ -297,7 +297,7 @@
                   "model": "batchSize",
                   "placeholder": 1,
                   "tip": [
-                    "Number of entries to remove on shrink."
+                    "Number of entries to remove on shrink"
                   ]
                 },
                 {
@@ -307,7 +307,7 @@
                   "model": "maxMemorySize",
                   "placeholder": 0,
                   "tip": [
-                    "Maximum allowed cache size in bytes."
+                    "Maximum allowed cache size in bytes"
                   ]
                 },
                 {
@@ -317,7 +317,7 @@
                   "model": "maxSize",
                   "placeholder": 100000,
                   "tip": [
-                    "Maximum allowed size of cache before entry will start getting evicted."
+                    "Maximum allowed size of cache before entry will start getting evicted"
                   ]
                 }
               ]
@@ -331,7 +331,7 @@
           "model": "startSize",
           "placeholder": 1500000,
           "tip": [
-            "Initial cache size which will be used to pre-create internal hash table after start."
+            "Initial cache size which will be used to pre-create internal hash table after start"
           ]
         },
         {
@@ -340,7 +340,7 @@
           "type": "check",
           "model": "swapEnabled",
           "tip": [
-            "Flag indicating whether swap storage is enabled or not for this cache."
+            "Flag indicating whether swap storage is enabled or not for this cache"
           ]
         }
       ]
@@ -349,7 +349,7 @@
       "label": "Queries & Indexing",
       "group": "query",
       "tip": [
-        "Cache query settings."
+        "Cache query settings"
       ],
       "fields": [
         {
@@ -359,7 +359,7 @@
           "model": "sqlOnheapRowCacheSize",
           "placeholder": 10240,
           "tip": [
-            "Number of SQL rows which will be cached onheap to avoid deserialization on each SQL index access."
+            "Number of SQL rows which will be cached onheap to avoid deserialization on each SQL index access"
           ]
         },
         {
@@ -369,7 +369,7 @@
           "model": "longQueryWarningTimeout",
           "placeholder": 3000,
           "tip": [
-            "Timeout in milliseconds after which long query warning will be printed."
+            "Timeout in milliseconds after which long query warning will be printed"
           ]
         },
         {
@@ -380,10 +380,10 @@
           "keyName": "keyClass",
           "valueName": "valueClass",
           "focusId": "IndexedType",
-          "addTip": "Add new key and value classes to indexed types.",
-          "removeTip": "Remove item from indexed types.",
+          "addTip": "Add new key and value classes to indexed types",
+          "removeTip": "Remove item from indexed types",
           "tip": [
-            "Collection of types to index."
+            "Collection of types to index"
           ]
         },
         {
@@ -393,13 +393,13 @@
           "model": "sqlFunctionClasses",
           "placeholder": "SQL function full class name",
           "focusId": "SqlFx",
-          "addTip": "Add new user-defined functions for SQL queries.",
-          "removeTip": "Remove user-defined function.",
+          "addTip": "Add new user-defined functions for SQL queries",
+          "removeTip": "Remove user-defined function",
           "tableTip": [
-            "Collections of classes with user-defined functions for SQL queries."
+            "Collections of classes with user-defined functions for SQL queries"
           ],
           "tip": [
-            "Class with user-defined functions for SQL queries."
+            "Class with user-defined functions for SQL queries"
           ]
         },
         {
@@ -408,8 +408,8 @@
           "type": "check",
           "model": "sqlEscapeAll",
           "tip": [
-            "If set then all the SQL table and field names will be escaped with double quotes.",
-            "This enforces case sensitivity for field names and also allows having special characters in table and field names."
+            "If set then all the SQL table and field names will be escaped with double quotes",
+            "This enforces case sensitivity for field names and also allows having special characters in table and field names"
           ]
         }
       ]
@@ -418,7 +418,7 @@
       "label": "Store",
       "group": "store",
       "tip": [
-        "Cache store settings."
+        "Cache store settings"
       ],
       "fields": [
         {
@@ -431,7 +431,7 @@
           "placeholder": "Choose store factory",
           "items": "cacheStoreFactories",
           "tip": [
-            "Factory for persistent storage for cache data."
+            "Factory for persistent storage for cache data"
           ],
           "details": {
             "CacheJdbcPojoStoreFactory": {
@@ -446,7 +446,7 @@
                   "required": true,
                   "placeholder": "Bean name in Spring context",
                   "tip": [
-                    "Name of the data source bean in Spring context."
+                    "Name of the data source bean in Spring context"
                   ]
                 },
                 {
@@ -461,12 +461,12 @@
                   "tip": [
                     "Dialect of SQL implemented by a particular RDBMS:",
                     "<ul>",
-                    "  <li>Generic JDBC dialect.</li>",
-                    "  <li>Oracle database.</li>",
-                    "  <li>IBM DB2.</li>",
-                    "  <li>Microsoft SQL Server.</li>",
-                    "  <li>My SQL.</li>",
-                    "  <li>H2 database.</li>",
+                    "  <li>Generic JDBC dialect</li>",
+                    "  <li>Oracle database</li>",
+                    "  <li>IBM DB2</li>",
+                    "  <li>Microsoft SQL Server</li>",
+                    "  <li>My SQL</li>",
+                    "  <li>H2 database</li>",
                     "</ul>"
                   ]
                 }
@@ -483,7 +483,7 @@
                   "model": "user",
                   "required": true,
                   "tip": [
-                    "User name for database access."
+                    "User name for database access"
                   ]
                 },
                 {
@@ -495,7 +495,7 @@
                   "required": true,
                   "placeholder": "Bean name in Spring context",
                   "tip": [
-                    "Name of the data source bean in Spring context."
+                    "Name of the data source bean in Spring context"
                   ]
                 },
                 {
@@ -504,7 +504,7 @@
                   "path": "cacheStoreFactory.CacheJdbcBlobStoreFactory",
                   "model": "initSchema",
                   "tip": [
-                    "Flag indicating whether DB schema should be initialized by Ignite (default behaviour) or was explicitly created by user."
+                    "Flag indicating whether DB schema should be initialized by Ignite (default behaviour) or was explicitly created by user"
                   ]
                 },
                 {
@@ -514,7 +514,7 @@
                   "model": "createTableQuery",
                   "placeholder": "SQL for table creation",
                   "tip": [
-                    "Query for table creation in underlying database.",
+                    "Query for table creation in underlying database",
                     "Default value: create table if not exists ENTRIES (key binary primary key, val binary)"
                   ]
                 },
@@ -525,7 +525,7 @@
                   "model": "loadQuery",
                   "placeholder": "SQL for load entry",
                   "tip": [
-                    "Query for entry load from underlying database.",
+                    "Query for entry load from underlying database",
                     "Default value: select * from ENTRIES where key=?"
                   ]
                 },
@@ -536,7 +536,7 @@
                   "model": "insertQuery",
                   "placeholder": "SQL for insert entry",
                   "tip": [
-                    "Query for insert entry into underlying database.",
+                    "Query for insert entry into underlying database",
                     "Default value: insert into ENTRIES (key, val) values (?, ?)"
                   ]
                 },
@@ -547,7 +547,7 @@
                   "model": "updateQuery",
                   "placeholder": "SQL for update entry",
                   "tip": [
-                    "Query fpr update entry in underlying database.",
+                    "Query fpr update entry in underlying database",
                     "Default value: update ENTRIES set val=? where key=?"
                   ]
                 },
@@ -558,7 +558,7 @@
                   "model": "deleteQuery",
                   "placeholder": "SQL for delete entry",
                   "tip": [
-                    "Query for delete entry from underlying database.",
+                    "Query for delete entry from underlying database",
                     "Default value: delete from ENTRIES where key=?"
                   ]
                 }
@@ -575,10 +575,10 @@
                   "model": "hibernateProperties",
                   "placeholder": "key=value",
                   "focusId": "HibProp",
-                  "addTip": "Add new Hibernate property.",
-                  "removeTip": "Remove Hibernate property.",
+                  "addTip": "Add new Hibernate property",
+                  "removeTip": "Remove Hibernate property",
                   "tip": [
-                    "List of Hibernate properties.",
+                    "List of Hibernate properties",
                     "For example: connection.url=jdbc:h2:mem:"
                   ]
                 }
@@ -611,7 +611,7 @@
           "type": "check",
           "model": "readThrough",
           "tip": [
-            "Flag indicating whether read-through caching should be used."
+            "Flag indicating whether read-through caching should be used"
           ]
         },
         {
@@ -620,15 +620,15 @@
           "type": "check",
           "model": "writeThrough",
           "tip": [
-            "Flag indicating whether write-through caching should be used."
+            "Flag indicating whether write-through caching should be used"
           ]
         },
         {
           "label": "Write behind",
           "type": "panel-details",
           "tip": [
-            "Cache write behind settings.",
-            "Write-behind is a special mode when updates to cache accumulated and then asynchronously flushed to persistent store as a bulk operation."
+            "Cache write behind settings",
+            "Write-behind is a special mode when updates to cache accumulated and then asynchronously flushed to persistent store as a bulk operation"
           ],
           "details": [
             {
@@ -637,7 +637,7 @@
               "type": "check",
               "model": "writeBehindEnabled",
               "tip": [
-                "Flag indicating whether Ignite should use write-behind behaviour for the cache store."
+                "Flag indicating whether Ignite should use write-behind behaviour for the cache store"
               ]
             },
             {
@@ -648,8 +648,8 @@
               "disabled": "!backupItem.writeBehindEnabled",
               "placeholder": 512,
               "tip": [
-                "Maximum batch size for write-behind cache store operations.",
-                "Store operations (get or remove) are combined in a batch of this size to be passed to cache store."
+                "Maximum batch size for write-behind cache store operations",
+                "Store operations (get or remove) are combined in a batch of this size to be passed to cache store"
               ]
             },
             {
@@ -660,8 +660,8 @@
               "disabled": "!backupItem.writeBehindEnabled",
               "placeholder": 10240,
               "tip": [
-                "Maximum size of the write-behind cache.<br>",
-                "If cache size exceeds this value, all cached items are flushed to the cache store and write cache is cleared."
+                "Maximum size of the write-behind cache",
+                "If cache size exceeds this value, all cached items are flushed to the cache store and write cache is cleared"
               ]
             },
             {
@@ -672,7 +672,7 @@
               "disabled": "!backupItem.writeBehindEnabled",
               "placeholder": 5000,
               "tip": [
-                "Frequency with which write-behind cache is flushed to the cache store in milliseconds."
+                "Frequency with which write-behind cache is flushed to the cache store in milliseconds"
               ]
             },
             {
@@ -683,7 +683,7 @@
               "disabled": "!backupItem.writeBehindEnabled",
               "placeholder": 1,
               "tip": [
-                "Number of threads that will perform cache flushing."
+                "Number of threads that will perform cache flushing"
               ]
             }
           ]
@@ -696,7 +696,7 @@
       "label": "Concurrency control",
       "group": "concurrency",
       "tip": [
-        "Cache concurrent usage settings."
+        "Cache concurrent usage settings"
       ],
       "fields": [
         {
@@ -706,8 +706,8 @@
           "model": "maxConcurrentAsyncOperations",
           "placeholder": 500,
           "tip": [
-            "Maximum number of allowed concurrent asynchronous operations.",
-            "If 0 then number of concurrent asynchronous operations is unlimited."
+            "Maximum number of allowed concurrent asynchronous operations",
+            "If 0 then number of concurrent asynchronous operations is unlimited"
           ]
         },
         {
@@ -717,8 +717,8 @@
           "model": "defaultLockTimeout",
           "placeholder": 0,
           "tip": [
-            "Default lock acquisition timeout.",
-            "If 0 then lock acquisition will never timeout."
+            "Default lock acquisition timeout",
+            "If 0 then lock acquisition will never timeout"
           ]
         },
         {
@@ -730,10 +730,10 @@
           "items": "atomicWriteOrderModes",
           "hide": "backupItem.atomicityMode == 'TRANSACTIONAL'",
           "tip": [
-            "Write ordering mode determines which node assigns the write version, sender or the primary node.",
+            "Write ordering mode determines which node assigns the write version, sender or the primary node",
             "<ul>",
-            "  <li>CLOCK - in this mode write versions are assigned on a sender node which generally leads to better performance.</li>",
-            "  <li>PRIMARY - in this mode version is assigned only on primary node. This means that sender will only send write request to primary node, which in turn will assign write version and forward it to backups.</li>",
+            "  <li>CLOCK - in this mode write versions are assigned on a sender node which generally leads to better performance</li>",
+            "  <li>PRIMARY - in this mode version is assigned only on primary node. This means that sender will only send write request to primary node, which in turn will assign write version and forward it to backups</li>",
             "</ul>"
           ]
         }
@@ -744,7 +744,7 @@
       "group": "rebalance",
       "hide": "backupItem.cacheMode == 'LOCAL'",
       "tip": [
-        "Cache rebalance settings."
+        "Cache rebalance settings"
       ],
       "fields": [
         {
@@ -757,9 +757,9 @@
           "tip": [
             "Rebalance modes:",
             "<ul>",
-            "  <li>Synchronous - in this mode distributed caches will not start until all necessary data is loaded from other available grid nodes.</li>",
-            "  <li>Asynchronous - in this mode distributed caches will start immediately and will load all necessary data from other available grid nodes in the background.</li>",
-            "  <li>None - in this mode no rebalancing will take place which means that caches will be either loaded on demand from persistent store whenever data is accessed, or will be populated explicitly.</li>",
+            "  <li>Synchronous - in this mode distributed caches will not start until all necessary data is loaded from other available grid nodes</li>",
+            "  <li>Asynchronous - in this mode distributed caches will start immediately and will load all necessary data from other available grid nodes in the background</li>",
+            "  <li>None - in this mode no rebalancing will take place which means that caches will be either loaded on demand from persistent store whenever data is accessed, or will be populated explicitly</li>",
             "</ul>"
           ]
         },
@@ -770,8 +770,8 @@
           "model": "rebalanceThreadPoolSize",
           "placeholder": 2,
           "tip": [
-            "Size of rebalancing thread pool.<br>",
-            "Note that size serves as a hint and implementation may create more threads for rebalancing than specified here (but never less threads)."
+            "Size of rebalancing thread pool<br>",
+            "Note that size serves as a hint and implementation may create more threads for rebalancing than specified here (but never less threads)"
           ]
         },
         {
@@ -781,8 +781,8 @@
           "model": "rebalanceBatchSize",
           "placeholder": "512 * 1024",
           "tip": [
-            "Size (in bytes) to be loaded within a single rebalance message.",
-            "Rebalancing algorithm will split total data set on every node into multiple batches prior to sending data."
+            "Size (in bytes) to be loaded within a single rebalance message",
+            "Rebalancing algorithm will split total data set on every node into multiple batches prior to sending data"
           ]
         },
         {
@@ -792,7 +792,7 @@
           "model": "rebalanceOrder",
           "placeholder": 0,
           "tip": [
-            "If cache rebalance order is positive, rebalancing for this cache will be started only when rebalancing for all caches with smaller rebalance order (except caches with rebalance order 0) will be completed."
+            "If cache rebalance order is positive, rebalancing for this cache will be started only when rebalancing for all caches with smaller rebalance order (except caches with rebalance order 0) will be completed"
           ]
         },
         {
@@ -802,7 +802,7 @@
           "model": "rebalanceDelay",
           "placeholder": 0,
           "tip": [
-            "Delay in milliseconds upon a node joining or leaving topology (or crash) after which rebalancing should be started automatically."
+            "Delay in milliseconds upon a node joining or leaving topology (or crash) after which rebalancing should be started automatically"
           ]
         },
         {
@@ -812,7 +812,7 @@
           "model": "rebalanceTimeout",
           "placeholder": 10000,
           "tip": [
-            "Rebalance timeout in milliseconds."
+            "Rebalance timeout in milliseconds"
           ]
         },
         {
@@ -822,7 +822,7 @@
           "model": "rebalanceThrottle",
           "placeholder": 0,
           "tip": [
-            "Time in milliseconds to wait between rebalance messages to avoid overloading of CPU or network."
+            "Time in milliseconds to wait between rebalance messages to avoid overloading of CPU or network"
           ]
         }
       ]
@@ -832,9 +832,9 @@
       "group": "serverNearCache",
       "hide": "backupItem.cacheMode != 'PARTITIONED'",
       "tip": [
-        "Near cache settings.",
-        "Near cache is a small local cache that stores most recently or most frequently accessed data.",
-        "Should be used in case when it is impossible to send computations to remote nodes."
+        "Near cache settings",
+        "Near cache is a small local cache that stores most recently or most frequently accessed data",
+        "Should be used in case when it is impossible to send computations to remote nodes"
       ],
       "fields": [
         {
@@ -843,7 +843,7 @@
           "type": "check",
           "model": "nearCacheEnabled",
           "tip": [
-            "Flag indicating whether to configure near cache."
+            "Flag indicating whether to configure near cache"
           ]
         },
         {
@@ -855,7 +855,7 @@
           "hide": "!backupItem.nearCacheEnabled",
           "placeholder": 375000,
           "tip": [
-            "Initial cache size for near cache which will be used to pre-create internal hash table after start."
+            "Initial cache size for near cache which will be used to pre-create internal hash table after start"
           ]
         },
         {
@@ -869,7 +869,7 @@
           "items": "evictionPolicies",
           "hide": "!backupItem.nearCacheEnabled",
           "tip": [
-            "Cache expiration policy."
+            "Cache expiration policy"
           ],
           "details": {
             "LRU": {
@@ -882,7 +882,7 @@
                   "model": "batchSize",
                   "placeholder": 1,
                   "tip": [
-                    "Number of entries to remove on shrink."
+                    "Number of entries to remove on shrink"
                   ]
                 },
                 {
@@ -892,7 +892,7 @@
                   "model": "maxMemorySize",
                   "placeholder": 0,
                   "tip": [
-                    "Maximum allowed cache size in bytes."
+                    "Maximum allowed cache size in bytes"
                   ]
                 },
                 {
@@ -902,7 +902,7 @@
                   "model": "maxSize",
                   "placeholder": 100000,
                   "tip": [
-                    "Maximum allowed size of cache before entry will start getting evicted."
+                    "Maximum allowed size of cache before entry will start getting evicted"
                   ]
                 }
               ]
@@ -917,7 +917,7 @@
                   "model": "maxSize",
                   "placeholder": 100000,
                   "tip": [
-                    "Maximum allowed size of cache before entry will start getting evicted."
+                    "Maximum allowed size of cache before entry will start getting evicted"
                   ]
                 }
               ]
@@ -932,7 +932,7 @@
                   "model": "batchSize",
                   "placeholder": 1,
                   "tip": [
-                    "Number of entries to remove on shrink."
+                    "Number of entries to remove on shrink"
                   ]
                 },
                 {
@@ -942,7 +942,7 @@
                   "model": "maxMemorySize",
                   "placeholder": 0,
                   "tip": [
-                    "Maximum allowed cache size in bytes."
+                    "Maximum allowed cache size in bytes"
                   ]
                 },
                 {
@@ -952,7 +952,7 @@
                   "model": "maxSize",
                   "placeholder": 100000,
                   "tip": [
-                    "Maximum allowed size of cache before entry will start getting evicted."
+                    "Maximum allowed size of cache before entry will start getting evicted"
                   ]
                 }
               ]
@@ -967,7 +967,7 @@
                   "model": "batchSize",
                   "placeholder": 1,
                   "tip": [
-                    "Number of entries to remove on shrink."
+                    "Number of entries to remove on shrink"
                   ]
                 },
                 {
@@ -977,7 +977,7 @@
                   "model": "maxMemorySize",
                   "placeholder": 0,
                   "tip": [
-                    "Maximum allowed cache size in bytes."
+                    "Maximum allowed cache size in bytes"
                   ]
                 },
                 {
@@ -987,7 +987,7 @@
                   "model": "maxSize",
                   "placeholder": 100000,
                   "tip": [
-                    "Maximum allowed size of cache before entry will start getting evicted."
+                    "Maximum allowed size of cache before entry will start getting evicted"
                   ]
                 }
               ]
@@ -1000,7 +1000,7 @@
       "label": "Statistics",
       "group": "statistics",
       "tip": [
-        "Cache statistics and management settings."
+        "Cache statistics and management settings"
       ],
       "fields": [
         {
@@ -1009,7 +1009,7 @@
           "type": "check",
           "model": "statisticsEnabled",
           "tip": [
-            "Flag indicating whether statistics gathering is enabled on a cache."
+            "Flag indicating whether statistics gathering is enabled on a cache"
           ]
         },
         {
@@ -1018,7 +1018,7 @@
           "type": "check",
           "model": "managementEnabled",
           "tip": [
-            "Flag indicating whether management is enabled on this cache."
+            "Flag indicating whether management is enabled on this cache"
           ]
         }
       ]

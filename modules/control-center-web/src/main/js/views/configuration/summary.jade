@@ -57,7 +57,7 @@ block content
                         input(type='hidden' name='includeKeyFields' value='{{configServer.includeKeyFields}}')
                         +btn-download('server')
                     .panel-collapse(role='tabpanel' bs-collapse-target)
-                        .summary-tabs(bs-tabs ng-show='selectedItem' template='summary/summary-tabs')
+                        .summary-tabs(bs-tabs data-bs-active-pane="tabs.activeTab" ng-show='selectedItem' template='summary/summary-tabs')
                             div(bs-pane title='XML')
                                 div(ui-ace='{ onLoad: aceInit, mode: "xml" }' ng-model='xmlServer')
                             div(bs-pane title='Java')
@@ -67,12 +67,12 @@ block content
                                     .col-xs-4.col-sm-3.col-md-3
                                         button.form-control(type='button' ng-model='configServer.javaClassServer' bs-select data-placeholder='{{detail.placeholder}}' bs-options='item.value as item.label for item in javaClassItems' data-sort='false')
                                 div(ui-ace='{ onLoad: aceInit, mode: "java" }' ng-model='javaServer')
-                            div(bs-pane title='POJO')
+                            div(bs-pane title='POJO' ng-show='pojoAvailable()')
                                 .details-row
                                     .col-xs-2.col-sm-2.col-md-2
                                         label POJO class:
                                     .col-xs-10.col-sm-10.col-md-10
-                                        button.form-control(type='button' ng-model='configServer.pojoClass' bs-select data-placeholder='{{detail.placeholder}}' bs-options='item for item in pojoClasses()' data-sort='false')
+                                        button.form-control(ng-model='configServer.pojoClass' bs-select bs-options='item for item in pojoClasses()' data-sort='false')
                                     .col-xs-2.col-sm-2.col-md-2
                                         label
                                     .col-xs-10.col-sm-10.col-md-10

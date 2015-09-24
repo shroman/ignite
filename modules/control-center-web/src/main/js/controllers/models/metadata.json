@@ -24,7 +24,7 @@
       "label": "Metadata common",
       "group": "general",
       "tip": [
-        "Metadata properties common to Query and Store."
+        "Metadata properties common to Query and Store"
       ],
       "fields": [
         {
@@ -36,7 +36,7 @@
           "placeholderEmpty": "No caches configured",
           "items": "caches",
           "tip": [
-            "Select caches to associate database with cache."
+            "Select caches to associate database with cache"
           ],
           "addLink": {
             "label": "Add cache(s)",
@@ -51,7 +51,7 @@
           "required": true,
           "placeholder": "Full class name for Key",
           "tip": [
-            "Key class used to store key in cache."
+            "Key class used to store key in cache"
           ]
         },
         {
@@ -62,7 +62,7 @@
           "required": true,
           "placeholder": "Full class name for Value",
           "tip": [
-            "Value class used to store value in cache."
+            "Value class used to store value in cache"
           ]
         }
       ]
@@ -71,7 +71,7 @@
       "label": "Metadata for SQL query",
       "group": "query",
       "tip": [
-        "Metadata properties for fields queries."
+        "Metadata properties for fields queries"
       ],
       "fields": [
         {
@@ -83,10 +83,10 @@
           "keyName": "name",
           "valueName": "className",
           "focusId": "QryField",
-          "addTip": "Add not indexed field to query.",
-          "removeTip": "Remove field.",
+          "addTip": "Add not indexed field to query",
+          "removeTip": "Remove field",
           "tip": [
-            "Collection of name-to-type mappings to be queried, in addition to indexed fields."
+            "Collection of name-to-type mappings to be queried, in addition to indexed fields"
           ]
         },
         {
@@ -98,10 +98,10 @@
           "keyName": "name",
           "valueName": "className",
           "focusId": "AscField",
-          "addTip": "Add field to index in ascending order.",
-          "removeTip": "Remove field.",
+          "addTip": "Add field to index in ascending order",
+          "removeTip": "Remove field",
           "tip": [
-            "Collection of name-to-type mappings to index in ascending order."
+            "Collection of name-to-type mappings to index in ascending order"
           ]
         },
         {
@@ -113,10 +113,10 @@
           "keyName": "name",
           "valueName": "className",
           "focusId": "DescField",
-          "addTip": "Add field to index in descending order.",
-          "removeTip": "Remove field.",
+          "addTip": "Add field to index in descending order",
+          "removeTip": "Remove field",
           "tip": [
-            "Collection of name-to-type mappings to index in descending order."
+            "Collection of name-to-type mappings to index in descending order"
           ]
         },
         {
@@ -126,13 +126,13 @@
           "model": "textFields",
           "placeholder": "Field name",
           "focusId": "TextField",
-          "addTip": "Add field to index as text.",
-          "removeTip": "Remove field.",
+          "addTip": "Add field to index as text",
+          "removeTip": "Remove field",
           "tableTip": [
-            "Fields to index as text."
+            "Fields to index as text"
           ],
           "tip": [
-            "Field to index as text."
+            "Field to index as text"
           ]
         },
         {
@@ -140,12 +140,12 @@
           "id": "groups",
           "type": "table-query-groups",
           "model": "groups",
-          "addTip": "Add new group.",
-          "removeTip": "Remove group.",
-          "addItemTip": "Add new field to group.",
-          "removeItemTip": "Remove field from group.",
+          "addTip": "Add new group",
+          "removeTip": "Remove group",
+          "addItemTip": "Add new field to group",
+          "removeItemTip": "Remove field from group",
           "tip": [
-            "Collection of group indexes."
+            "Collection of group indexes"
           ]
         }
       ]
@@ -154,7 +154,7 @@
       "label": "Metadata for cache store",
       "group": "store",
       "tip": [
-        "Metadata properties for binding database with cache via POJO cache store."
+        "Metadata properties for binding database with cache via POJO cache store"
       ],
       "fields": [
         {
@@ -164,7 +164,7 @@
           "model": "databaseSchema",
           "placeholder": "Input DB schema name",
           "tip": [
-            "Schema name in database."
+            "Schema name in database"
           ]
         },
         {
@@ -174,7 +174,7 @@
           "model": "databaseTable",
           "placeholder": "Input DB table name",
           "tip": [
-            "Table name in database."
+            "Table name in database"
           ]
         },
         {
@@ -186,10 +186,10 @@
           "valueName": "className",
           "hide": "isJavaBuildInClass()",
           "focusId": "KeyField",
-          "addTip": "Add key field.",
-          "removeTip": "Remove key field.",
+          "addTip": "Add key field",
+          "removeTip": "Remove key field",
           "tip": [
-            "Collection of key fields descriptions for CacheJdbcPojoStore."
+            "Collection of key fields descriptions for CacheJdbcPojoStore"
           ]
         },
         {
@@ -200,10 +200,10 @@
           "keyName": "name",
           "valueName": "className",
           "focusId": "ValueField",
-          "addTip": "Add value field.",
-          "removeTip": "Remove value field.",
+          "addTip": "Add value field",
+          "removeTip": "Remove value field",
           "tip": [
-            "Collection of value fields descriptions for CacheJdbcPojoStore.."
+            "Collection of value fields descriptions for CacheJdbcPojoStore"
           ]
         }
       ]
@@ -218,9 +218,9 @@
       "model": "jdbcDriverJar",
       "items": "jdbcDriverJars",
       "tip": [
-        "Select appropriate JAR with JDBC driver.",
-        "To add another driver you need to place it into '/drivers' folder of Ignite Web Agent.",
-        "Refer to Ignite Web Agent README.txt for for more information."
+        "Select appropriate JAR with JDBC driver",
+        "To add another driver you need to place it into '/drivers' folder of Ignite Web Agent",
+        "Refer to Ignite Web Agent README.txt for for more information"
       ]
     },
     {
@@ -230,7 +230,7 @@
       "model": "jdbcDriverClass",
       "placeholder": "Full class name of JDBC driver",
       "tip": [
-        "Full class name of JDBC driver that will be used to connect to database."
+        "Full class name of JDBC driver that will be used to connect to database"
       ]
     },
     {
@@ -241,7 +241,7 @@
       "placeholder": "JDBC URL",
       "tip": [
         "JDBC URL for connecting to database.",
-        "Refer to your database documentation for details."
+        "Refer to your database documentation for details"
       ]
     },
     {
@@ -250,7 +250,7 @@
       "type": "text",
       "model": "user",
       "tip": [
-        "User name for connecting to database."
+        "User name for connecting to database"
       ]
     },
     {
@@ -260,8 +260,8 @@
       "model": "password",
       "onEnter": "loadMetadataNext()",
       "tip": [
-        "Password for connecting to database.",
-        "Note, password would not be saved."
+        "Password for connecting to database",
+        "Note, password would not be saved"
       ]
     },
     {
@@ -270,8 +270,8 @@
       "type": "check",
       "model": "tablesOnly",
       "tip": [
-        "If selected then only tables metadata will be parsed.",
-        "Otherwise table and view metadata will be parsed."
+        "If selected then only tables metadata will be parsed",
+        "Otherwise table and view metadata will be parsed"
       ]
     }
   ]

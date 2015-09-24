@@ -37,6 +37,8 @@ controlCenterModule.controller('summaryController', [
         {value: undefined, label: 'Not set'}
     ];
 
+    $scope.tabs = { activeTab: 0 };
+
     $scope.pojoClasses = function() {
         var classes = [];
 
@@ -102,13 +104,21 @@ controlCenterModule.controller('summaryController', [
 
             $generatorJava.pojos($scope.selectedItem.caches, $scope.configServer.useConstructor, $scope.configServer.includeKeyFields);
 
-            if (_.findIndex($generatorJava.metadatas, function (meta) {
+            if (!$common.isDefined(curCls) || _.findIndex($generatorJava.metadatas, function (meta) {
                     return meta.keyType == curCls || meta.valueType == curCls;
                 }) < 0) {
-                if ($generatorJava.metadatas.length > 0)
-                    $scope.configServer.pojoClass = $generatorJava.metadatas[0].keyType;
-                else
+                if ($generatorJava.metadatas.length > 0) {
+                    if ($common.isDefined($generatorJava.metadatas[0].keyType))
+                        $scope.configServer.pojoClass = $generatorJava.metadatas[0].keyType;
+                    else
+                        $scope.configServer.pojoClass = $generatorJava.metadatas[0].valueType;
+                }
+                else {
                     $scope.configServer.pojoClass = undefined;
+
+                    if ($scope.tabs.activeTab == 2)
+                        $scope.tabs.activeTab = 0;
+                }
             }
             else
                 $scope.configServer.pojoClass = curCls;
