@@ -429,7 +429,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
 
             prepare(
                 tx.optimistic() && tx.serializable() ? tx.readEntries() : Collections.<IgniteTxEntry>emptyList(),
-                tx.writeEntries());
+                tx.writeEntries(), remap);
 
             markInitialized();
         }
@@ -441,8 +441,9 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
     /**
      * @param reads Read entries.
      * @param writes Write entries.
+     * @param remap Remap flag.
      */
-    private void prepare(Iterable<IgniteTxEntry> reads, Iterable<IgniteTxEntry> writes) {
+    private void prepare(Iterable<IgniteTxEntry> reads, Iterable<IgniteTxEntry> writes, boolean remap) {
         AffinityTopologyVersion topVer = tx.topologyVersion();
 
         assert topVer.topologyVersion() > 0;
@@ -468,7 +469,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
         GridDistributedTxMapping cur = null;
 
         for (IgniteTxEntry read : reads) {
-            GridDistributedTxMapping updated = map(read, topVer, cur, false);
+            GridDistributedTxMapping updated = map(read, topVer, cur, false, remap);
 
             if (cur != updated) {
                 mappings.offer(updated);
@@ -485,7 +486,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
         }
 
         for (IgniteTxEntry write : writes) {
-            GridDistributedTxMapping updated = map(write, topVer, cur, true);
+            GridDistributedTxMapping updated = map(write, topVer, cur, true, remap);
 
             if (cur != updated) {
                 mappings.offer(updated);
@@ -628,7 +629,8 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
         IgniteTxEntry entry,
         AffinityTopologyVersion topVer,
         @Nullable GridDistributedTxMapping cur,
-        boolean waitLock
+        boolean waitLock,
+        boolean remap
     ) {
         GridCacheContext cacheCtx = entry.context();
 
@@ -654,7 +656,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
         else
             entry.cached(cacheCtx.local().entryEx(entry.key(), topVer));
 
-        if (cacheCtx.isNear() || cacheCtx.isLocal()) {
+        if (!remap && (cacheCtx.isNear() || cacheCtx.isLocal())) {
             if (waitLock && entry.explicitVersion() == null)
                 keyLockFut.addLockKey(entry.txKey());
         }
