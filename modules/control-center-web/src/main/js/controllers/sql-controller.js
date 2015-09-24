@@ -96,6 +96,14 @@ controlCenterModule.controller('sqlController',
         }
     };
 
+    var _setActiveCache = function () {
+        if ($scope.caches.length > 0)
+            _.forEach($scope.notebook.paragraphs, function (paragraph) {
+                if (!paragraph.cacheName || !_.find($scope.caches, {name: paragraph.cacheName}))
+                    paragraph.cacheName = $scope.caches[0].name;
+            });
+    };
+
     var loadNotebook = function () {
         $http.post('/notebooks/get', {noteId: $scope.noteId})
             .success(function (notebook) {
@@ -111,6 +119,8 @@ controlCenterModule.controller('sqlController',
 
                 if (!notebook.paragraphs || notebook.paragraphs.length == 0)
                     $scope.addParagraph();
+
+                _setActiveCache();
             })
             .error(function (errMsg) {
                 $common.showError(errMsg);
@@ -213,7 +223,7 @@ controlCenterModule.controller('sqlController',
         enhanceParagraph(paragraph);
 
         if ($scope.caches && $scope.caches.length > 0)
-            paragraph.cache = $scope.caches[0];
+            paragraph.cacheName = $scope.caches[0].name;
 
         $scope.notebook.expandedParagraphs.push($scope.notebook.paragraphs.length);
 
@@ -255,11 +265,7 @@ controlCenterModule.controller('sqlController',
         .success(function (caches) {
             $scope.caches = _.sortBy(caches, 'name');
 
-            if ($scope.caches.length > 0)
-                _.forEach($scope.notebook.paragraphs, function (paragraph) {
-                    if (!paragraph.cacheName || !_.find($scope.caches, {name: paragraph.cacheName}))
-                        paragraph.cacheName = $scope.caches[0].name;
-                });
+            _setActiveCache();
         })
         .error(function (err, status) {
             if (status == 503)
@@ -702,7 +708,7 @@ controlCenterModule.controller('sqlController',
     }
 
     $scope.actionAvailable = function (paragraph, needQuery) {
-        return $scope.caches.length > 0 && paragraph.cache && (!needQuery || paragraph.query);
+        return $scope.caches.length > 0 && paragraph.cacheName && (!needQuery || paragraph.query);
     };
 
     $scope.actionTooltip = function (paragraph, action, needQuery) {
