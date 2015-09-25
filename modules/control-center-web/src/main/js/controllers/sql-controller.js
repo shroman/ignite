@@ -725,8 +725,10 @@ controlCenterModule.controller('sqlController',
             if (chart.xAxis)
                 chart.xAxis.axisLabel(xAxisLabel);
 
-            if (chart.yAxis)
+            if (chart.yAxis) {
                 chart.yAxis.axisLabel(yAxisLabel);
+                chart.yAxis.tickFormat(d3.format(',.2f'));
+            }
 
             // Insert new chart.
             d3.select('#' + chartId)
@@ -828,6 +830,8 @@ controlCenterModule.controller('sqlController',
                 .y(_yY)
                 .margin({left: 70});
 
+            chart.xAxis.tickFormat(d3.format(',.2f'));
+
             _insertChart(paragraph, _chartDatumNumNum(paragraph), chart, true);
         });
     }
@@ -838,6 +842,8 @@ controlCenterModule.controller('sqlController',
                 .x(_xX)
                 .y(_yY)
                 .margin({left: 70});
+
+            chart.xAxis.tickFormat(d3.format(',.2f'));
 
             _insertChart(paragraph, _chartDatumNumNum(paragraph), chart, true);
         });
