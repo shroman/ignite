@@ -638,7 +638,29 @@ controlCenterModule.controller('sqlController',
         return dflt;
     }
 
-    function _chartDatum(paragraph) {
+    function _chartDatumLblNum(paragraph) {
+        var datum = [];
+
+        if (paragraph.hasChartColumns()) {
+            paragraph.chartValCols.forEach(function (valCol) {
+                var index = 0;
+
+                var values = _.map(paragraph.rows, function (row) {
+                    return {
+                        lbl: _chartLabel(row, paragraph.chartKeyCols[0].value, index++),
+                        val: _chartNumber(row, valCol.value, 0)
+                    }
+                });
+
+                datum.push({key: valCol.label, values: values});
+            });
+        }
+
+        return datum;
+    }
+
+
+    function _chartDatumNumNum(paragraph) {
         var datum = [];
 
         if (paragraph.hasChartColumns()) {
@@ -663,7 +685,7 @@ controlCenterModule.controller('sqlController',
         return col.label;
     }
 
-    function _insertChart(paragraph, datum, chart) {
+    function _insertChart(paragraph, datum, chart, remove) {
         var chartId = 'chart-' + paragraph.id;
 
         var xAxisLabel = 'X';
@@ -675,8 +697,8 @@ controlCenterModule.controller('sqlController',
         }
 
         $timeout(function() {
-            // Remove previous chart.
-            d3.selectAll('#' + chartId + ' svg > *').remove();
+            if (remove)
+                d3.select('#' + chartId).selectAll('*').remove();
 
             chart.height(400);
 
@@ -687,7 +709,8 @@ controlCenterModule.controller('sqlController',
                 chart.yAxis.axisLabel(yAxisLabel);
 
             // Insert new chart.
-            d3.select('#' + chartId + ' svg')
+            d3.select('#' + chartId)
+                .append('svg')
                 .datum(datum)
                 .call(chart)
                 .attr('height', 400);
@@ -735,49 +758,38 @@ controlCenterModule.controller('sqlController',
                 .y(_yVal)
                 .margin({left: 70});
 
-            var datum = [];
-
-            if (paragraph.hasChartColumns())
-                paragraph.chartValCols.forEach(function (valCol) {
-                    var index = 0;
-
-                    var values = _.map(paragraph.rows, function (row) {
-                        return {
-                            lbl: _chartLabel(row, paragraph.chartKeyCols[0].value, index++),
-                            val: _chartNumber(row, valCol.value, 0)
-                        }
-                    });
-
-                    datum.push({key: valCol.label, values: values});
-                });
-
-            _insertChart(paragraph, datum, chart);
+            _insertChart(paragraph, _chartDatumLblNum(paragraph), chart, true);
         });
     }
 
     function _pieChart(paragraph) {
-        var index = 0;
+        var datum = _chartDatumLblNum(paragraph);
 
-        nv.addGraph(function() {
-            var chart = nv.models.pieChart()
-                    .x(function (row) {
-                        return _chartLabel(row, paragraph.chartKeyCols[0].value, index++);
-                    })
-                    .y(function (row) {
-                        return _chartNumber(row, paragraph.chartValCols[0].value, 0);
-                    })
-                .showLabels(true)
-                .labelThreshold(.05)
-                .labelType("percent")
-                .donut(true)
-                .donutRatio(0.35);
+        if (datum.length == 0)
+            datum = [{key: 'No data', values: []}];
 
-            var datum = [];
+        var first = true;
 
-            if (paragraph.hasChartColumns())
-                datum = paragraph.rows;
+        datum.forEach(function (d) {
+            nv.addGraph(function() {
+                var chart = nv.models.pieChart()
+                    .x(_xLbl)
+                    .y(_yVal)
+                    .showLabels(true)
+                    .labelThreshold(.05)
+                    .labelType("percent")
+                    .donut(true)
+                    .donutRatio(0.35);
 
-            _insertChart(paragraph, datum, chart);
+                var datum = [];
+
+                if (paragraph.hasChartColumns())
+                    datum = paragraph.rows;
+
+                _insertChart(paragraph, d.values, chart, first);
+
+                first = false;
+            });
         });
     }
 
@@ -796,7 +808,7 @@ controlCenterModule.controller('sqlController',
                 .y(_yY)
                 .margin({left: 70});
 
-            _insertChart(paragraph, _chartDatum(paragraph), chart);
+            _insertChart(paragraph, _chartDatumNumNum(paragraph), chart, true);
         });
     }
 
@@ -807,7 +819,7 @@ controlCenterModule.controller('sqlController',
                 .y(_yY)
                 .margin({left: 70});
 
-            _insertChart(paragraph, _chartDatum(paragraph), chart);
+            _insertChart(paragraph, _chartDatumNumNum(paragraph), chart, true);
         });
     }
 
