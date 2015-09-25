@@ -249,7 +249,7 @@ $generatorCommon.jdbcDialectClassName = function(db) {
 // Pairs of supported databases and their data sources.
 $generatorCommon.DATA_SOURCES = {
     Oracle: 'oracle.jdbc.pool.OracleDataSource',
-    DB2: 'com.ibm.db2.jcc.DB2ConnectionPoolDataSource',
+    DB2: 'com.ibm.db2.jcc.DB2DataSource',
     SQLServer: 'com.microsoft.sqlserver.jdbc.SQLServerDataSource',
     MySQL: 'com.mysql.jdbc.jdbc2.optional.MysqlDataSource',
     PostgreSQL: 'org.postgresql.ds.PGPoolingDataSource',

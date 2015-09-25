@@ -47,7 +47,17 @@ $generatorProperties.dataSourcesProperties = function (cluster) {
                     if (!_.contains(datasources, beanId)) {
                         datasources.push(beanId);
 
-                        res.line(beanId + '.jdbc.url=YOUR_JDBC_URL');
+                        switch (storeFactory.dialect) {
+                            case 'DB2':
+                                res.line(beanId + '.jdbc.server_name=YOUR_JDBC_SERVER_NAME');
+                                res.line(beanId + '.jdbc.port_number=YOUR_JDBC_PORT_NUMBER');
+                                res.line(beanId + '.jdbc.database_name=YOUR_JDBC_DATABASE_TYPE');
+                                res.line(beanId + '.jdbc.driverType=YOUR_JDBC_DRIVER_TYPE');
+                                break;
+
+                            default:
+                                res.line(beanId + '.jdbc.url=YOUR_JDBC_URL');
+                        }
                         res.line(beanId + '.jdbc.username=YOUR_USER_NAME');
                         res.line(beanId + '.jdbc.password=YOUR_PASSWORD');
                         res.line();

@@ -631,7 +631,8 @@ $generatorXml.cacheStore = function(cache, res) {
                     }) < 0) {
                     res.datasources.push({
                         dataSourceBean: storeFactory.dataSourceBean,
-                        className: $generatorCommon.DATA_SOURCES[storeFactory.dialect]
+                        className: $generatorCommon.DATA_SOURCES[storeFactory.dialect],
+                        dialect: storeFactory.dialect
                     });
                 }
             }
@@ -1064,8 +1065,19 @@ $generatorXml.cluster = function (cluster, clientNearCfg) {
             _.forEach(res.datasources, function (item) {
                 var beanId = item.dataSourceBean;
 
-                xml += '    <bean id= "' + beanId + '" class="' + item.className + '">\n';
-                xml += '        <property name="URL" value="${' + beanId + '.jdbc.url}" />\n';
+                xml += '    <bean id="' + beanId + '" class="' + item.className + '">\n';
+                switch (item.dialect) {
+                    case 'DB2':
+                        xml += '        <property name="serverName" value="${' + beanId + '.jdbc.server_name}" />\n';
+                        xml += '        <property name="portNumber" value="${' + beanId + '.jdbc.port_number}" />\n';
+                        xml += '        <property name="databaseName" value="${' + beanId + '.jdbc.database_name}" />\n';
+                        xml += '        <property name="driverType" value="${' + beanId + '.jdbc.driver_type}" />\n';
+                        break;
+
+                    default:
+                        xml += '        <property name="URL" value="${' + beanId + '.jdbc.url}" />\n';
+                }
+
                 xml += '        <property name="user" value="${' + beanId + '.jdbc.username}" />\n';
                 xml += '        <property name="password" value="${' + beanId + '.jdbc.password}" />\n';
                 xml += '    </bean>\n\n';
