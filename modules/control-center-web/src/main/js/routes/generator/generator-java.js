@@ -775,7 +775,18 @@ $generatorJava.cacheStore = function (cache, varName, res) {
 
                     $generatorJava.declareVariable(res, true, dsVarName, dsClsName);
 
-                    res.line(dsVarName + '.setURL(_URL_);');
+                    switch (storeFactory.dialect) {
+                        case 'DB2':
+                            res.line(dsVarName + '.setServerName(_SERVER_NAME_);');
+                            res.line(dsVarName + '.setPortNumber(_PORT_NUMBER_);');
+                            res.line(dsVarName + '.setDatabaseName(_DATABASE_NAME_);');
+                            res.line(dsVarName + '.setDriverType(_DRIVER_TYPE_);');
+                            break;
+
+                        default:
+                            res.line(dsVarName + '.setURL(_URL_);');
+                    }
+
                     res.line(dsVarName + '.setUsername(_User_Name_);');
                     res.line(dsVarName + '.setPassword(_Password_);');
                 }
