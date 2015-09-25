@@ -24,14 +24,14 @@
                 label All columns
                 ul.chart-settings-columns-list(dnd-list='paragraph.chartColumns' dnd-allowed-types='[]')
                     li(ng-repeat='col in paragraph.chartColumns track by $index')
-                        .btn.btn-default.btn-chart-column-movable(dnd-draggable='col' dnd-effect-allowed='copy' dnd-dragstart='chartSettingsDragStart(paragraph)') {{col.label}}
+                        .btn.btn-default.btn-chart-column-movable(dnd-draggable='col' dnd-effect-allowed='copy') {{col.label}}
                 label X axis
-                ul.chart-settings-columns-list(dnd-list='paragraph.chartKeyCols' dnd-disable-if='paragraph.chartKeyCols.length > 0' dnd-drop='acceptKeyColumn(event, index, item, external, type, allowedType)')
+                ul.chart-settings-columns-list(dnd-list='paragraph.chartKeyCols' dnd-drop='acceptKeyColumn(paragraph, item)')
                     li(ng-repeat='col in paragraph.chartKeyCols track by $index')
                         .btn.btn-info.btn-chart-column {{col.label}}
                             i.fa.fa-close(ng-click='removeKeyColumn(paragraph, $index)')
                 label Y axis
-                ul.chart-settings-columns-list(dnd-list='paragraph.chartValCols' dnd-drop='acceptValColumn(event, index, item, external, type, allowedType)')
+                ul.chart-settings-columns-list(dnd-list='paragraph.chartValCols' dnd-drop='acceptValColumn(paragraph, item)')
                     li(ng-repeat='col in paragraph.chartValCols track by $index')
                         .btn.btn-success.btn-chart-column {{col.label}}
                             i.fa.fa-close(ng-click='removeValColumn(paragraph, $index)')
