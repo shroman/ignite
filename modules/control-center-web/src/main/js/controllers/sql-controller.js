@@ -638,21 +638,25 @@ controlCenterModule.controller('sqlController',
         return dflt;
     }
 
-    function _chartDatum(key, paragraph) {
-        var values = [];
+    function _chartDatum(paragraph) {
+        var datum = [];
 
-         if (paragraph.hasChartColumns()) {
-             var index = 0;
+        if (paragraph.hasChartColumns()) {
+             paragraph.chartValCols.forEach(function (valCol) {
+                 var index = 0;
 
-             values = _.map(paragraph.rows, function (row) {
-                 return {
-                     x: _chartNumber(row, paragraph.chartKeyCols[0].value, index++),
-                     y: _chartNumber(row, paragraph.chartValCols[0].value, 0)
-                 }
+                 var values = _.map(paragraph.rows, function (row) {
+                     return {
+                         x: _chartNumber(row, paragraph.chartKeyCols[0].value, index++),
+                         y: _chartNumber(row, valCol.value, 0)
+                     }
+                 });
+
+                 datum.push({key: valCol.label, values: values});
              });
          }
 
-        return [{key: key, values: values}];
+        return datum;
     }
 
     function _colLabel(col) {
@@ -714,26 +718,40 @@ controlCenterModule.controller('sqlController',
         }
     };
 
-    function _barChart(paragraph) {
-        var index = 0;
+    function _xLbl(d) {
+        return d.lbl;
+    }
 
+    function _yVal(d) {
+        return d.val;
+    }
+
+
+    function _barChart(paragraph) {
         nv.addGraph(function() {
-            var chart = nv.models.discreteBarChart()
-                .x(function (d) { return d.label; })
-                .y(function (d) { return d.value;})
+            var chart = nv.models.multiBarChart()
+                .showControls(true) //Allow user to switch between 'Grouped' and 'Stacked' mode.
+                .x(_xLbl)
+                .y(_yVal)
                 .margin({left: 70});
 
-            var values = [];
+            var datum = [];
 
             if (paragraph.hasChartColumns())
-                values = _.map(paragraph.rows, function (row) {
-                    return {
-                        label: _chartLabel(row, paragraph.chartKeyCols[0].value, index++),
-                        value: _chartNumber(row, paragraph.chartValCols[0].value, 0)
-                    };
-            });
+                paragraph.chartValCols.forEach(function (valCol) {
+                    var index = 0;
 
-            _insertChart(paragraph, [{key: 'bar', values: values}], chart);
+                    var values = _.map(paragraph.rows, function (row) {
+                        return {
+                            lbl: _chartLabel(row, paragraph.chartKeyCols[0].value, index++),
+                            val: _chartNumber(row, valCol.value, 0)
+                        }
+                    });
+
+                    datum.push({key: valCol.label, values: values});
+                });
+
+            _insertChart(paragraph, datum, chart);
         });
     }
 
@@ -763,33 +781,33 @@ controlCenterModule.controller('sqlController',
         });
     }
 
-    function _x(d) {
+    function _xX(d) {
         return d.x;
     }
 
-    function _y(d) {
+    function _yY(d) {
         return d.y;
     }
 
     function _lineChart(paragraph) {
         nv.addGraph(function() {
             var chart = nv.models.lineChart()
-                .x(_x)
-                .y(_y)
+                .x(_xX)
+                .y(_yY)
                 .margin({left: 70});
 
-            _insertChart(paragraph, _chartDatum('Line chart', paragraph), chart);
+            _insertChart(paragraph, _chartDatum(paragraph), chart);
         });
     }
 
     function _areaChart(paragraph) {
         nv.addGraph(function() {
             var chart = nv.models.stackedAreaChart()
-                .x(_x)
-                .y(_y)
+                .x(_xX)
+                .y(_yY)
                 .margin({left: 70});
 
-            _insertChart(paragraph, _chartDatum('Area chart', paragraph), chart);
+            _insertChart(paragraph, _chartDatum(paragraph), chart);
         });
     }
 
