@@ -24,6 +24,7 @@ import java.util.UUID;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.cluster.ClusterNode;
+import org.apache.ignite.events.CacheRebalancingEvent;
 import org.apache.ignite.events.DiscoveryEvent;
 import org.apache.ignite.events.Event;
 import org.apache.ignite.internal.cluster.ClusterTopologyCheckedException;
@@ -45,6 +46,7 @@ import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgnitePredicate;
 import org.jsr166.ConcurrentHashMap8;
 
+import static org.apache.ignite.events.EventType.EVT_CACHE_REBALANCE_STOPPED;
 import static org.apache.ignite.events.EventType.EVT_NODE_FAILED;
 import static org.apache.ignite.events.EventType.EVT_NODE_JOINED;
 import static org.apache.ignite.events.EventType.EVT_NODE_LEFT;
@@ -69,8 +71,9 @@ class GridDhtPartitionSupplier {
     /** Preload predicate. */
     private IgnitePredicate<GridCacheEntryInfo> preloadPred;
 
-    /** Supply context map. */
-    private final ConcurrentHashMap8<T4, SupplyContext> scMap = new ConcurrentHashMap8<>();
+    /** Supply context map. T4: nodeId, idx, topologyVersion, updateSequence. */
+    private final ConcurrentHashMap8<T4<UUID, Integer, AffinityTopologyVersion, Long>, SupplyContext> scMap =
+        new ConcurrentHashMap8<>();
 
     /** Rebalancing listener. */
     private GridLocalEventListener lsnr;
@@ -97,7 +100,27 @@ class GridDhtPartitionSupplier {
         lsnr = new GridLocalEventListener() {
             @Override public void onEvent(Event evt) {
                 if (evt instanceof DiscoveryEvent) {
-                    clearContexts(scMap, log, cctx);
+                    for (Map.Entry<T4<UUID, Integer, AffinityTopologyVersion, Long>, SupplyContext> entry : scMap.entrySet()) {
+                        T4<UUID, Integer, AffinityTopologyVersion, Long> t = entry.getKey();
+
+                        SupplyContext sc = entry.getValue();
+
+                       if (t.get3() != null && !t.get3().equals(cctx.affinity().affinityTopologyVersion()) && sc != null)
+                            clearContext(scMap, t, sc, log);
+                    }
+                }
+                else if (evt instanceof CacheRebalancingEvent) {
+                    CacheRebalancingEvent e = (CacheRebalancingEvent)evt;
+
+                    if (cctx.name().equals(e.cacheName())) {
+                        UUID id = e.discoveryNode().id();
+
+                        for (Map.Entry<T4<UUID, Integer, AffinityTopologyVersion, Long>, SupplyContext> entry : scMap.entrySet()) {
+                            if (id.equals(entry.getKey().get1()))
+                                clearContext(scMap, entry.getKey(), entry.getValue(), log);
+                        }
+
+                    }
                 }
                 else {
                     assert false;
@@ -105,9 +128,7 @@ class GridDhtPartitionSupplier {
             }
         };
 
-        //todo: rebalance stopped.
-
-        cctx.events().addListener(lsnr, EVT_NODE_JOINED, EVT_NODE_LEFT, EVT_NODE_FAILED);
+        cctx.events().addListener(lsnr, EVT_NODE_JOINED, EVT_NODE_LEFT, EVT_NODE_FAILED, EVT_CACHE_REBALANCE_STOPPED);
 
         startOldListeners();
     }
@@ -122,25 +143,6 @@ class GridDhtPartitionSupplier {
     }
 
     /**
-     * Clear contexts.
-     *
-     * @param map Context map.
-     * @param log Logger.
-     * @param cctx Context.
-     */
-    private static void clearContexts(
-        ConcurrentHashMap8<T4, SupplyContext> map, IgniteLogger log, GridCacheContext<?, ?> cctx) {
-        for (Map.Entry<T4, SupplyContext> entry : map.entrySet()) {
-            T4 t = entry.getKey();
-
-            SupplyContext sc = entry.getValue();
-
-            if (t.get3() != null && !t.get3().equals(cctx.affinity().affinityTopologyVersion()) && sc != null)
-                clearContext(map, t, sc, log);
-        }
-    }
-
-    /**
      * Clear context.
      *
      * @param map Context map.
@@ -150,8 +152,8 @@ class GridDhtPartitionSupplier {
      * @return true in case context was removed.
      */
     private static boolean clearContext(
-        final ConcurrentHashMap8<T4, SupplyContext> map,
-        final T4 t,
+        final ConcurrentHashMap8<T4<UUID, Integer, AffinityTopologyVersion, Long>, SupplyContext> map,
+        final T4<UUID, Integer, AffinityTopologyVersion, Long> t,
         final SupplyContext sc,
         final IgniteLogger log) {
         final Iterator it = sc.entryIt;

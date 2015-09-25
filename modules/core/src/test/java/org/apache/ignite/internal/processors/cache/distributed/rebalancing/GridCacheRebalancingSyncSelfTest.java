@@ -169,7 +169,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
     protected void checkData(Ignite ignite, String name, int from) throws IgniteCheckedException {
         for (int i = from; i < from + TEST_SIZE; i++) {
             if (i % (TEST_SIZE / 10) == 0)
-                log.info("Checked " + i * 100 / (TEST_SIZE) + "% entries (" + TEST_SIZE + ").");
+                log.info("<" + name + "> Checked " + i * 100 / (TEST_SIZE) + "% entries (" + TEST_SIZE + ").");
 
             assert ignite.cache(name).get(i) != null && ignite.cache(name).get(i).equals(i + name.hashCode()) :
                 i + " value " + (i + name.hashCode()) + " does not match (" + ignite.cache(name).get(i) + ")";
@@ -252,10 +252,25 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
 
                     break;
                 }
-                else
-                    fut.get();
+                else if (!fut.get()) {
+                    finished = false;
+
+                    log.warning("Rebalancing finished with missed partitions.");
+                }
             }
         }
+    }
+
+    private void test() throws Exception {
+        while (true) {
+            testComplexRebalancing();
+
+            U.sleep(5000);
+        }
+    }
+
+    @Override protected long getTestTimeout() {
+        return Long.MAX_VALUE;
     }
 
     /**
@@ -270,7 +285,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
 
         long start = System.currentTimeMillis();
 
-        new Thread() {
+        Thread t1 = new Thread() {
             @Override public void run() {
                 try {
                     startGrid(1);
@@ -295,9 +310,9 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
                     e.printStackTrace();
                 }
             }
-        }.start();
+        };
 
-        new Thread() {
+        Thread t2 = new Thread() {
             @Override public void run() {
                 try {
                     startGrid(3);
@@ -309,49 +324,42 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
                     e.printStackTrace();
                 }
             }
-        }.start();// Should cancel current rebalancing.
+        };
 
-        while (!concurrentStartFinished || !concurrentStartFinished2) {
-            U.sleep(10);
-        }
+        t1.start();
+        t2.start();// Should cancel t1 rebalancing.
 
-        //wait until cache rebalanced in async mode
+        t1.join();
+        t2.join();
 
         waitForRebalancing(1, 5, 1);
         waitForRebalancing(2, 5, 1);
         waitForRebalancing(3, 5, 1);
         waitForRebalancing(4, 5, 1);
 
-        //cache rebalanced in async node
+        checkData(grid(4), 0);
 
         stopGrid(0);
 
-        //wait until cache rebalanced
         waitForRebalancing(1, 6);
         waitForRebalancing(2, 6);
         waitForRebalancing(3, 6);
         waitForRebalancing(4, 6);
 
-        //cache rebalanced
-
         stopGrid(1);
 
-        //wait until cache rebalanced
         waitForRebalancing(2, 7);
         waitForRebalancing(3, 7);
         waitForRebalancing(4, 7);
 
-        //cache rebalanced
-
         stopGrid(2);
 
-        //wait until cache rebalanced
         waitForRebalancing(3, 8);
         waitForRebalancing(4, 8);
 
-        //cache rebalanced
-
         stopGrid(3);
+
+        waitForRebalancing(4, 9);
 
         long spend = (System.currentTimeMillis() - start) / 1000;
 
