@@ -21,6 +21,11 @@ controlCenterModule.controller('sqlController',
     function ($scope, $window, $controller, $http, $timeout, $common, $confirm, $interval, $popover, $loading) {
     // Initialize the super class and extend it.
     angular.extend(this, $controller('agent-download', {$scope: $scope}));
+
+    var TIME_LINE = 'TIME_LINE';
+
+    var chartHistory = [];
+
     $scope.agentGoal = 'execute sql statements';
     $scope.agentTestDriveOption = '--test-drive-sql';
 
@@ -57,7 +62,7 @@ controlCenterModule.controller('sqlController',
     };
 
     $scope.acceptValColumn = function(paragraph, item) {
-        var accepted = acceptableColumn(paragraph.chartValCols, item);
+        var accepted = acceptableColumn(paragraph.chartValCols, item) && item.label != TIME_LINE;
 
         if (accepted) {
             $timeout(function () {
@@ -106,16 +111,20 @@ controlCenterModule.controller('sqlController',
     var paragraphId = 0;
 
     function enhanceParagraph(paragraph) {
-        paragraph.chart = function () {
-            return this.result != 'table' && this.result != 'none';
-        };
-
         paragraph.nonEmpty = function () {
             return this.rows && this.rows.length > 0;
         };
 
-        paragraph.hasChartColumns = function () {
+        paragraph.chart = function () {
+            return this.result != 'table' && this.result != 'none';
+        };
+
+        paragraph.chartColumnsConfigured = function () {
             return !$common.isEmptyArray(this.chartKeyCols) && !$common.isEmptyArray(this.chartValCols);
+        };
+
+        paragraph.chartTimeLineEnabled = function () {
+            return !$common.isEmptyArray(this.chartKeyCols) && this.chartKeyCols[0].label == TIME_LINE;
         };
 
         Object.defineProperty(paragraph, 'gridOptions', { value: {
@@ -343,6 +352,9 @@ controlCenterModule.controller('sqlController',
             }
         });
 
+        if (paragraph.chartColumns.length > 0)
+            paragraph.chartColumns.push({value: -1, label: TIME_LINE});
+
         paragraph.gridOptions.api.setColumnDefs(columnDefs);
 
         paragraph.chartKeyCols = _retainColumns(paragraph.chartColumns, paragraph.chartKeyCols, 0);
@@ -418,6 +430,12 @@ controlCenterModule.controller('sqlController',
 
             paragraph.rows = res.rows;
 
+            // Add results to history.
+            chartHistory.push({tm: new Date(), rows: res.rows});
+
+            if (chartHistory.size > 100)
+                chartHistory.shift();
+
             paragraph.gridOptions.api.showLoading(false);
 
             paragraph.gridOptions.api.setRowData(res.rows);
@@ -434,10 +452,6 @@ controlCenterModule.controller('sqlController',
     };
 
     var _executeRefresh = function (paragraph) {
-        // TODO IGNITE-843 Temporary disable charts refresh by timer
-        if (paragraph.rate.installed && paragraph.chart())
-            return;
-
         $http.post('/agent/query', paragraph.queryArgs)
             .success(_processQueryResult(paragraph))
             .error(function (errMsg) {
@@ -447,6 +461,16 @@ controlCenterModule.controller('sqlController',
 
     $scope.execute = function (paragraph) {
         _saveNotebook();
+
+        if (paragraph.prevQuery) {
+            if (paragraph.prevQuery != paragraph.query) {
+                chartHistory = [];
+
+                paragraph.prevQuery = paragraph.query;
+            }
+        }
+        else
+            paragraph.prevQuery = paragraph.query;
 
         paragraph.queryArgs = { query: paragraph.query, pageSize: paragraph.pageSize, cacheName: paragraph.cacheName };
 
@@ -669,7 +693,7 @@ controlCenterModule.controller('sqlController',
     function _chartDatumLblNum(paragraph) {
         var datum = [];
 
-        if (paragraph.hasChartColumns()) {
+        if (paragraph.chartColumnsConfigured() && !paragraph.chartTimeLineEnabled()) {
             paragraph.chartValCols.forEach(function (valCol) {
                 var index = 0;
 
@@ -687,20 +711,28 @@ controlCenterModule.controller('sqlController',
         return datum;
     }
 
-
     function _chartDatumNumNum(paragraph) {
         var datum = [];
 
-        if (paragraph.hasChartColumns()) {
+        if (paragraph.chartColumnsConfigured()) {
              paragraph.chartValCols.forEach(function (valCol) {
                  var index = 0;
+                 var values = [];
 
-                 var values = _.map(paragraph.rows, function (row) {
-                     return {
-                         x: _chartNumber(row, paragraph.chartKeyCols[0].value, index++),
-                         y: _chartNumber(row, valCol.value, 0)
-                     }
-                 });
+                 if (paragraph.chartTimeLineEnabled())
+                     values = _.map(chartHistory, function (history) {
+                         return {
+                             x: history.tm,
+                             y: _chartNumber(history.rows[0], valCol.value, 0)
+                         }
+                     });
+                 else
+                     values = _.map(paragraph.rows, function (row) {
+                         return {
+                             x: _chartNumber(row, paragraph.chartKeyCols[0].value, index++),
+                             y: _chartNumber(row, valCol.value, 0)
+                         }
+                     });
 
                  datum.push({key: valCol.label, values: values});
              });
@@ -719,7 +751,7 @@ controlCenterModule.controller('sqlController',
         var xAxisLabel = 'X';
         var yAxisLabel = 'Y';
 
-        if (paragraph.hasChartColumns()) {
+        if (paragraph.chartColumnsConfigured()) {
             xAxisLabel = _.map(paragraph.chartKeyCols, _colLabel).join(', ');
             yAxisLabel = _.map(paragraph.chartValCols, _colLabel).join(', ');
         }
@@ -810,7 +842,7 @@ controlCenterModule.controller('sqlController',
 
                 var datum = [];
 
-                if (paragraph.hasChartColumns())
+                if (paragraph.chartColumnsConfigured())
                     datum = paragraph.rows;
 
                 _insertChart(paragraph, d.values, chart, first);
