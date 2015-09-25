@@ -87,16 +87,16 @@ controlCenterModule.controller('sqlController',
     $scope.exportDropdown = [{ 'text': 'Export all', 'click': 'exportAll(paragraph)'}];
 
     $scope.treeOptions = {
-        nodeChildren: "children",
+        nodeChildren: 'children',
         dirSelectable: false,
         injectClasses: {
-            iExpanded: "fa fa-minus-square-o",
-            iCollapsed: "fa fa-plus-square-o"
+            iExpanded: 'fa fa-minus-square-o',
+            iCollapsed: 'fa fa-plus-square-o'
         }
     };
 
     var _hideColumn = function (col) {
-        return !(col.fieldName === "_KEY") && !(col.fieldName == "_VAL");
+        return !(col.fieldName === '_KEY') && !(col.fieldName == '_VAL');
     };
 
     var _allColumn = function () {
@@ -121,7 +121,7 @@ controlCenterModule.controller('sqlController',
         Object.defineProperty(paragraph, 'gridOptions', { value: {
             enableColResize: true,
             columnDefs: [
-                {headerName: "Test", valueGetter: 'data[0]'}
+                {headerName: 'Test', valueGetter: 'data[0]'}
             ],
             rowData: null
         }});
@@ -225,7 +225,7 @@ controlCenterModule.controller('sqlController',
                             $scope.$root.notebooks.splice(idx, 1);
 
                             if ($scope.$root.notebooks.length > 0)
-                                $window.location = "/sql/" +
+                                $window.location = '/sql/' +
                                     $scope.$root.notebooks[Math.min(idx,  $scope.$root.notebooks.length - 1)]._id;
                             else
                                 $window.location = '/configuration/clusters';
@@ -390,7 +390,7 @@ controlCenterModule.controller('sqlController',
 
             if (res.meta) {
                 paragraph.disabledSystemColumns = res.meta.length == 2 &&
-                    res.meta[0].fieldName === "_KEY" && res.meta[1].fieldName === "_VAL";
+                    res.meta[0].fieldName === '_KEY' && res.meta[1].fieldName === '_VAL';
 
                 paragraph.columnFilter = _columnFilter(paragraph);
 
@@ -510,19 +510,19 @@ controlCenterModule.controller('sqlController',
     };
 
     var _export = function(fileName, meta, rows) {
-        var csvContent = "";
+        var csvContent = '';
 
         if (meta) {
             csvContent += meta.map(function (col) {
                 return $scope.columnToolTip(col);
-            }).join(",") + '\n';
+            }).join(',') + '\n';
         }
 
         rows.forEach(function (row) {
             if (Array.isArray(row)) {
                 csvContent += row.map(function (elem) {
-                    return elem ? JSON.stringify(elem) : "";
-                }).join(",");
+                    return elem ? JSON.stringify(elem) : '';
+                }).join(',');
             }
             else {
                 var first = true;
@@ -531,11 +531,11 @@ controlCenterModule.controller('sqlController',
                     if (first)
                         first = false;
                     else
-                        csvContent += ",";
+                        csvContent += ',';
 
                     var elem = row[prop.fieldName];
 
-                    csvContent += elem ? JSON.stringify(elem) : "";
+                    csvContent += elem ? JSON.stringify(elem) : '';
                 }
             }
 
@@ -569,7 +569,7 @@ controlCenterModule.controller('sqlController',
 
         res.push(col.fieldName);
 
-        return res.join(".");
+        return res.join('.');
     };
 
     $scope.resultMode = function (paragraph, type) {
@@ -583,12 +583,12 @@ controlCenterModule.controller('sqlController',
             });
 
             if (idx >= 0)
-                return " " + paragraph.rate.value + $scope.timeUnit[idx].short;
+                return ' ' + paragraph.rate.value + $scope.timeUnit[idx].short;
 
             paragraph.rate.installed = false;
         }
 
-        return "";
+        return '';
     };
 
     var _cancelRefresh = function (paragraph) {
@@ -797,7 +797,7 @@ controlCenterModule.controller('sqlController',
                     .y(_yVal)
                     .showLabels(true)
                     .labelThreshold(.05)
-                    .labelType("percent")
+                    .labelType('percent')
                     .donut(true)
                     .donutRatio(0.35);
 
