@@ -393,7 +393,7 @@ controlCenterModule.controller('sqlController',
 
                 _.forEach(res.meta, function (meta, idx) {
                     if (paragraph.columnFilter(meta)) {
-                        paragraph.chartColumns.push({value: idx + 1, label: meta.fieldName});
+                        paragraph.chartColumns.push({value: idx, label: meta.fieldName});
 
                         columnDefs.push({
                             headerName: meta.fieldName,
@@ -714,8 +714,6 @@ controlCenterModule.controller('sqlController',
             if (remove)
                 d3.select('#' + chartId).selectAll('*').remove();
 
-            chart.height(400);
-
             if (chart.xAxis)
                 chart.xAxis.axisLabel(xAxisLabel);
 
@@ -762,7 +760,6 @@ controlCenterModule.controller('sqlController',
     function _yVal(d) {
         return d.val;
     }
-
 
     function _barChart(paragraph) {
         nv.addGraph(function() {
@@ -818,6 +815,7 @@ controlCenterModule.controller('sqlController',
     function _lineChart(paragraph) {
         nv.addGraph(function() {
             var chart = nv.models.lineChart()
+                .useInteractiveGuideline(true)
                 .x(_xX)
                 .y(_yY)
                 .margin({left: 70});
