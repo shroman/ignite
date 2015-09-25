@@ -334,7 +334,7 @@ controlCenterModule.controller('sqlController',
 
         _.forEach(paragraph.meta, function (meta, idx) {
             if (paragraph.columnFilter(meta)) {
-                paragraph.chartColumns.push({value: idx + 1, label: meta.fieldName});
+                paragraph.chartColumns.push({value: idx, label: meta.fieldName});
 
                 columnDefs.push({
                     headerName: meta.fieldName,
@@ -528,7 +528,7 @@ controlCenterModule.controller('sqlController',
             else {
                 var first = true;
 
-                for (var prop of meta) {
+                meta.forEach(function (prop) {
                     if (first)
                         first = false;
                     else
@@ -537,7 +537,7 @@ controlCenterModule.controller('sqlController',
                     var elem = row[prop.fieldName];
 
                     csvContent += elem ? JSON.stringify(elem) : '';
-                }
+                });
             }
 
             csvContent += '\n';
