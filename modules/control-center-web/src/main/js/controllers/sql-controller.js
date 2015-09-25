@@ -463,6 +463,8 @@ controlCenterModule.controller('sqlController',
 
                 $scope.stopRefresh(paragraph);
             });
+
+        paragraph.ace.focus();
     };
 
     $scope.explain = function (paragraph) {
@@ -477,6 +479,8 @@ controlCenterModule.controller('sqlController',
             .error(function (errMsg) {
                 paragraph.errMsg = errMsg;
             });
+
+        paragraph.ace.focus();
     };
 
     $scope.scan = function (paragraph) {
@@ -491,6 +495,8 @@ controlCenterModule.controller('sqlController',
             .error(function (errMsg) {
                 paragraph.errMsg = errMsg;
             });
+
+        paragraph.ace.focus();
     };
 
     $scope.nextPage = function(item) {
