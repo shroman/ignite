@@ -329,6 +329,23 @@ controlCenterModule.controller('sqlController',
         paragraph.systemColumns = !paragraph.systemColumns;
 
         paragraph.columnFilter = _columnFilter(paragraph);
+
+        var columnDefs = [];
+
+        _.forEach(paragraph.meta, function (meta, idx) {
+            if (paragraph.columnFilter(meta)) {
+                columnDefs.push({
+                    headerName: meta.fieldName,
+                    valueGetter: 'JSON.stringify(data[' + idx + '])'
+                });
+            }
+        });
+
+        paragraph.gridOptions.api.setColumnDefs(columnDefs);
+
+        setTimeout(function () {
+            paragraph.gridOptions.api.sizeColumnsToFit();
+        }, 1);
     };
 
     function _retainColumns(allCols, curCols, dfltIdx) {
@@ -374,18 +391,15 @@ controlCenterModule.controller('sqlController',
 
                 var columnDefs = [];
 
-                var idx = 0;
+                _.forEach(res.meta, function (meta, idx) {
+                    if (paragraph.columnFilter(meta)) {
+                        paragraph.chartColumns.push({value: idx + 1, label: meta.fieldName});
 
-                _.forEach(res.meta, function (meta) {
-                    columnDefs.push({
-                        headerName: meta.fieldName,
-                        valueGetter: 'JSON.stringify(data[' + idx + '])'
-                    });
-
-                    var col = {value: idx++, label: meta.fieldName};
-
-                    if (paragraph.disabledSystemColumns || _hideColumn(meta))
-                        paragraph.chartColumns.push(col);
+                        columnDefs.push({
+                            headerName: meta.fieldName,
+                            valueGetter: 'JSON.stringify(data[' + (idx) + '])'
+                        });
+                    }
                 });
 
                 paragraph.gridOptions.api.setColumnDefs(columnDefs);
