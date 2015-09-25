@@ -24,12 +24,6 @@ controlCenterModule.controller('sqlController',
     $scope.agentGoal = 'execute sql statements';
     $scope.agentTestDriveOption = '--test-drive-sql';
 
-    var chartSettingsParagraph = null;
-
-    $scope.chartSettingsDragStart = function (paragraph) {
-        chartSettingsParagraph = paragraph;
-    };
-
     $scope.removeKeyColumn = function (paragraph, index) {
         paragraph.chartKeyCols.splice(index, 1);
 
@@ -42,25 +36,38 @@ controlCenterModule.controller('sqlController',
         $scope.applyChartSettings(paragraph);
     };
 
-    function acceptColumn(cols, droppedCol) {
-        var accepted = _.findIndex(cols, function (col) {
-                return col.label == droppedCol.label;
-            }) < 0;
-
-        if (accepted)
-            $timeout(function () {
-                $scope.applyChartSettings(chartSettingsParagraph);
-            });
-
-        return accepted ? droppedCol : false;
+    function acceptableColumn(cols, newCol) {
+        return _.findIndex(cols, function (col) {
+            return col.label == newCol.label;
+        }) < 0;
     }
 
-    $scope.acceptKeyColumn = function(event, index, item, external, type, allowedType) {
-        return acceptColumn(chartSettingsParagraph.chartKeyCols, item);
+    $scope.acceptKeyColumn = function(paragraph, item) {
+        var accepted = acceptableColumn(paragraph.chartKeyCols, item);
+
+        if (accepted) {
+            $timeout(function () {
+                $scope.applyChartSettings(paragraph);
+            });
+
+            paragraph.chartKeyCols = [item];
+        }
+
+        return false;
     };
 
-    $scope.acceptValColumn = function(event, index, item, external, type, allowedType) {
-        return acceptColumn(chartSettingsParagraph.chartValCols, item);
+    $scope.acceptValColumn = function(paragraph, item) {
+        var accepted = acceptableColumn(paragraph.chartValCols, item);
+
+        if (accepted) {
+            $timeout(function () {
+                $scope.applyChartSettings(paragraph);
+            });
+
+            paragraph.chartValCols.push(item);
+        }
+
+        return false;
     };
 
     $scope.joinTip = $common.joinTip;
