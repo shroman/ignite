@@ -133,9 +133,9 @@ block container
                                     .sql-error-result(ng-show='paragraph.errMsg') Error: {{paragraph.errMsg}}
                                 .col-sm-12(ng-show='!paragraph.errMsg && paragraph.result != "none"')
                                     hr(style='margin-top: 0; margin-bottom: 10px')
-                                    .sql-empty-result(ng-show='!paragraph.rows') Result set is empty.
-                                    div(ng-show='paragraph.rows && paragraph.result === "table"')
-                                        .sql-table-total(ng-show='paragraph.rows && paragraph.result === "table"')
+                                    .sql-empty-result(ng-show='!paragraph.nonEmpty()') Result set is empty.
+                                    div(ng-show='paragraph.result === "table" && paragraph.nonEmpty()')
+                                        .sql-table-total
                                             label Page #&nbsp;
                                             b {{paragraph.page}}&nbsp;&nbsp;&nbsp;
                                             label Results so far:&nbsp;

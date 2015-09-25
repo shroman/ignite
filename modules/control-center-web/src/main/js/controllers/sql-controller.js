@@ -322,6 +322,26 @@ controlCenterModule.controller('sqlController',
         return paragraph.disabledSystemColumns || paragraph.systemColumns ? _allColumn : _hideColumn;
     };
 
+    var _rebuildColumns = function (paragraph) {
+        var columnDefs = [];
+
+        _.forEach(res.meta, function (meta, idx) {
+            if (paragraph.columnFilter(meta)) {
+                paragraph.chartColumns.push({value: idx + 1, label: meta.fieldName});
+
+                columnDefs.push({
+                    headerName: meta.fieldName,
+                    valueGetter: 'JSON.stringify(data[' + (idx) + '])'
+                });
+            }
+        });
+
+        paragraph.gridOptions.api.setColumnDefs(columnDefs);
+
+        paragraph.chartKeyCols = _retainColumns(paragraph.chartColumns, paragraph.chartKeyCols, 0);
+        paragraph.chartValCols = _retainColumns(paragraph.chartColumns, paragraph.chartValCols, 1);
+    };
+
     $scope.toggleSystemColumns = function (paragraph) {
         if (paragraph.disabledSystemColumns)
             return;
@@ -330,22 +350,11 @@ controlCenterModule.controller('sqlController',
 
         paragraph.columnFilter = _columnFilter(paragraph);
 
-        var columnDefs = [];
-
-        _.forEach(paragraph.meta, function (meta, idx) {
-            if (paragraph.columnFilter(meta)) {
-                columnDefs.push({
-                    headerName: meta.fieldName,
-                    valueGetter: 'JSON.stringify(data[' + idx + '])'
-                });
-            }
-        });
-
-        paragraph.gridOptions.api.setColumnDefs(columnDefs);
+        _rebuildColumns(paragraph);
 
         setTimeout(function () {
             paragraph.gridOptions.api.sizeColumnsToFit();
-        }, 1);
+        });
     };
 
     function _retainColumns(allCols, curCols, dfltIdx) {
@@ -389,23 +398,7 @@ controlCenterModule.controller('sqlController',
 
                 paragraph.meta = res.meta;
 
-                var columnDefs = [];
-
-                _.forEach(res.meta, function (meta, idx) {
-                    if (paragraph.columnFilter(meta)) {
-                        paragraph.chartColumns.push({value: idx + 1, label: meta.fieldName});
-
-                        columnDefs.push({
-                            headerName: meta.fieldName,
-                            valueGetter: 'JSON.stringify(data[' + (idx) + '])'
-                        });
-                    }
-                });
-
-                paragraph.gridOptions.api.setColumnDefs(columnDefs);
-
-                paragraph.chartKeyCols = _retainColumns(paragraph.chartColumns, paragraph.chartKeyCols, 0);
-                paragraph.chartValCols = _retainColumns(paragraph.chartColumns, paragraph.chartValCols, 1);
+                _rebuildColumns(paragraph)
             }
 
             paragraph.page = 1;
@@ -418,11 +411,13 @@ controlCenterModule.controller('sqlController',
 
             paragraph.rows = res.rows;
 
+            paragraph.gridOptions.api.showLoading(false);
+
             paragraph.gridOptions.api.setRowData(res.rows);
 
             setTimeout(function () {
                 paragraph.gridOptions.api.sizeColumnsToFit();
-            }, 1);
+            });
 
             if (paragraph.result == 'none')
                 paragraph.result = 'table';
@@ -448,6 +443,8 @@ controlCenterModule.controller('sqlController',
 
         paragraph.queryArgs = { query: paragraph.query, pageSize: paragraph.pageSize, cacheName: paragraph.cacheName };
 
+        paragraph.gridOptions.api.showLoading(true);
+
         $http.post('/agent/query', paragraph.queryArgs)
             .success(function (res) {
                 _processQueryResult(paragraph)(res);
@@ -466,6 +463,8 @@ controlCenterModule.controller('sqlController',
 
         _cancelRefresh(paragraph);
 
+        paragraph.gridOptions.api.showLoading(true);
+
         $http.post('/agent/query', {query: 'EXPLAIN ' + paragraph.query, pageSize: paragraph.pageSize, cacheName: paragraph.cacheName})
             .success(_processQueryResult(paragraph))
             .error(function (errMsg) {
@@ -477,6 +476,8 @@ controlCenterModule.controller('sqlController',
         _saveNotebook();
 
         _cancelRefresh(paragraph);
+
+        paragraph.gridOptions.api.showLoading(true);
 
         $http.post('/agent/scan', {pageSize: paragraph.pageSize, cacheName: paragraph.cacheName})
             .success(_processQueryResult(paragraph))
@@ -867,7 +868,7 @@ controlCenterModule.controller('sqlController',
 
             $http.post('/agent/cache/metadata', {cacheName: cache.name})
                 .success(function (metadata) {
-                    cache.metadata = metadata;
+                    cache.metadata = _.sortBy(metadata, 'name');
                 })
                 .error(function (errMsg) {
                     $common.showError(errMsg);
