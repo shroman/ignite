@@ -17,13 +17,13 @@ extends ../templates/layout
 append css
     link(rel='stylesheet', href='//cdnjs.cloudflare.com/ajax/libs/nvd3/1.8.1/nv.d3.css')
 append scripts
-    script(src='/sql-controller.js')
-
-    script(src='//cdnjs.cloudflare.com/ajax/libs/ace/1.2.0/theme-chrome.js')
     script(src='//cdnjs.cloudflare.com/ajax/libs/ace/1.2.0/mode-sql.js')
     script(src='//cdnjs.cloudflare.com/ajax/libs/ace/1.2.0/ext-language_tools.js')
+
     script(src='//cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js')
-    script(src='//cdnjs.cloudflare.com/ajax/libs/nvd3/1.8.1/nv.d3.js')
+    script(src='//cdnjs.cloudflare.com/ajax/libs/nvd3/1.8.1/nv.d3.min.js')
+
+    script(src='/sql-controller.js')
 
 mixin btn-toolbar(btn, click, tip)
     i.btn.btn-default.fa(class=btn ng-click=click bs-tooltip='' data-title=tip data-trigger='hover' data-placement='bottom')
@@ -150,7 +150,8 @@ block container
                                         .chart-settings-link
                                             i.fa.fa-chevron-circle-down
                                             a(ng-show='paragraph.chart' ng-click='$event.stopPropagation()' bs-popover data-template-url='chart-settings' data-placement='bottom' data-auto-close='1' data-trigger='click') Chart settings
-                                        div(id='chart-{{paragraph.id}}')
+                                        div(ng-repeat='chart in paragraph.charts')
+                                            nvd3(options='chart.options' data='chart.data' api='chart.api')
                                     div(ng-show='paragraph.queryId')
                                         hr(style='margin-top: 0; margin-bottom: 5px')
                                         i.fa.fa-chevron-circle-right(style='float: right;margin-right: 10px;' ng-click='nextPage(paragraph)')

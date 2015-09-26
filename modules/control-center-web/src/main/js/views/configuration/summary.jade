@@ -17,15 +17,10 @@
 extends sidebar
 
 append scripts
-    script(src='/summary-controller.js')
-
-    script(src='//cdnjs.cloudflare.com/ajax/libs/ace/1.2.0/theme-chrome.js')
-    script(src='//cdnjs.cloudflare.com/ajax/libs/ace/1.2.0/mode-xml.js')
-    script(src='//cdnjs.cloudflare.com/ajax/libs/ace/1.2.0/mode-java.js')
     script(src='//cdnjs.cloudflare.com/ajax/libs/ace/1.2.0/mode-dockerfile.js')
-    script(src='/generator-docker.js')
 
-append css
+    script(src='/generator-docker.js')
+    script(src='/summary-controller.js')
 
 include ../includes/controls
 

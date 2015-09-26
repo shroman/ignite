@@ -16,7 +16,7 @@
  */
 
 // Controller for Summary screen.
-controlCenterModule.controller('summaryController', [
+consoleModule.controller('summaryController', [
     '$scope', '$http', '$common', '$loading', '$message',
     function ($scope, $http, $common, $loading, $message) {
     $scope.joinTip = $common.joinTip;

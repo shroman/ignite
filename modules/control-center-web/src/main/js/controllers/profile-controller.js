@@ -16,7 +16,7 @@
  */
 
 // Controller for Profile screen.
-controlCenterModule.controller('profileController',
+consoleModule.controller('profileController',
     ['$scope', '$http', '$common', '$focus', '$confirm', function ($scope, $http, $common, $focus, $confirm) {
     $scope.profileUser = angular.copy($scope.user);
 

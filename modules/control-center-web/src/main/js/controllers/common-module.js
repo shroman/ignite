@@ -15,18 +15,18 @@
  * limitations under the License.
  */
 
-var controlCenterModule = angular.module('ignite-web-control-center',
-    ['ngAnimate', 'smart-table', 'mgcrea.ngStrap', 'ui.ace', 'ngSanitize', 'treeControl', 'darthwade.loading', 'agGrid', 'dndLists']);
+var consoleModule = angular.module('ignite-web-console',
+    ['ngAnimate', 'ngSanitize', 'mgcrea.ngStrap', 'smart-table', 'ui.ace', 'treeControl', 'darthwade.loading', 'agGrid', 'nvd3', 'dndLists']);
 
 // Modal popup configuration.
-controlCenterModule.config(function ($modalProvider) {
+consoleModule.config(function ($modalProvider) {
     angular.extend($modalProvider.defaults, {
         html: true
     });
 });
 
 // Comboboxes configuration.
-controlCenterModule.config(function ($popoverProvider) {
+consoleModule.config(function ($popoverProvider) {
     angular.extend($popoverProvider.defaults, {
         trigger: 'manual',
         placement: 'right',
@@ -36,7 +36,7 @@ controlCenterModule.config(function ($popoverProvider) {
 });
 
 // Tooltips configuration.
-controlCenterModule.config(function ($tooltipProvider) {
+consoleModule.config(function ($tooltipProvider) {
     angular.extend($tooltipProvider.defaults, {
         container: 'body',
         delay: 150,
@@ -47,7 +47,7 @@ controlCenterModule.config(function ($tooltipProvider) {
 });
 
 // Comboboxes configuration.
-controlCenterModule.config(function ($selectProvider) {
+consoleModule.config(function ($selectProvider) {
     angular.extend($selectProvider.defaults, {
         container: 'body',
         maxLength: '5',
@@ -60,7 +60,7 @@ controlCenterModule.config(function ($selectProvider) {
 });
 
 // Alerts configuration.
-controlCenterModule.config(function ($alertProvider) {
+consoleModule.config(function ($alertProvider) {
     angular.extend($alertProvider.defaults, {
         container: 'body',
         placement: 'top-right',
@@ -70,14 +70,14 @@ controlCenterModule.config(function ($alertProvider) {
 });
 
 // Modals configuration.
-controlCenterModule.config(function($modalProvider) {
+consoleModule.config(function($modalProvider) {
     angular.extend($modalProvider.defaults, {
         animation: 'am-fade-and-scale'
     });
 });
 
 // Common functions to be used in controllers.
-controlCenterModule.service('$common', [
+consoleModule.service('$common', [
     '$alert', '$popover', '$timeout', '$focus', '$window', function ($alert, $popover, $timeout, $focus, $window) {
         function isDefined(v) {
             return !(v === undefined || v === null);
@@ -857,7 +857,7 @@ controlCenterModule.service('$common', [
     }]);
 
 // Confirm popup service.
-controlCenterModule.service('$confirm', function ($modal, $rootScope, $q) {
+consoleModule.service('$confirm', function ($modal, $rootScope, $q) {
     var scope = $rootScope.$new();
 
     var deferred;
@@ -896,7 +896,7 @@ controlCenterModule.service('$confirm', function ($modal, $rootScope, $q) {
 });
 
 // Show modal message service.
-controlCenterModule.service('$message', function ($modal, $rootScope) {
+consoleModule.service('$message', function ($modal, $rootScope) {
     var scope = $rootScope.$new();
 
     var messageModal = $modal({templateUrl: '/message', scope: scope, placement: 'center', show: false});
@@ -912,7 +912,7 @@ controlCenterModule.service('$message', function ($modal, $rootScope) {
 });
 
 // Confirm change location.
-controlCenterModule.service('$unsavedChangesGuard', function () {
+consoleModule.service('$unsavedChangesGuard', function () {
     return {
         install: function ($scope) {
             $scope.$on("$destroy", function() {
@@ -930,7 +930,7 @@ controlCenterModule.service('$unsavedChangesGuard', function () {
 
 
 // Service for confirm or skip several steps.
-controlCenterModule.service('$confirmBatch', function ($rootScope, $modal,  $q) {
+consoleModule.service('$confirmBatch', function ($rootScope, $modal,  $q) {
     var scope = $rootScope.$new();
 
     var contentGenerator = function () {
@@ -1015,7 +1015,7 @@ controlCenterModule.service('$confirmBatch', function ($rootScope, $modal,  $q) 
 });
 
 // 'Clone' popup service.
-controlCenterModule.service('$clone', function ($modal, $rootScope, $q) {
+consoleModule.service('$clone', function ($modal, $rootScope, $q) {
     var scope = $rootScope.$new();
 
     var deferred;
@@ -1042,7 +1042,7 @@ controlCenterModule.service('$clone', function ($modal, $rootScope, $q) {
 });
 
 // Tables support service.
-controlCenterModule.service('$table', ['$common', '$focus', function ($common, $focus) {
+consoleModule.service('$table', ['$common', '$focus', function ($common, $focus) {
     function _swapSimpleItems(a, ix1, ix2) {
         var tmp = a[ix1];
 
@@ -1265,7 +1265,7 @@ controlCenterModule.service('$table', ['$common', '$focus', function ($common, $
 }]);
 
 // Preview support service.
-controlCenterModule.service('$preview', ['$timeout', '$interval', function ($timeout, $interval) {
+consoleModule.service('$preview', ['$timeout', '$interval', function ($timeout, $interval) {
     var Range = require('ace/range').Range;
 
     var prevContent = [];
@@ -1481,7 +1481,7 @@ controlCenterModule.service('$preview', ['$timeout', '$interval', function ($tim
     }
 }]);
 
-controlCenterModule.service('ngCopy', ['$window', '$common', function ($window, $common) {
+consoleModule.service('ngCopy', ['$window', '$common', function ($window, $common) {
     var body = angular.element($window.document.body);
 
     var textArea = angular.element('<textarea/>');
@@ -1521,7 +1521,7 @@ controlCenterModule.service('ngCopy', ['$window', '$common', function ($window, 
 }]);
 
 // Filter to decode name using map(value, label).
-controlCenterModule.filter('displayValue', function () {
+consoleModule.filter('displayValue', function () {
     return function (v, m, dflt) {
         var i = _.findIndex(m, function (item) {
             return item.value == v;
@@ -1539,7 +1539,7 @@ controlCenterModule.filter('displayValue', function () {
     }
 });
 
-controlCenterModule.filter('clustersSearch', function() {
+consoleModule.filter('clustersSearch', function() {
     var discoveries = {
         'Vm': 'static ips',
         'Multicast': 'multicast',
@@ -1569,7 +1569,7 @@ controlCenterModule.filter('clustersSearch', function() {
     }
 });
 
-controlCenterModule.filter('cachesSearch', function() {
+consoleModule.filter('cachesSearch', function() {
     return function(array, query) {
         if (!angular.isUndefined(array) && !angular.isUndefined(query) && !angular.isUndefined(query.$)) {
             var filtredArray = [];
@@ -1589,7 +1589,7 @@ controlCenterModule.filter('cachesSearch', function() {
     }
 });
 
-controlCenterModule.filter('metadatasSearch', function() {
+consoleModule.filter('metadatasSearch', function() {
     return function(array, query) {
         if (!angular.isUndefined(array) && !angular.isUndefined(query) && !angular.isUndefined(query.$)) {
             var filtredArray = [];
@@ -1608,7 +1608,7 @@ controlCenterModule.filter('metadatasSearch', function() {
 });
 
 // Directive to enable validation for IP addresses.
-controlCenterModule.directive('ipaddress', function () {
+consoleModule.directive('ipaddress', function () {
     const ip = '(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])';
     const port = '([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])';
     const portRange = '(:' + port + '(..' + port + ')?)?';
@@ -1628,7 +1628,7 @@ controlCenterModule.directive('ipaddress', function () {
 });
 
 // Directive to enable validation to match specified value.
-controlCenterModule.directive('match', function ($parse) {
+consoleModule.directive('match', function ($parse) {
     return {
         require: 'ngModel',
         link: function (scope, elem, attrs, ctrl) {
@@ -1642,7 +1642,7 @@ controlCenterModule.directive('match', function ($parse) {
 });
 
 // Directive to bind ENTER key press with some user action.
-controlCenterModule.directive('onEnter', function ($timeout) {
+consoleModule.directive('onEnter', function ($timeout) {
     return function (scope, elem, attrs) {
         elem.on('keydown keypress', function (event) {
             if (event.which === 13) {
@@ -1664,7 +1664,7 @@ controlCenterModule.directive('onEnter', function ($timeout) {
 });
 
 // Directive to bind ESC key press with some user action.
-controlCenterModule.directive('onEscape', function () {
+consoleModule.directive('onEscape', function () {
     return function (scope, elem, attrs) {
         elem.on('keydown keypress', function (event) {
             if (event.which === 27) {
@@ -1684,7 +1684,7 @@ controlCenterModule.directive('onEscape', function () {
 });
 
 // Directive to retain selection. To fix angular-strap typeahead bug with setting cursor to the end of text.
-controlCenterModule.directive('retainSelection', function ($timeout) {
+consoleModule.directive('retainSelection', function ($timeout) {
     var promise;
 
     return function (scope, elem, attr) {
@@ -1735,7 +1735,7 @@ controlCenterModule.directive('retainSelection', function ($timeout) {
 });
 
 // Factory function to focus element.
-controlCenterModule.factory('$focus', function ($timeout) {
+consoleModule.factory('$focus', function ($timeout) {
     return function (id) {
         // Timeout makes sure that is invoked after any other event has been triggered.
         // E.g. click events that need to run before the focus or inputs elements that are
@@ -1765,7 +1765,7 @@ controlCenterModule.factory('$focus', function ($timeout) {
 });
 
 // Directive to auto-focus element.
-controlCenterModule.directive('autoFocus', function($timeout) {
+consoleModule.directive('autoFocus', function($timeout) {
     return {
         restrict: 'AC',
         link: function(scope, element) {
@@ -1777,7 +1777,7 @@ controlCenterModule.directive('autoFocus', function($timeout) {
 });
 
 // Directive to focus next element on ENTER key.
-controlCenterModule.directive('enterFocusNext', function ($focus) {
+consoleModule.directive('enterFocusNext', function ($focus) {
     return function (scope, elem, attrs) {
         elem.on('keydown keypress', function (event) {
             if (event.which === 13) {
@@ -1790,7 +1790,7 @@ controlCenterModule.directive('enterFocusNext', function ($focus) {
 });
 
 // Directive to mark elements to focus.
-controlCenterModule.directive('onClickFocus', function ($focus) {
+consoleModule.directive('onClickFocus', function ($focus) {
     return function (scope, elem, attr) {
         elem.on('click', function () {
             $focus(attr.onClickFocus);
@@ -1804,7 +1804,7 @@ controlCenterModule.directive('onClickFocus', function ($focus) {
 });
 
 // Navigation bar controller.
-controlCenterModule.controller('activeLink', [
+consoleModule.controller('activeLink', [
     '$scope', function ($scope) {
         $scope.isActive = function (path) {
             return window.location.pathname.substr(0, path.length) == path;
@@ -1812,7 +1812,7 @@ controlCenterModule.controller('activeLink', [
     }]);
 
 // Login popup controller.
-controlCenterModule.controller('auth', [
+consoleModule.controller('auth', [
     '$scope', '$modal', '$http', '$window', '$common', '$focus',
     function ($scope, $modal, $http, $window, $common, $focus) {
         $scope.action = 'login';
@@ -1867,7 +1867,7 @@ controlCenterModule.controller('auth', [
     }]);
 
 // Download agent controller.
-controlCenterModule.controller('agent-download', [
+consoleModule.controller('agent-download', [
     '$scope', '$modal', function ($scope, $modal) {
         // Pre-fetch modal dialogs.
         var _agentDownloadModal = $modal({scope: $scope, templateUrl: '/agent/download', show: false});
@@ -1893,7 +1893,7 @@ controlCenterModule.controller('agent-download', [
     }]);
 
 // Navigation bar controller.
-controlCenterModule.controller('notebooks', ['$scope', '$modal', '$window', '$http', '$common',
+consoleModule.controller('notebooks', ['$scope', '$modal', '$window', '$http', '$common',
     function ($scope, $modal, $window, $http, $common) {
     $scope.$root.notebooks = [];
 
@@ -1948,6 +1948,6 @@ controlCenterModule.controller('notebooks', ['$scope', '$modal', '$window', '$ht
 }]);
 
 // Navigation bar controller.
-controlCenterModule.controller('save-remove', ['$scope', function ($scope) {
+consoleModule.controller('save-remove', ['$scope', function ($scope) {
     $scope.removeDropdown = [{ 'text': 'Remove All', 'click': 'removeAllItems()'}];
 }]);

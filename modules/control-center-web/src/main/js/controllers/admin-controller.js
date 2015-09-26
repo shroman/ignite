@@ -16,7 +16,7 @@
  */
 
 // Controller for Admin screen.
-controlCenterModule.controller('adminController',
+consoleModule.controller('adminController',
     ['$scope', '$window', '$http', '$common', '$confirm',
     function ($scope, $window, $http, $common, $confirm) {
     $scope.users = null;

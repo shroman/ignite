@@ -16,7 +16,7 @@
  */
 
 // Controller for Metadata screen.
-controlCenterModule.controller('metadataController', [
+consoleModule.controller('metadataController', [
     '$scope', '$controller', '$http', '$modal', '$common', '$timeout', '$focus', '$confirm', '$confirmBatch', '$message', '$clone', '$table', '$preview', '$loading', '$unsavedChangesGuard',
     function ($scope, $controller, $http, $modal, $common, $timeout, $focus, $confirm, $confirmBatch, $message, $clone, $table, $preview, $loading, $unsavedChangesGuard) {
             $unsavedChangesGuard.install($scope);

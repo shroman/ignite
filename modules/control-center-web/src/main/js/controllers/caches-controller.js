@@ -16,7 +16,7 @@
  */
 
 // Controller for Caches screen.
-controlCenterModule.controller('cachesController', [
+consoleModule.controller('cachesController', [
     '$scope', '$controller', '$http', '$timeout', '$common', '$focus', '$confirm', '$message', '$clone', '$table', '$preview', '$loading', '$unsavedChangesGuard',
     function ($scope, $controller, $http, $timeout, $common, $focus, $confirm, $message, $clone, $table, $preview, $loading, $unsavedChangesGuard) {
             $unsavedChangesGuard.install($scope);

@@ -16,7 +16,7 @@
  */
 
 // Controller for Clusters screen.
-controlCenterModule.controller('clustersController', [
+consoleModule.controller('clustersController', [
     '$scope', '$controller', '$http', '$timeout', '$common', '$focus', '$confirm', '$message', '$clone', '$table', '$preview', '$loading', '$unsavedChangesGuard',
     function ($scope, $controller, $http, $timeout, $common, $focus, $confirm, $message, $clone, $table, $preview, $loading, $unsavedChangesGuard) {
         $unsavedChangesGuard.install($scope);

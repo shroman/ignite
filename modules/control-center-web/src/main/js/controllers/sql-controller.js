@@ -16,7 +16,7 @@
  */
 
 // Controller for SQL notebook screen.
-controlCenterModule.controller('sqlController',
+consoleModule.controller('sqlController',
     ['$scope', '$window','$controller', '$http', '$timeout', '$common', '$confirm', '$interval', '$popover', '$loading',
     function ($scope, $window, $controller, $http, $timeout, $common, $confirm, $interval, $popover, $loading) {
     // Initialize the super class and extend it.
@@ -29,47 +29,43 @@ controlCenterModule.controller('sqlController',
     $scope.agentGoal = 'execute sql statements';
     $scope.agentTestDriveOption = '--test-drive-sql';
 
-    $scope.removeKeyColumn = function (paragraph, index) {
+    $scope.chartRemoveKeyColumn = function (paragraph, index) {
         paragraph.chartKeyCols.splice(index, 1);
 
-        $scope.applyChartSettings(paragraph);
+        _chartApplySettings(paragraph, true);
     };
 
-    $scope.removeValColumn = function (paragraph, index) {
+    $scope.chartRemoveValColumn = function (paragraph, index) {
         paragraph.chartValCols.splice(index, 1);
 
-        $scope.applyChartSettings(paragraph);
+        _chartApplySettings(paragraph, true);
     };
 
-    function acceptableColumn(cols, newCol) {
+    function _chartAcceptableColumn(cols, newCol) {
         return _.findIndex(cols, function (col) {
             return col.label == newCol.label;
         }) < 0;
     }
 
-    $scope.acceptKeyColumn = function(paragraph, item) {
-        var accepted = acceptableColumn(paragraph.chartKeyCols, item);
+    $scope.chartAcceptKeyColumn = function(paragraph, item) {
+        var accepted = _chartAcceptableColumn(paragraph.chartKeyCols, item);
 
         if (accepted) {
-            $timeout(function () {
-                $scope.applyChartSettings(paragraph);
-            });
-
             paragraph.chartKeyCols = [item];
+
+            _chartApplySettings(paragraph, true);
         }
 
         return false;
     };
 
-    $scope.acceptValColumn = function(paragraph, item) {
-        var accepted = acceptableColumn(paragraph.chartValCols, item) && item.label != TIME_LINE;
+    $scope.chartAcceptValColumn = function(paragraph, item) {
+        var accepted = _chartAcceptableColumn(paragraph.chartValCols, item) && item.label != TIME_LINE;
 
         if (accepted) {
-            $timeout(function () {
-                $scope.applyChartSettings(paragraph);
-            });
-
             paragraph.chartValCols.push(item);
+
+            _chartApplySettings(paragraph, true);
         }
 
         return false;
@@ -295,7 +291,7 @@ controlCenterModule.controller('sqlController',
         paragraph.result = paragraph.result === new_result ? 'none' : new_result;
 
         if (changed && paragraph.chart())
-            $scope.applyChartSettings(paragraph);
+            _chartApplySettings(paragraph, changed);
     };
 
     $scope.resultEq = function(paragraph, result) {
@@ -447,7 +443,7 @@ controlCenterModule.controller('sqlController',
             if (paragraph.result == 'none')
                 paragraph.result = 'table';
             else if (paragraph.chart())
-                $scope.applyChartSettings(paragraph);
+                _chartApplySettings(paragraph);
         }
     };
 
@@ -745,41 +741,10 @@ controlCenterModule.controller('sqlController',
         return col.label;
     }
 
-    function _insertChart(paragraph, datum, chart, remove) {
-        var chartId = 'chart-' + paragraph.id;
+    function _chartApplySettings(paragraph, resetCharts) {
+        if (resetCharts)
+            paragraph.charts = [];
 
-        var xAxisLabel = 'X';
-        var yAxisLabel = 'Y';
-
-        if (paragraph.chartColumnsConfigured()) {
-            xAxisLabel = _.map(paragraph.chartKeyCols, _colLabel).join(', ');
-            yAxisLabel = _.map(paragraph.chartValCols, _colLabel).join(', ');
-        }
-
-        $timeout(function() {
-            if (remove)
-                d3.select('#' + chartId).selectAll('*').remove();
-
-            if (chart.xAxis)
-                chart.xAxis.axisLabel(xAxisLabel);
-
-            if (chart.yAxis) {
-                chart.yAxis.axisLabel(yAxisLabel);
-                chart.yAxis.tickFormat(d3.format(',.2f'));
-            }
-
-            // Insert new chart.
-            d3.select('#' + chartId)
-                .append('svg')
-                .datum(datum)
-                .call(chart)
-                .attr('height', 400);
-
-            chart.update();
-        });
-    }
-
-    $scope.applyChartSettings = function (paragraph) {
         if (paragraph.chart() && paragraph.nonEmpty()) {
             switch (paragraph.result) {
                 case 'bar':
@@ -799,7 +764,7 @@ controlCenterModule.controller('sqlController',
                     break;
             }
         }
-    };
+    }
 
     function _xLbl(d) {
         return d.lbl;
@@ -809,16 +774,40 @@ controlCenterModule.controller('sqlController',
         return d.val;
     }
 
-    function _barChart(paragraph) {
-        nv.addGraph(function() {
-            var chart = nv.models.multiBarChart()
-                .showControls(true) //Allow user to switch between 'Grouped' and 'Stacked' mode.
-                .x(_xLbl)
-                .y(_yVal)
-                .margin({left: 70});
+    function _chartAxisLabel(cols, dflt) {
+        return $common.isEmptyArray(cols) ? dflt : _.map(cols, _colLabel).join(', ');
+    }
 
-            _insertChart(paragraph, _chartDatumLblNum(paragraph), chart, true);
-        });
+    function _barChart(paragraph) {
+        var data = _chartDatumLblNum(paragraph);
+
+        if ($common.isEmptyArray(paragraph.charts)) {
+            var options = {
+                chart: {
+                    type: 'multiBarChart',
+                    height: 400,
+                    margin: {left: 70},
+                    x: _xLbl,
+                    y: _yVal,
+                    xAxis: {
+                        axisLabel:  _chartAxisLabel(paragraph.chartKeyCols, 'X')
+                    },
+                    yAxis: {
+                        axisLabel:  _chartAxisLabel(paragraph.chartValCols, 'Y'),
+                        tickFormat: d3.format(',.2f')
+                    },
+                    showControls: true
+                }
+            };
+
+            paragraph.charts = [{options: options, data: data}];
+
+            $timeout(function () {
+                paragraph.charts[0].api.update();
+            })
+        }
+        else
+            paragraph.charts[0].api.updateWithData(data);
     }
 
     function _pieChart(paragraph) {
@@ -827,29 +816,32 @@ controlCenterModule.controller('sqlController',
         if (datum.length == 0)
             datum = [{key: 'No data', values: []}];
 
-        var first = true;
-
-        datum.forEach(function (d) {
-            nv.addGraph(function() {
-                var chart = nv.models.pieChart()
-                    .x(_xLbl)
-                    .y(_yVal)
-                    .showLabels(true)
-                    .labelThreshold(.05)
-                    .labelType('percent')
-                    .donut(true)
-                    .donutRatio(0.35);
-
-                var datum = [];
-
-                if (paragraph.chartColumnsConfigured())
-                    datum = paragraph.rows;
-
-                _insertChart(paragraph, d.values, chart, first);
-
-                first = false;
-            });
+        paragraph.charts = _.map(datum, function (data) {
+            return {
+                options: {
+                    chart: {
+                        type: 'pieChart',
+                        height: 400,
+                        x: _xLbl,
+                        y: _yVal,
+                        showLabels: true,
+                        labelThreshold: 0.05,
+                        labelType: 'percent',
+                        donut: true,
+                        donutRatio: 0.35
+                    },
+                    title: {
+                        enable: true,
+                        text: data.key
+                    }
+                },
+                data: data.values
+            }
         });
+
+        $timeout(function () {
+            paragraph.charts[0].api.update();
+        })
     }
 
     function _xX(d) {
@@ -860,31 +852,73 @@ controlCenterModule.controller('sqlController',
         return d.y;
     }
 
+    function _chartTimeTickFormat(d) {
+        return d3.time.format('%X')(new Date(d));
+    }
+
     function _lineChart(paragraph) {
-        nv.addGraph(function() {
-            var chart = nv.models.lineChart()
-                .useInteractiveGuideline(true)
-                .x(_xX)
-                .y(_yY)
-                .margin({left: 70});
+        var data = _chartDatumNumNum(paragraph);
 
-            chart.xAxis.tickFormat(d3.format(',.2f'));
+        if ($common.isEmptyArray(paragraph.charts)) {
+            var options = {
+                chart: {
+                    type: 'lineChart',
+                    height: 400,
+                    margin: {left: 70},
+                    x: _xX,
+                    y: _yY,
+                    xAxis: {
+                        axisLabel:  _chartAxisLabel(paragraph.chartKeyCols, 'X'),
+                        tickFormat: paragraph.chartTimeLineEnabled() ? _chartTimeTickFormat : d3.format(',.2f')
+                    },
+                    yAxis: {
+                        axisLabel:  _chartAxisLabel(paragraph.chartValCols, 'Y'),
+                        tickFormat: d3.format(',.2f')
+                    },
+                    useInteractiveGuideline: true
+                }
+            };
 
-            _insertChart(paragraph, _chartDatumNumNum(paragraph), chart, true);
-        });
+            paragraph.charts = [{options: options, data: data}];
+
+            $timeout(function () {
+                paragraph.charts[0].api.update();
+            })
+        }
+        else
+            paragraph.charts[0].api.updateWithData(data);
     }
 
     function _areaChart(paragraph) {
-        nv.addGraph(function() {
-            var chart = nv.models.stackedAreaChart()
-                .x(_xX)
-                .y(_yY)
-                .margin({left: 70});
+        var data = _chartDatumNumNum(paragraph);
 
-            chart.xAxis.tickFormat(d3.format(',.2f'));
+        if ($common.isEmptyArray(paragraph.charts)) {
+            var options = {
+                chart: {
+                    type: 'stackedAreaChart',
+                    height: 400,
+                    margin: {left: 70},
+                    x: _xX,
+                    y: _yY,
+                    xAxis: {
+                        axisLabel:  _chartAxisLabel(paragraph.chartKeyCols, 'X'),
+                        tickFormat: paragraph.chartTimeLineEnabled() ? _chartTimeTickFormat : d3.format(',.2f')
+                    },
+                    yAxis: {
+                        axisLabel:  _chartAxisLabel(paragraph.chartValCols, 'Y'),
+                        tickFormat: d3.format(',.2f')
+                    }
+                }
+            };
 
-            _insertChart(paragraph, _chartDatumNumNum(paragraph), chart, true);
-        });
+            paragraph.charts = [{options: options, data: data}];
+
+            $timeout(function () {
+                paragraph.charts[0].api.update();
+            })
+        }
+        else
+            paragraph.charts[0].api.updateWithData(data);
     }
 
     $scope.actionAvailable = function (paragraph, needQuery) {
