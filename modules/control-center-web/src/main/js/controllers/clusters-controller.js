@@ -97,7 +97,8 @@ consoleModule.controller('clustersController', [
             swap: {xml: '', java: '', allDefaults: true},
             time: {xml: '', java: '', allDefaults: true},
             pools: {xml: '', java: '', allDefaults: true},
-            transactions: {xml: '', java: '', allDefaults: true}
+            transactions: {xml: '', java: '', allDefaults: true},
+            sslConfiguration: {xml: '', java: '', allDefaults: true}
         };
 
         $scope.cacheModes = $common.mkOptions(['LOCAL', 'REPLICATED', 'PARTITIONED']);
@@ -111,6 +112,12 @@ consoleModule.controller('clustersController', [
         $scope.segmentationPolicy = $common.mkOptions(['RESTART_JVM', 'STOP', 'NOOP']);
 
         $scope.marshallers = $common.mkOptions(['OptimizedMarshaller', 'JdkMarshaller']);
+
+        $scope.sslKeyAlgorithms = ['SumX509', 'X509'];
+
+        $scope.sslStoreType = ['JKS', 'PCKS11', 'PCKS12'];
+
+        $scope.sslProtocols = ['TSL', 'SSL'];
 
         $scope.toggleExpanded = function () {
             $scope.ui.expanded = !$scope.ui.expanded;
@@ -259,6 +266,10 @@ consoleModule.controller('clustersController', [
                                 $scope.preview.transactions.xml = $generatorXml.clusterTransactions(val).asString();
                                 $scope.preview.transactions.java = $generatorJava.clusterTransactions(val).asString();
                                 $scope.preview.transactions.allDefaults = $common.isEmptyString($scope.preview.transactions.xml);
+
+                                $scope.preview.sslConfiguration.xml = $generatorXml.clusterSsl(val).asString();
+                                $scope.preview.sslConfiguration.java = $generatorJava.clusterSsl(val).asString();
+                                $scope.preview.sslConfiguration.allDefaults = $common.isEmptyString($scope.preview.sslConfiguration.xml);
                             }
                         }, true);
                     })

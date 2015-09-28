@@ -317,6 +317,21 @@ $generatorCommon.TRANSACTION_CONFIGURATION = {
     }
 };
 
+// SSL configuration code generation descriptor.
+$generatorCommon.SSL_CONFIGURATION_FACTORY = {
+    className: 'org.apache.ignite.ssl.SslContextFactory',
+    fields: {
+        keyAlgorithm: null,
+        keyStoreFilePath: {type: 'path'},
+        keyStorePassword: {type: 'raw'},
+        keyStoreType: null,
+        protocol: null,
+        trustStoreFilePath: {type: 'path'},
+        keyTrustPassword: {type: 'raw'},
+        trustStoreType: null,
+    }
+};
+
 // For server side we should export Java code generation entry point.
 if (typeof window === 'undefined') {
     module.exports = $generatorCommon;

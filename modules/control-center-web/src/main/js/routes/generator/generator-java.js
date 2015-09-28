@@ -38,6 +38,9 @@ $generatorJava.toJavaCode = function (val, type) {
     if (val == null)
         return 'null';
 
+    if (type == 'raw')
+        return val;
+
     if (type == 'class')
         return val + '.class';
 
@@ -257,6 +260,10 @@ $generatorJava.beanProperty = function (res, varName, bean, beanPropName, beanVa
 
                         case 'path':
                             $generatorJava.property(res, beanVarName, bean, propName, 'path', descr.setterName);
+                            break;
+
+                        case 'raw':
+                            $generatorJava.property(res, beanVarName, bean, propName, 'raw', descr.setterName);
                             break;
 
                         case 'propertiesAsList':
@@ -1385,6 +1392,31 @@ $generatorJava.javaTypeName = function(type) {
 };
 
 /**
+ * Java code generator for cluster's SSL configuration.
+ *
+ * @param cluster Cluster to get SSL configuration.
+ * @param res Optional configuration presentation builder object.
+ * @returns Configuration presentation builder object
+ */
+$generatorJava.clusterSsl = function(cluster, res) {
+    if (!res)
+        res = $generatorCommon.builder();
+
+    if (cluster.sslEnabled && $commonUtils.isDefined(cluster.sslContextFactory)) {
+        cluster.sslContextFactory.keyStorePassword =
+            ($commonUtils.isDefinedAndNotEmpty(cluster.sslContextFactory.keyStoreFilePath)) ? '_Key_Storage_Password_' : undefined;
+
+        cluster.sslContextFactory.keyTrustPassword = ($commonUtils.isDefinedAndNotEmpty(cluster.sslContextFactory.trustStoreFilePath)) ?
+            '_Trust_Storage_Password_' : undefined;
+
+        $generatorJava.beanProperty(res, 'cfg', cluster.sslContextFactory, 'sslContextFactory', 'sslContextFactory',
+            'org.apache.ignite.ssl.SslContextFactory', $generatorCommon.SSL_CONFIGURATION_FACTORY.fields, false);
+    }
+
+    return res;
+}
+
+/**
  * Function to generate java code for cluster configuration.
  *
  * @param cluster Cluster to process.
@@ -1431,6 +1463,8 @@ $generatorJava.cluster = function (cluster, javaClass, clientNearCfg) {
         $generatorJava.clusterTransactions(cluster, res);
 
         $generatorJava.clusterCaches(cluster.caches, res);
+
+        $generatorJava.clusterSsl(cluster, res);
 
         if (javaClass) {
             res.line('return cfg;');

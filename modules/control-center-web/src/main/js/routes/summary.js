@@ -65,14 +65,16 @@ router.post('/download', function (req, res) {
         // Send the file to the page output.
         zip.pipe(res);
 
+        var builder = $generatorProperties.sslProperties(cluster);
+
         if (!clientNearConfiguration) {
             zip.append($generatorDocker.clusterDocker(cluster, req.body.os), {name: 'Dockerfile'});
 
-            var props = $generatorProperties.dataSourcesProperties(cluster);
-
-            if (props)
-                zip.append(props, {name: 'secret.properties'});
+            builder = $generatorProperties.dataSourcesProperties(cluster, builder);
         }
+
+        if (builder)
+            zip.append(builder.asString(), {name: 'secret.properties'});
 
         zip.append($generatorXml.cluster(cluster, clientNearConfiguration), {name: cluster.name + '.xml'})
             .append($generatorJava.cluster(cluster, false, clientNearConfiguration),

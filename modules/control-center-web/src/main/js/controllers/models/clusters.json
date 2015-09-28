@@ -990,6 +990,100 @@
           ]
         }
       ]
+    },
+    {
+      "label": "SSL configuration",
+      "group": "sslConfiguration",
+      "tip": [
+        "Settings for SSL configuration"
+      ],
+      "fields": [
+        {
+          "label": "Enabled",
+          "id": "sslEnabled",
+          "type": "check",
+          "model": "sslEnabled",
+          "tip": [
+            "Flag indicating whether to configure SSL configuration"
+          ]
+        },
+        {
+          "label": "Algorithm to create a key manager",
+          "id": "keyAlgorithm",
+          "type": "typeahead",
+          "path": "sslContextFactory",
+          "model": "keyAlgorithm",
+          "placeholder": "SumX509",
+          "items": "sslKeyAlgorithms",
+          "hide": "!backupItem.sslEnabled",
+          "tip": [
+            "Sets key manager algorithm that will be used to create a key manager",
+            "Notice that in most cased default value suites well, however, on Android platform this value need to be set to X509"
+          ]
+        },
+        {
+          "label": "Key store file",
+          "id": "keyStoreFilePath",
+          "type": "text",
+          "path": "sslContextFactory",
+          "model": "keyStoreFilePath",
+          "hide": "!backupItem.sslEnabled",
+          "tip": [
+            "Path to the key store file",
+            "This is a mandatory parameter since ssl context could not be initialized without key manager"
+          ]
+        },
+        {
+          "label": "Key store type",
+          "id": "keyStoreType",
+          "type": "typeahead",
+          "path": "sslContextFactory",
+          "model": "keyStoreType",
+          "placeholder": "JKS",
+          "items": "sslStoreType",
+          "hide": "!backupItem.sslEnabled",
+          "tip": [
+            "Key store type used in context initialization"
+          ]
+        },
+        {
+          "label": "Protocol",
+          "id": "protocol",
+          "type": "typeahead",
+          "path": "sslContextFactory",
+          "model": "protocol",
+          "placeholder": "TSL",
+          "items": "sslProtocols",
+          "hide": "!backupItem.sslEnabled",
+          "tip": [
+            "Protocol for secure transport"
+          ]
+        },
+        {
+          "label": "Trust store file",
+          "id": "trustStoreFilePath",
+          "type": "text",
+          "path": "sslContextFactory",
+          "model": "trustStoreFilePath",
+          "hide": "!backupItem.sslEnabled",
+          "tip": [
+            "Path to the trust store file"
+          ]
+        },
+        {
+          "label": "Trust store type",
+          "id": "trustStoreType",
+          "type": "typeahead",
+          "path": "sslContextFactory",
+          "model": "trustStoreType",
+          "placeholder": "JKS",
+          "items": "sslStoreType",
+          "hide": "!backupItem.sslEnabled",
+          "tip": [
+            "Trust store type used in context initialization"
+          ]
+        }
+      ]
     }
   ]
 }

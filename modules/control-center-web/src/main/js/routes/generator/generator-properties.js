@@ -31,9 +31,7 @@ $generatorProperties = {};
  * @param cluster Configuration to process.
  * @returns {string} Generated content.
  */
-$generatorProperties.dataSourcesProperties = function (cluster) {
-    var res = $generatorCommon.builder();
-
+$generatorProperties.dataSourcesProperties = function (cluster, res) {
     var datasources = [];
 
     if (cluster.caches && cluster.caches.length > 0) {
@@ -47,6 +45,14 @@ $generatorProperties.dataSourcesProperties = function (cluster) {
                     if (!_.contains(datasources, beanId)) {
                         datasources.push(beanId);
 
+                        if (!res) {
+                            res = $generatorCommon.builder();
+
+                            res.line('# ' + $generatorCommon.mainComment());
+                        }
+
+                        res.needEmptyLine = true;
+
                         switch (storeFactory.dialect) {
                             case 'DB2':
                                 res.line(beanId + '.jdbc.server_name=YOUR_JDBC_SERVER_NAME');
@@ -58,6 +64,7 @@ $generatorProperties.dataSourcesProperties = function (cluster) {
                             default:
                                 res.line(beanId + '.jdbc.url=YOUR_JDBC_URL');
                         }
+
                         res.line(beanId + '.jdbc.username=YOUR_USER_NAME');
                         res.line(beanId + '.jdbc.password=YOUR_PASSWORD');
                         res.line();
@@ -67,11 +74,35 @@ $generatorProperties.dataSourcesProperties = function (cluster) {
         });
     }
 
-    if (datasources.length > 0)
-        return '# ' + $generatorCommon.mainComment() + '\n\n' + res.join('\n');
-
-    return undefined;
+    return res;
 };
+
+/**
+ * Generate properties file with properties stubs for cluster SSL configuration.
+ *
+ * @param cluster Cluster to get SSL configuration.
+ * @param res Optional configuration presentation builder object.
+ * @returns Configuration presentation builder object
+ */
+$generatorProperties.sslProperties = function (cluster, res) {
+    if (cluster.sslEnabled && cluster.sslContextFactory) {
+        if (!res) {
+            res = $generatorCommon.builder();
+
+            res.line('# ' + $generatorCommon.mainComment());
+        }
+
+        res.needEmptyLine = true;
+
+        if ($commonUtils.isDefinedAndNotEmpty(cluster.sslContextFactory.keyStoreFilePath))
+            res.line('ssl.key.storage.password=YOUR_SSL_KEY_STORAGE_PASSWORD');
+
+        if ($commonUtils.isDefinedAndNotEmpty(cluster.sslContextFactory.trustStoreFilePath))
+            res.line('ssl.trust.storage.password=YOUR_SSL_TRUST_STORAGE_PASSWORD');
+    }
+
+    return res;
+}
 
 // For server side we should export properties generation entry point.
 if (typeof window === 'undefined') {

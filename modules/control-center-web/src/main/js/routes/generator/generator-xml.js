@@ -536,6 +536,30 @@ $generatorXml.clusterTransactions = function (cluster, res) {
     return res;
 };
 
+/**
+ * XML generator for cluster's SSL configuration.
+ *
+ * @param cluster Cluster to get SSL configuration.
+ * @param res Optional configuration presentation builder object.
+ * @returns Configuration presentation builder object
+ */
+$generatorXml.clusterSsl = function(cluster, res) {
+    if (!res)
+        res = $generatorCommon.builder();
+
+    if (cluster.sslEnabled && $commonUtils.isDefined(cluster.sslContextFactory)) {
+        cluster.sslContextFactory.keyStorePassword =
+            ($commonUtils.isDefinedAndNotEmpty(cluster.sslContextFactory.keyStoreFilePath)) ? '${ssl.key.storage.password}' : undefined;
+
+        cluster.sslContextFactory.keyTrustPassword =
+            ($commonUtils.isDefinedAndNotEmpty(cluster.sslContextFactory.trustStoreFilePath)) ? '${ssl.trust.storage.password}' : undefined;
+
+        $generatorXml.beanProperty(res, cluster.sslContextFactory, 'sslContextFactory', $generatorCommon.SSL_CONFIGURATION_FACTORY, false);
+    }
+
+    return res;
+}
+
 // Generate cache general group.
 $generatorXml.cacheGeneral = function(cache, res) {
     if (!res)
@@ -1037,6 +1061,8 @@ $generatorXml.cluster = function (cluster, clientNearCfg) {
         $generatorXml.clusterTransactions(cluster, res);
 
         $generatorXml.clusterCaches(cluster.caches, res);
+
+        $generatorXml.clusterSsl(cluster, res);
 
         res.endBlock('</bean>');
 

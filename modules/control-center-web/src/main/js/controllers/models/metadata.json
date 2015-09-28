@@ -46,7 +46,8 @@
         {
           "label": "Key type",
           "id": "keyType",
-          "type": "withJavaBuildInTypes",
+          "type": "typeahead",
+          "items": "javaBuildInClasses",
           "model": "keyType",
           "required": true,
           "placeholder": "Full class name for Key",

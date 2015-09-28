@@ -326,7 +326,16 @@ var ClusterSchema = new Schema({
         txSerializableEnabled: Boolean,
         txManagerLookupClassName: String
     },
-    waitForSegmentOnStart: Boolean
+    waitForSegmentOnStart: Boolean,
+    sslEnabled: Boolean,
+    sslContextFactory: {
+        keyAlgorithm: String,
+        keyStoreFilePath: String,
+        keyStoreType: String,
+        protocol: String,
+        trustStoreFilePath: String,
+        trustStoreType: String
+    }
 });
 
 // Install deep populate plugin.
