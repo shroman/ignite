@@ -665,6 +665,8 @@ consoleModule.controller('sqlController',
         _tryStopRefresh(paragraph);
 
         if (paragraph.rate && paragraph.rate.installed && paragraph.queryArgs) {
+            $scope.chartAcceptKeyColumn(paragraph, {value: -1, label: TIME_LINE});
+
             _executeRefresh(paragraph);
 
             var delay = paragraph.rate.value * paragraph.rate.unit;
