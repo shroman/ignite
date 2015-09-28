@@ -71,7 +71,7 @@ block body
                             button#login.btn.btn-primary(ng-click='auth(action, user_info)' ng-disabled='loginForm.$invalid') Log In
             hr
             .row
-                .col-sm-6
+                .col-sm-6(style='padding-right: 20px;')
                     #carousel-left.carousel.slide(data-ride='carousel')
                         // Indicators
                         ol.carousel-indicators
@@ -103,12 +103,12 @@ block body
                                     p Download XML config, JAVA code, Docker file
                         // Controls
                         a.left.carousel-control(href='#carousel-left', role='button', data-slide='prev')
-                            span.icon-prev(aria-hidden='true')
+                            span.fa.fa-chevron-left(aria-hidden='true')
                             span.sr-only Previous
                         a.right.carousel-control(href='#carousel-left', role='button', data-slide='next')
-                            span.icon-next(aria-hidden='true')
+                            span.fa.fa-chevron-right(aria-hidden='true')
                             span.sr-only Next
-                .col-sm-6
+                .col-sm-6(style='padding-left: 20px')
                     #carousel-right.carousel.slide(data-ride='carousel')
                         // Indicators
                         ol.carousel-indicators
@@ -134,10 +134,10 @@ block body
                                     h3 View data in tabular form and as charts
                         // Controls
                         a.left.carousel-control(href='#carousel-right', role='button', data-slide='prev')
-                            span.icon-prev(aria-hidden='true')
+                            span.fa.fa-chevron-left(aria-hidden='true')
                             span.sr-only Previous
                         a.right.carousel-control(href='#carousel-right', role='button', data-slide='next')
-                            span.icon-next(aria-hidden='true')
+                            span.fa.fa-chevron-right(aria-hidden='true')
                             span.sr-only Next
 
     include includes/footer

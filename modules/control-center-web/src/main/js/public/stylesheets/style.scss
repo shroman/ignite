@@ -1749,12 +1749,38 @@ treecontrol.tree-classic {
 
 .carousel-caption {
     color: $ignite-header-color;
+    position: relative;
+    left: auto;
+    right: auto;
+
+    margin-top: 10px;
 
     h3 {
         margin-bottom: 10px;
     }
 }
 
-.carousel-indicators {
+.carousel-control {
+    font-size: 30px;
 
+    // Toggles
+    .fa-chevron-left,.fa-chevron-right {
+        position: absolute;
+        top: 50%;
+        margin-top: -10px;
+        z-index: 5;
+        display: inline-block;
+        left: 50%;
+        margin-left: -10px;
+    }
+
+    .fa-chevron-left {
+        left: 50%;
+        margin-left: -10px;
+    }
+
+    .fa-chevron-right {
+        right: 50%;
+        margin-right: -10px;
+    }
 }
