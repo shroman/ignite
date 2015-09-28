@@ -105,7 +105,7 @@ class GridDhtPartitionSupplier {
 
                         SupplyContext sc = entry.getValue();
 
-                       if (t.get3() != null && !t.get3().equals(cctx.affinity().affinityTopologyVersion()) && sc != null)
+                        if (t.get3() != null && !t.get3().equals(cctx.affinity().affinityTopologyVersion()) && sc != null)
                             clearContext(scMap, t, sc, log);
                     }
                 }
@@ -128,7 +128,7 @@ class GridDhtPartitionSupplier {
             }
         };
 
-        cctx.events().addListener(lsnr, EVT_NODE_JOINED, EVT_NODE_LEFT, EVT_NODE_FAILED, EVT_CACHE_REBALANCE_STOPPED);
+        cctx.events().addListener(lsnr, EVT_NODE_FAILED, EVT_CACHE_REBALANCE_STOPPED);
 
         startOldListeners();
     }
@@ -532,7 +532,8 @@ class GridDhtPartitionSupplier {
             if (log.isDebugEnabled())
                 log.debug("Replying to partition demand [node=" + n.id() + ", demand=" + d + ", supply=" + s + ']');
 
-            if (!cctx.affinity().affinityTopologyVersion().equals(d.topologyVersion()))
+            if (!cctx.affinity().affinityTopologyVersion().equals(d.topologyVersion()) || // Topology already changed.
+                cctx.shared().exchange().hasPendingExchange()) // New topology pending.
                 return true;
 
             cctx.io().sendOrderedMessage(n, d.topic(), s, cctx.ioPolicy(), d.timeout());
