@@ -97,8 +97,7 @@ block container
                                     .col-xs-8.col-sm-9(style='border-right: 1px solid #eee')
                                         .sql-editor(ui-ace='{onLoad: aceInit(paragraph), theme: "chrome", mode: "sql", require: ["ace/ext/language_tools"],' +
                                             'advanced: {enableSnippets: false, enableBasicAutocompletion: true, enableLiveAutocompletion: true}}'
-                                        ng-model='paragraph.query'
-                                        ng-class='{"disable": paragraph.status == "RUNNING" || paragraph.status == "PENDING" }')
+                                        ng-model='paragraph.query')
                                     .col-xs-4.col-sm-3
                                         div(ng-show='caches.length > 0' style='padding: 5px 10px' st-table='displayedCaches' st-safe-src='caches')
                                             lable.labelField.labelFormField Caches:
@@ -134,15 +133,15 @@ block container
                                 .col-sm-12(ng-show='!paragraph.errMsg && paragraph.result != "none"')
                                     hr(style='margin-top: 0; margin-bottom: 10px')
                                     .sql-empty-result(ng-show='!paragraph.nonEmpty()') Result set is empty.
-                                    div(ng-show='paragraph.result === "table" && paragraph.nonEmpty()')
+                                    div(ng-show='paragraph.table() && paragraph.nonEmpty()')
                                         .sql-table-total
                                             label Page #&nbsp;
                                             b {{paragraph.page}}&nbsp;&nbsp;&nbsp;
                                             label Results so far:&nbsp;
                                             b {{paragraph.rows.length + paragraph.total}}
                                             .pull-right
-                                                .btn-group
-                                                    button.btn.btn-primary.fieldButton(ng-click='exportPage(paragraph)' ) Export
+                                                .btn-group(ng-disabled='paragraph.loading')
+                                                    button.btn.btn-primary.fieldButton(ng-click='exportPage(paragraph)' bs-tooltip data-title='{{actionTooltip(paragraph, "export", false)}}') Export
                                                     button.btn.btn-primary(id='export-item-dropdown' data-toggle='dropdown' data-container='body' bs-dropdown='exportDropdown' data-placement='bottom-right')
                                                         span.caret
                                         .sql-table.ag-bootstrap(ag-grid='paragraph.gridOptions')

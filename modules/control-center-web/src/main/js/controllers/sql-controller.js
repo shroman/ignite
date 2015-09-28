@@ -89,7 +89,7 @@ consoleModule.controller('sqlController',
 
     $scope.treeOptions = {
         nodeChildren: 'children',
-        dirSelectable: false,
+        dirSelectable: true,
         injectClasses: {
             iExpanded: 'fa fa-minus-square-o',
             iCollapsed: 'fa fa-plus-square-o'
@@ -115,6 +115,10 @@ consoleModule.controller('sqlController',
             return this.result != 'table' && this.result != 'none';
         };
 
+        paragraph.table = function () {
+            return this.result == 'table';
+        };
+
         paragraph.chartColumnsConfigured = function () {
             return !$common.isEmptyArray(this.chartKeyCols) && !$common.isEmptyArray(this.chartValCols);
         };
@@ -125,9 +129,7 @@ consoleModule.controller('sqlController',
 
         Object.defineProperty(paragraph, 'gridOptions', { value: {
             enableColResize: true,
-            columnDefs: [
-                {headerName: 'Test', valueGetter: 'data[0]'}
-            ],
+            columnDefs: [],
             rowData: null
         }});
     }
@@ -432,9 +434,9 @@ consoleModule.controller('sqlController',
             if (chartHistory.size > 100)
                 chartHistory.shift();
 
-            paragraph.gridOptions.api.showLoading(false);
-
             paragraph.gridOptions.api.setRowData(res.rows);
+
+            _showLoading(paragraph, false);
 
             setTimeout(function () {
                 paragraph.gridOptions.api.sizeColumnsToFit();
@@ -455,6 +457,13 @@ consoleModule.controller('sqlController',
             });
     };
 
+    var _showLoading = function (paragraph, enable) {
+        if (paragraph.table())
+            paragraph.gridOptions.api.showLoading(enable);
+
+        paragraph.loading = enable;
+    };
+
     $scope.execute = function (paragraph) {
         _saveNotebook();
 
@@ -470,7 +479,7 @@ consoleModule.controller('sqlController',
 
         paragraph.queryArgs = { query: paragraph.query, pageSize: paragraph.pageSize, cacheName: paragraph.cacheName };
 
-        paragraph.gridOptions.api.showLoading(true);
+        _showLoading(paragraph, true);
 
         $http.post('/agent/query', paragraph.queryArgs)
             .success(function (res) {
@@ -480,6 +489,8 @@ consoleModule.controller('sqlController',
             })
             .error(function (errMsg) {
                 paragraph.errMsg = errMsg;
+
+                _showLoading(paragraph, false);
 
                 $scope.stopRefresh(paragraph);
             });
@@ -492,12 +503,14 @@ consoleModule.controller('sqlController',
 
         _cancelRefresh(paragraph);
 
-        paragraph.gridOptions.api.showLoading(true);
+        _showLoading(paragraph, true);
 
         $http.post('/agent/query', {query: 'EXPLAIN ' + paragraph.query, pageSize: paragraph.pageSize, cacheName: paragraph.cacheName})
             .success(_processQueryResult(paragraph))
             .error(function (errMsg) {
                 paragraph.errMsg = errMsg;
+
+                _showLoading(paragraph, false);
             });
 
         paragraph.ace.focus();
@@ -508,19 +521,23 @@ consoleModule.controller('sqlController',
 
         _cancelRefresh(paragraph);
 
-        paragraph.gridOptions.api.showLoading(true);
+        _showLoading(paragraph, true);
 
         $http.post('/agent/scan', {pageSize: paragraph.pageSize, cacheName: paragraph.cacheName})
             .success(_processQueryResult(paragraph))
             .error(function (errMsg) {
                 paragraph.errMsg = errMsg;
+
+                _showLoading(paragraph, false);
             });
 
         paragraph.ace.focus();
     };
 
     $scope.nextPage = function(item) {
-        $http.post('/agent/query/fetch', {queryId: item.queryId, pageSize: item.pageSize, cacheName: item.cacheName})
+        _showLoading(true);
+
+        $http.post('/agent/query/fetch', {queryId: item.queryId, pageSize: item.pageSize, cacheName: item.queryArgs.cacheName})
             .success(function (res) {
                 item.page++;
 
@@ -528,11 +545,17 @@ consoleModule.controller('sqlController',
 
                 item.rows = res.rows;
 
+                item.gridOptions.api.setRowData(res.rows);
+
+                _showLoading(paragraph, false);
+
                 if (res.last)
                     delete item.queryId;
             })
             .error(function (errMsg) {
                 paragraph.errMsg = errMsg;
+
+                _showLoading(paragraph, false);
             });
     };
 
@@ -926,12 +949,17 @@ consoleModule.controller('sqlController',
     }
 
     $scope.actionAvailable = function (paragraph, needQuery) {
-        return $scope.caches.length > 0 && paragraph.cacheName && (!needQuery || paragraph.query);
+        return $scope.caches.length > 0 && paragraph.cacheName && (!needQuery || paragraph.query) && !paragraph.loading;
     };
 
     $scope.actionTooltip = function (paragraph, action, needQuery) {
-        return $scope.actionAvailable(paragraph, needQuery) ? undefined
-            : 'To ' + action + ' query select cache' + (needQuery ? ' and input query' : '');
+        if ($scope.actionAvailable(paragraph, needQuery))
+            return;
+
+        if (paragraph.loading)
+            return 'Wating for server response';
+
+        return 'To ' + action + ' query select cache' + (needQuery ? ' and input query' : '');
     };
 
     $scope.clickableMetadata = function (node) {
