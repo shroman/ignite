@@ -24,7 +24,6 @@ import java.util.UUID;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.cluster.ClusterNode;
-import org.apache.ignite.events.CacheRebalancingEvent;
 import org.apache.ignite.events.DiscoveryEvent;
 import org.apache.ignite.events.Event;
 import org.apache.ignite.internal.cluster.ClusterTopologyCheckedException;
@@ -41,15 +40,12 @@ import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtLocalP
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionTopology;
 import org.apache.ignite.internal.util.lang.GridCloseableIterator;
 import org.apache.ignite.internal.util.typedef.CI2;
-import org.apache.ignite.internal.util.typedef.T4;
+import org.apache.ignite.internal.util.typedef.T2;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgnitePredicate;
 import org.jsr166.ConcurrentHashMap8;
 
-import static org.apache.ignite.events.EventType.EVT_CACHE_REBALANCE_STOPPED;
 import static org.apache.ignite.events.EventType.EVT_NODE_FAILED;
-import static org.apache.ignite.events.EventType.EVT_NODE_JOINED;
-import static org.apache.ignite.events.EventType.EVT_NODE_LEFT;
 import static org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionState.OWNING;
 
 /**
@@ -71,8 +67,8 @@ class GridDhtPartitionSupplier {
     /** Preload predicate. */
     private IgnitePredicate<GridCacheEntryInfo> preloadPred;
 
-    /** Supply context map. T4: nodeId, idx, topologyVersion, updateSequence. */
-    private final ConcurrentHashMap8<T4<UUID, Integer, AffinityTopologyVersion, Long>, SupplyContext> scMap =
+    /** Supply context map. T2: nodeId, idx. */
+    private final ConcurrentHashMap8<T2<UUID, Integer>, SupplyContext> scMap =
         new ConcurrentHashMap8<>();
 
     /** Rebalancing listener. */
@@ -100,26 +96,18 @@ class GridDhtPartitionSupplier {
         lsnr = new GridLocalEventListener() {
             @Override public void onEvent(Event evt) {
                 if (evt instanceof DiscoveryEvent) {
-                    for (Map.Entry<T4<UUID, Integer, AffinityTopologyVersion, Long>, SupplyContext> entry : scMap.entrySet()) {
-                        T4<UUID, Integer, AffinityTopologyVersion, Long> t = entry.getKey();
+                    for (Map.Entry<T2<UUID, Integer>, SupplyContext> entry : scMap.entrySet()) {
+                        T2<UUID, Integer> t = entry.getKey();
 
-                        SupplyContext sc = entry.getValue();
+                        if (t.get1().equals(((DiscoveryEvent)evt).eventNode().id())) {
+                            SupplyContext sctx = entry.getValue();
 
-                        if (t.get3() != null && !t.get3().equals(cctx.affinity().affinityTopologyVersion()) && sc != null)
-                            clearContext(scMap, t, sc, log);
-                    }
-                }
-                else if (evt instanceof CacheRebalancingEvent) {
-                    CacheRebalancingEvent e = (CacheRebalancingEvent)evt;
+                            clearContext(sctx, log);
 
-                    if (cctx.name().equals(e.cacheName())) {
-                        UUID id = e.discoveryNode().id();
+                            U.log(log, "Supply context removed for failed node [node=" + t.get1() + "]");
 
-                        for (Map.Entry<T4<UUID, Integer, AffinityTopologyVersion, Long>, SupplyContext> entry : scMap.entrySet()) {
-                            if (id.equals(entry.getKey().get1()))
-                                clearContext(scMap, entry.getKey(), entry.getValue(), log);
+                            scMap.remove(t, sctx);
                         }
-
                     }
                 }
                 else {
@@ -128,7 +116,7 @@ class GridDhtPartitionSupplier {
             }
         };
 
-        cctx.events().addListener(lsnr, EVT_NODE_FAILED, EVT_CACHE_REBALANCE_STOPPED);
+        cctx.events().addListener(lsnr, EVT_NODE_FAILED);
 
         startOldListeners();
     }
@@ -145,32 +133,38 @@ class GridDhtPartitionSupplier {
     /**
      * Clear context.
      *
-     * @param map Context map.
-     * @param t id.
      * @param sc Supply context.
      * @param log Logger.
      * @return true in case context was removed.
      */
-    private static boolean clearContext(
-        final ConcurrentHashMap8<T4<UUID, Integer, AffinityTopologyVersion, Long>, SupplyContext> map,
-        final T4<UUID, Integer, AffinityTopologyVersion, Long> t,
+    private static void clearContext(
         final SupplyContext sc,
         final IgniteLogger log) {
-        final Iterator it = sc.entryIt;
+        if (sc != null) {
+            final Iterator it = sc.entryIt;
 
-        if (it != null && it instanceof GridCloseableIterator && !((GridCloseableIterator)it).isClosed()) {
-            try {
-                synchronized (it) {
-                    if (!((GridCloseableIterator)it).isClosed())
-                        ((GridCloseableIterator)it).close();
+            if (it != null && it instanceof GridCloseableIterator && !((GridCloseableIterator)it).isClosed()) {
+                try {
+                    synchronized (it) {
+                        if (!((GridCloseableIterator)it).isClosed())
+                            ((GridCloseableIterator)it).close();
+                    }
+                }
+                catch (IgniteCheckedException e) {
+                    log.error("Iterator close failed.", e);
                 }
             }
-            catch (IgniteCheckedException e) {
-                log.error("Iterator close failed.", e);
+
+            final GridDhtLocalPartition loc = sc.loc;
+
+            if (loc != null && loc.reservations() > 0) {
+                synchronized (loc) {
+                    if (loc.reservations() > 0)
+                        loc.release();
+                }
+
             }
         }
-
-        return map.remove(t, sc);
     }
 
     /**
@@ -199,10 +193,16 @@ class GridDhtPartitionSupplier {
 
         ClusterNode node = cctx.discovery().node(id);
 
-        T4<UUID, Integer, AffinityTopologyVersion, Long> scId = new T4<>(id, idx, d.topologyVersion(), d.updateSequence());
+        T2<UUID, Integer> scId = new T2<>(id, idx);
 
         try {
-            SupplyContext sctx = scMap.get(scId);
+            SupplyContext sctx = scMap.remove(scId);
+
+            if (sctx != null && (!d.topologyVersion().equals(sctx.topVer) || d.updateSequence() != sctx.updateSeq)) {
+                clearContext(sctx, log);
+
+                sctx = null;
+            }
 
             if (sctx == null && d.partitions() == null)
                 return;
@@ -230,18 +230,27 @@ class GridDhtPartitionSupplier {
 
                 newReq = false;
 
-                GridDhtLocalPartition loc = top.localPartition(part, d.topologyVersion(), false);
+                GridDhtLocalPartition loc;
 
-                if (loc == null || loc.state() != OWNING || !loc.reserve()) {
-                    // Reply with partition of "-1" to let sender know that
-                    // this node is no longer an owner.
-                    s.missed(part);
+                if (sctx != null && sctx.loc != null) {
+                    loc = sctx.loc;
 
-                    if (log.isDebugEnabled())
-                        log.debug("Requested partition is not owned by local node [part=" + part +
-                            ", demander=" + id + ']');
+                    assert loc.reservations() > 0;
+                }
+                else {
+                    loc = top.localPartition(part, d.topologyVersion(), false);
 
-                    continue;
+                    if (loc == null || loc.state() != OWNING || !loc.reserve()) {
+                        // Reply with partition of "-1" to let sender know that
+                        // this node is no longer an owner.
+                        s.missed(part);
+
+                        if (log.isDebugEnabled())
+                            log.debug("Requested partition is not owned by local node [part=" + part +
+                                ", demander=" + id + ']');
+
+                        continue;
+                    }
                 }
 
                 GridCacheEntryInfoCollectSwapListener swapLsnr = null;
@@ -279,9 +288,18 @@ class GridDhtPartitionSupplier {
 
                             if (s.messageSize() >= cctx.config().getRebalanceBatchSize()) {
                                 if (++bCnt >= maxBatchesCnt) {
-                                    saveSupplyContext(scId, phase, partIt, part, entIt, swapLsnr);
+                                    saveSupplyContext(scId,
+                                        phase,
+                                        partIt,
+                                        part,
+                                        entIt,
+                                        swapLsnr,
+                                        loc,
+                                        d.topologyVersion(),
+                                        d.updateSequence());
 
                                     swapLsnr = null;
+                                    loc = null;
 
                                     reply(node, d, s);
 
@@ -323,7 +341,10 @@ class GridDhtPartitionSupplier {
                                 partIt,
                                 null,
                                 swapLsnr,
-                                part);
+                                part,
+                                loc,
+                                d.topologyVersion(),
+                                d.updateSequence());
                         }
                     }
 
@@ -354,9 +375,18 @@ class GridDhtPartitionSupplier {
 
                                 if (s.messageSize() >= cctx.config().getRebalanceBatchSize()) {
                                     if (++bCnt >= maxBatchesCnt) {
-                                        saveSupplyContext(scId, phase, partIt, part, iter, swapLsnr);
+                                        saveSupplyContext(scId,
+                                            phase,
+                                            partIt,
+                                            part,
+                                            iter,
+                                            swapLsnr,
+                                            loc,
+                                            d.topologyVersion(),
+                                            d.updateSequence());
 
                                         swapLsnr = null;
+                                        loc = null;
 
                                         reply(node, d, s);
 
@@ -437,7 +467,10 @@ class GridDhtPartitionSupplier {
                                 partIt,
                                 null,
                                 null,
-                                part);
+                                part,
+                                loc,
+                                d.topologyVersion(),
+                                d.updateSequence());
                         }
                     }
 
@@ -465,9 +498,17 @@ class GridDhtPartitionSupplier {
 
                             if (s.messageSize() >= cctx.config().getRebalanceBatchSize()) {
                                 if (++bCnt >= maxBatchesCnt) {
-                                    saveSupplyContext(scId, phase, partIt, part, lsnrIt, swapLsnr);
+                                    saveSupplyContext(scId,
+                                        phase,
+                                        partIt,
+                                        part,
+                                        lsnrIt,
+                                        swapLsnr,
+                                        loc,
+                                        d.topologyVersion(),
+                                        d.updateSequence());
 
-                                    swapLsnr = null;
+                                    loc = null;
 
                                     reply(node, d, s);
 
@@ -500,7 +541,8 @@ class GridDhtPartitionSupplier {
                     sctx = null;
                 }
                 finally {
-                    loc.release();
+                    if (loc != null)
+                        loc.release();
 
                     if (swapLsnr != null) {
                         cctx.swap().removeOffHeapListener(part, swapLsnr);
@@ -561,12 +603,24 @@ class GridDhtPartitionSupplier {
      * @param swapLsnr Swap listener.
      */
     private void saveSupplyContext(
-        T4 t,
+        T2<UUID, Integer> t,
         int phase,
         Iterator<Integer> partIt,
         int part,
-        Iterator<?> entryIt, GridCacheEntryInfoCollectSwapListener swapLsnr) {
-        scMap.put(t, new SupplyContext(phase, partIt, entryIt, swapLsnr, part));
+        Iterator<?> entryIt, GridCacheEntryInfoCollectSwapListener swapLsnr,
+        GridDhtLocalPartition loc,
+        AffinityTopologyVersion topVer,
+        long updateSeq) {
+        SupplyContext old = scMap.putIfAbsent(t, new SupplyContext(phase,
+            partIt,
+            entryIt,
+            swapLsnr,
+            part,
+            loc,
+            topVer,
+            updateSeq));
+
+        assert old == null;
     }
 
     /**
@@ -588,6 +642,15 @@ class GridDhtPartitionSupplier {
         /** Partition. */
         private final int part;
 
+        /** Local partition. */
+        GridDhtLocalPartition loc;
+
+        /** Topology version. */
+        AffinityTopologyVersion topVer;
+
+        /** Update seq. */
+        long updateSeq;
+
         /**
          * @param phase Phase.
          * @param partIt Partition iterator.
@@ -595,13 +658,22 @@ class GridDhtPartitionSupplier {
          * @param swapLsnr Swap listener.
          * @param part Partition.
          */
-        public SupplyContext(int phase, Iterator<Integer> partIt, Iterator<?> entryIt,
-            GridCacheEntryInfoCollectSwapListener swapLsnr, int part) {
+        public SupplyContext(int phase,
+            Iterator<Integer> partIt,
+            Iterator<?> entryIt,
+            GridCacheEntryInfoCollectSwapListener swapLsnr,
+            int part,
+            GridDhtLocalPartition loc,
+            AffinityTopologyVersion topVer,
+            long updateSeq) {
             this.phase = phase;
             this.partIt = partIt;
             this.entryIt = entryIt;
             this.swapLsnr = swapLsnr;
             this.part = part;
+            this.loc = loc;
+            this.topVer = topVer;
+            this.updateSeq = updateSeq;
         }
     }
 

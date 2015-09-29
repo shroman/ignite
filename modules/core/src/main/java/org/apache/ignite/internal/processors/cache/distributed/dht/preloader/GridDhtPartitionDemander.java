@@ -818,7 +818,7 @@ public class GridDhtPartitionDemander {
                         @Override public void apply(IgniteInternalFuture<Long> future) {
                             SyncFuture.this.cancel();
                         }
-                    });
+                    }); // todo: is it necessary?
         }
 
         /**

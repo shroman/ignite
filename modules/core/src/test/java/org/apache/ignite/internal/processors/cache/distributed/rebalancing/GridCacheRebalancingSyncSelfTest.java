@@ -32,6 +32,7 @@ import org.apache.ignite.internal.processors.cache.GridCacheAdapter;
 import org.apache.ignite.internal.processors.cache.distributed.dht.preloader.GridDhtPartitionDemander;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.spi.discovery.tcp.TestTcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoveryNode;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
@@ -59,29 +60,16 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
     protected static String CACHE_NAME_DHT_REPLICATED_2 = "cacheR2";
 
     /** */
-    private volatile boolean concurrentStartFinished = false;
+    private volatile boolean concurrentStartFinished;
 
     /** */
-    private volatile boolean concurrentStartFinished2 = false;
-
-    private volatile FailableTcpDiscoverySpi spi;
-
-    public static class FailableTcpDiscoverySpi extends TcpDiscoverySpi {
-        public void fail() {
-            simulateNodeFailure();
-        }
-    }
+    private volatile boolean concurrentStartFinished2;
 
     /** {@inheritDoc} */
     @Override protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
         IgniteConfiguration iCfg = super.getConfiguration(gridName);
 
         iCfg.setRebalanceThreadPoolSize(4);
-
-        iCfg.setDiscoverySpi(new FailableTcpDiscoverySpi());
-
-        if (getTestGridName(20).equals(gridName))
-            spi = (FailableTcpDiscoverySpi)iCfg.getDiscoverySpi();
 
         ((TcpDiscoverySpi)iCfg.getDiscoverySpi()).setIpFinder(ipFinder);
         ((TcpDiscoverySpi)iCfg.getDiscoverySpi()).setForceServerMode(true);
@@ -96,7 +84,8 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         cachePCfg.setRebalanceMode(CacheRebalanceMode.SYNC);
         cachePCfg.setBackups(1);
         cachePCfg.setRebalanceBatchSize(1);
-        cachePCfg.setRebalanceBatchesCount(1);
+        //cachePCfg.setRebalanceBatchesCount(1);
+        cachePCfg.setRebalanceBatchesCount(Integer.MAX_VALUE);
 
         CacheConfiguration<Integer, Integer> cachePCfg2 = new CacheConfiguration<>();
 
@@ -285,6 +274,9 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
 
         long start = System.currentTimeMillis();
 
+        concurrentStartFinished = false;
+        concurrentStartFinished2 = false;
+
         Thread t1 = new Thread() {
             @Override public void run() {
                 try {
@@ -409,11 +401,11 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
 
         waitForRebalancing(1, 2);
 
-        startGrid(20);
+        startGrid(2);
 
-        waitForRebalancing(20, 3);
+        waitForRebalancing(2, 3);
 
-        spi.fail();
+        ((TestTcpDiscoverySpi)grid(2).configuration().getDiscoverySpi()).simulateNodeFailure();
 
         waitForRebalancing(0, 4);
         waitForRebalancing(1, 4);
