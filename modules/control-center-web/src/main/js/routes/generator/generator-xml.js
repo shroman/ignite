@@ -1079,13 +1079,19 @@ $generatorXml.cluster = function (cluster, clientNearCfg) {
         xml += '                           http://www.springframework.org/schema/util\n';
         xml += '                           http://www.springframework.org/schema/util/spring-util.xsd">\n';
 
-        // 2. Add external property file and all data sources.
-        if (res.datasources.length > 0) {
+        // 2. Add external property file
+        if (res.datasources.length > 0
+            || (cluster.sslEnabled && (
+                $commonUtils.isDefinedAndNotEmpty(cluster.sslContextFactory.keyStoreFilePath) ||
+                $commonUtils.isDefinedAndNotEmpty(cluster.sslContextFactory.trustStoreFilePath)))) {
             xml += '    <!-- Load external properties file. -->\n';
             xml += '    <bean id="placeholderConfig" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">\n';
             xml += '        <property name="location" value="classpath:secret.properties"/>\n';
             xml += '    </bean>\n\n';
+        }
 
+        // 3. Add data sources.
+        if (res.datasources.length > 0) {
             xml += '    <!-- Data source beans will be initialized from external properties file. -->\n';
 
             _.forEach(res.datasources, function (item) {
