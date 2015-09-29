@@ -756,6 +756,7 @@
           "type": "text",
           "path": "sslContextFactory",
           "model": "keyStoreFilePath",
+          "required": true,
           "hide": "!backupItem.sslEnabled",
           "tip": [
             "Path to the key store file",

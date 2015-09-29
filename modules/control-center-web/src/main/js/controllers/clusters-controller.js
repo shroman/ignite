@@ -376,6 +376,10 @@ consoleModule.controller('clustersController', [
                     return showPopoverMessage($scope.panels, 'general', 'serviceAccountId', 'Account ID should not be empty');
             }
 
+            if (item.sslEnabled && (!$common.isDefined(item.sslContextFactory)
+                || $common.isEmptyString(item.sslContextFactory.keyStoreFilePath)))
+                return showPopoverMessage($scope.panels, 'sslConfiguration', 'keyStoreFilePath', 'Key store file should not be empty');
+
             if (!item.swapSpaceSpi || !item.swapSpaceSpi.kind && item.caches) {
                 for (var i = 0; i < item.caches.length; i++) {
                     var idx = $scope.indexOfCache(item.caches[i]);
