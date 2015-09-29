@@ -476,15 +476,9 @@ mixin groups(groups, dataSource)
                 .col-sm-6
                     +preview('group.group', '{{::group.group + "-right"}}')
 
-mixin advanced-options-top
+mixin advanced-options
     .advanced-options
-        i.fa.fa-chevron-circle-up(ng-show='ui.expanded' ng-click='toggleExpanded()')
-        i.fa.fa-chevron-circle-down(ng-show='!ui.expanded' ng-click='toggleExpanded()')
-        a(ng-click='toggleExpanded()') {{ui.expanded ? 'Hide advanced settings...' : 'Show advanced settings...'}}
-
-mixin advanced-options-bottom
-    .advanced-options
-        i.fa.fa-chevron-circle-up(ng-click='toggleExpanded()')
+        i.fa(ng-class='ui.expanded ? "fa-chevron-circle-up" : "fa-chevron-circle-down"' ng-click='toggleExpanded()')
         a(ng-click='toggleExpanded()') {{ui.expanded ? 'Hide advanced settings...' : 'Show advanced settings...'}}
 
 mixin preview-content(preview, state, mode)

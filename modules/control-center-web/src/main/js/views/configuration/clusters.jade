@@ -40,8 +40,8 @@ block content
                     .panel-group(bs-collapse ng-model='panels.activePanels' data-allow-multiple='true' ng-click='triggerDigest = true')
                         +groups('general', 'backupItem')
                         div(ng-show='ui.expanded')
-                            +advanced-options-bottom
+                            +advanced-options
                             +groups('advanced', 'backupItem')
-                    +advanced-options-top
+                    +advanced-options
                     .section(ng-show='ui.expanded')
                         +save-remove-buttons('cluster')
