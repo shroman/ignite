@@ -452,7 +452,8 @@ consoleModule.controller('metadataController', [
                             var colName = col.name;
                             var jdbcType = $common.findJdbcType(col.type);
 
-                            qryFields.push(queryField(colName, jdbcType));
+                            if (!fieldIndexed(colName, table))
+                                qryFields.push(queryField(colName, jdbcType));
 
                             if (_.includes(table.ascCols, colName))
                                 ascFields.push(queryField(colName, jdbcType));
@@ -522,6 +523,21 @@ consoleModule.controller('metadataController', [
                         tables.push(tableName);
                     }
                 });
+
+                /**
+                 * Check field with specified name is indexed.
+                 *
+                 * @param name Field name.
+                 * @param table Table to check indexed fields.
+                 * @returns {boolean} <code>True</code> when field is indexed of <code>false</code> otherwise.
+                 */
+                function fieldIndexed(name, table) {
+                    // Check if in asc or desc fields.
+                    if (_.includes(table.ascCols, name) || _.includes(table.descCols, name) || !table.idxs)
+                        return true;
+
+                    return _.findKey(table.idxs, function(fields) { return _.includes(Object.keys(fields), name); }) != undefined;
+                }
 
                 /**
                  * Generate message to show on confirm dialog.
