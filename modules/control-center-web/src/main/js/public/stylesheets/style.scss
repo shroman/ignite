@@ -383,8 +383,8 @@ button, a.btn {
     padding: 3px 6px;
 
     :focus {
-        outline: none;
-        border: 1px solid $btn-default-border;
+        //outline: none;
+        //border: 1px solid $btn-default-border;
     }
 }
 
@@ -1564,10 +1564,6 @@ button.select-toggle {
 }
 
 button.select-toggle::after {
-    display: inline-block;
-    width: 0;
-    height: 0;
-    margin-left: 0.25rem;
     vertical-align: middle;
     content: "";
     border-top: 0.3em solid;
@@ -1576,7 +1572,6 @@ button.select-toggle::after {
     position: absolute;
     right: 5px;
     top: 50%;
-    transform: translateY(-50%);
 }
 
 button.btn.select-toggle::after {
