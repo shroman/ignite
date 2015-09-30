@@ -32,9 +32,9 @@ block body
     .container.body-container
         .main-content(ng-controller='auth')
             .row
-                form(name='loginForm')
-                    .modal-body.row
-                        .col-sm-6.col-sm-offset-3
+                .col-xs-12.col-md-6
+                    form(name='loginForm')
+                        .modal-body.row
                             .details-row
                                 p.col-xs-10.col-sm-10.col-sm-offset-1(ng-show='action == "password/forgot"')
                                     | That's ok! Simply enter your email below and a reset password link will be sent to you via email. You can then follow that link and select a new password.
@@ -54,31 +54,31 @@ block body
                                 +lbl('Confirm:')
                                 .col-xs-6.col-sm-7
                                     input#user_confirm.form-control(type='password' ng-model='user_info.confirm' match='user_info.password' placeholder='Confirm password' ng-required='action == "register"' on-enter='loginForm.$valid && auth(action, user_info)')
-                .col-sm-6.col-sm-offset-3
-                    .col-xs-10.col-sm-10.col-sm-offset-1
-                        .login-footer(ng-show='action == "register"')
-                            a.labelField(ng-click='action = "password/forgot"' on-click-focus='user_email') Forgot password?
-                            a.labelLogin(ng-click='action = "login"' on-click-focus='user_email') Log In
-                            button#signup.btn.btn-primary(ng-click='auth(action, user_info)' ng-disabled='loginForm.$invalid') Sign Up
-                    .col-xs-10.col-sm-10.col-sm-offset-1
-                        .login-footer(ng-show='action == "password/forgot"')
-                            a.labelField(ng-click='action = "login"' on-click-focus='user_email') Log In
-                            button#forgot.btn.btn-primary(ng-click='auth(action, user_info)' ng-disabled='loginForm.$invalid') Send it to me
-                    .col-xs-10.col-sm-10.col-sm-offset-1
-                        .login-footer(ng-show='action == "login"')
-                            a.labelField(ng-click='action = "password/forgot"' on-click-focus='user_email') Forgot password?
-                            a.labelLogin(ng-click='action = "register"' on-click-focus='user_name') Sign Up
-                            button#login.btn.btn-primary(ng-click='auth(action, user_info)' ng-disabled='loginForm.$invalid') Log In
-            hr
-            .row
-                .col-sm-6(style='padding-right: 20px;')
-                    #carousel-left.carousel.slide(data-ride='carousel')
+                        .col-xs-10.col-sm-10.col-sm-offset-1
+                            .login-footer(ng-show='action == "register"')
+                                a.labelField(ng-click='action = "password/forgot"' on-click-focus='user_email') Forgot password?
+                                a.labelLogin(ng-click='action = "login"' on-click-focus='user_email') Log In
+                                button#signup.btn.btn-primary(ng-click='auth(action, user_info)' ng-disabled='loginForm.$invalid') Sign Up
+                        .col-xs-10.col-sm-10.col-sm-offset-1
+                            .login-footer(ng-show='action == "password/forgot"')
+                                a.labelField(ng-click='action = "login"' on-click-focus='user_email') Log In
+                                button#forgot.btn.btn-primary(ng-click='auth(action, user_info)' ng-disabled='loginForm.$invalid') Send it to me
+                        .col-xs-10.col-sm-10.col-sm-offset-1
+                            .login-footer(ng-show='action == "login"')
+                                a.labelField(ng-click='action = "password/forgot"' on-click-focus='user_email') Forgot password?
+                                a.labelLogin(ng-click='action = "register"' on-click-focus='user_name') Sign Up
+                                button#login.btn.btn-primary(ng-click='auth(action, user_info)' ng-disabled='loginForm.$invalid') Log In
+                .col-xs-12.col-md-6(style='padding-right: 20px;')
+                    #carousel.carousel.slide(data-ride='carousel')
                         // Indicators
                         ol.carousel-indicators
-                            li.active(data-target='#carousel-left', data-slide-to='0')
-                            li(data-target='#carousel-left', data-slide-to='1')
-                            li(data-target='#carousel-left', data-slide-to='2')
-                            li(data-target='#carousel-left', data-slide-to='3')
+                            li.active(data-target='#carousel', data-slide-to='0')
+                            li(data-target='#carousel', data-slide-to='1')
+                            li(data-target='#carousel', data-slide-to='2')
+                            li(data-target='#carousel', data-slide-to='3')
+                            li(data-target='#carousel', data-slide-to='4')
+                            li(data-target='#carousel', data-slide-to='5')
+                            li(data-target='#carousel', data-slide-to='6')
                         // Wrapper for slides
                         .carousel-inner(role='listbox')
                             .item.active
@@ -101,23 +101,7 @@ block body
                                 .carousel-caption
                                     h3 Summary screen
                                     p Download XML config, JAVA code, Docker file
-                        // Controls
-                        a.left.carousel-control(href='#carousel-left', role='button', data-slide='prev')
-                            span.fa.fa-chevron-left(aria-hidden='true')
-                            span.sr-only Previous
-                        a.right.carousel-control(href='#carousel-left', role='button', data-slide='next')
-                            span.fa.fa-chevron-right(aria-hidden='true')
-                            span.sr-only Next
-                .col-sm-6(style='padding-left: 20px')
-                    #carousel-right.carousel.slide(data-ride='carousel')
-                        // Indicators
-                        ol.carousel-indicators
-                            li.active(data-target='#carousel-right', data-slide-to='0')
-                            li(data-target='#carousel-right', data-slide-to='1')
-                            li(data-target='#carousel-right', data-slide-to='2')
-                        // Wrapper for slides
-                        .carousel-inner(role='listbox')
-                            .item.active
+                            .item
                                 img(src='/images/query-table.png', alt='Query')
                                 .carousel-caption
                                     h3 Query
@@ -133,13 +117,12 @@ block body
                                     h3 Query chart
                                     h3 View data in tabular form and as charts
                         // Controls
-                        a.left.carousel-control(href='#carousel-right', role='button', data-slide='prev')
+                        a.left.carousel-control(href='#carousel', role='button', data-slide='prev')
                             span.fa.fa-chevron-left(aria-hidden='true')
                             span.sr-only Previous
-                        a.right.carousel-control(href='#carousel-right', role='button', data-slide='next')
+                        a.right.carousel-control(href='#carousel', role='button', data-slide='next')
                             span.fa.fa-chevron-right(aria-hidden='true')
                             span.sr-only Next
-
     include includes/footer
 
 
