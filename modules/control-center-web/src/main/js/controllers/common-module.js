@@ -505,9 +505,9 @@ consoleModule.service('$common', [
 
             popover = newPopover;
 
-            newPopover.$promise.then(newPopover.show);
+            $timeout(function () { newPopover.$promise.then(newPopover.show); });
 
-            $timeout(function () { newPopover.hide() }, 5000);
+            $timeout(function () { newPopover.hide(); }, 5000);
 
             return false;
         }
