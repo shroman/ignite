@@ -685,7 +685,7 @@ public class GridCacheProcessor extends GridProcessorAdapter {
                     cfg.getName(),
                     cfg.getNodeFilter(),
                     cfg.getNearConfiguration() != null && cfg.getCacheMode() == PARTITIONED,
-                    cfg.getCacheMode() == LOCAL);
+                    cfg.getCacheMode());
 
                 ctx.discovery().addClientNode(cfg.getName(),
                     ctx.localNodeId(),
@@ -1942,7 +1942,7 @@ public class GridCacheProcessor extends GridProcessorAdapter {
                                     req.cacheName(),
                                     ccfg.getNodeFilter(),
                                     ccfg.getNearConfiguration() != null,
-                                    ccfg.getCacheMode() == LOCAL);
+                                    ccfg.getCacheMode());
                             }
                         }
                         else {
@@ -1965,7 +1965,7 @@ public class GridCacheProcessor extends GridProcessorAdapter {
                                 req.cacheName(),
                                 ccfg.getNodeFilter(),
                                 ccfg.getNearConfiguration() != null,
-                                ccfg.getCacheMode() == LOCAL);
+                                ccfg.getCacheMode());
                         }
                     }
                 }
@@ -2434,7 +2434,7 @@ public class GridCacheProcessor extends GridProcessorAdapter {
                             ccfg.getName(),
                             ccfg.getNodeFilter(),
                             ccfg.getNearConfiguration() != null,
-                            ccfg.getCacheMode() == LOCAL);
+                            ccfg.getCacheMode());
 
                         ctx.discovery().addClientNode(req.cacheName(),
                             req.initiatingNodeId(),

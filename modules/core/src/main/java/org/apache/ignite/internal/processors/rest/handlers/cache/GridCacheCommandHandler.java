@@ -228,11 +228,20 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
                 }
 
                 case CACHE_METADATA: {
-                    IgniteInternalCache<Object, Object> cache = localCache(cacheName);
+                    IgniteInternalCache<?, ?> cache = ctx.cache().cache(cacheName);
 
-                    GridCacheSqlMetadata res = F.first(cache.context().queries().sqlMetadata());
+                    if (cache != null) {
+                        GridCacheSqlMetadata res = F.first(cache.context().queries().sqlMetadata());
 
-                    fut = new GridFinishedFuture<>(new GridRestResponse(res));
+                        fut = new GridFinishedFuture<>(new GridRestResponse(res));
+                    }
+                    else {
+                        ClusterGroup prj = ctx.grid().cluster().forDataNodes(cacheName);
+
+                        ctx.task().setThreadContext(TC_NO_FAILOVER, true);
+
+                        fut = ctx.closure().callAsync(BALANCE, new MetadataCommand(cacheName), prj.nodes());
+                    }
 
                     break;
                 }
@@ -901,6 +910,31 @@ public class GridCacheCommandHandler extends GridRestCommandHandlerAdapter {
         /** {@inheritDoc} */
         @Override public IgniteInternalFuture<?> applyx(IgniteInternalCache<Object, Object> c, GridKernalContext ctx) {
             return c.containsKeyAsync(key);
+        }
+    }
+
+    /** */
+    private static class MetadataCommand implements Callable<GridRestResponse>, Serializable {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /** */
+        private final String cacheName;
+
+        /** */
+        @IgniteInstanceResource
+        private Ignite g;
+
+        /**
+         * @param cacheName Cache name.
+         */
+        private MetadataCommand(String cacheName) {
+            this.cacheName = cacheName;
+        }
+
+        /** {@inheritDoc} */
+        @Override public GridRestResponse call() throws Exception {
+            return  new GridRestResponse(F.first(cache(g, cacheName).context().queries().sqlMetadata()));
         }
     }
 
