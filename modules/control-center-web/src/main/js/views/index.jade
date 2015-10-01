@@ -27,10 +27,18 @@ block body
         .container
             h1.navbar-brand
                 a(href='/') Apache Ignite Web Configurator
-            p.navbar-text(style='font-size: 18px;') Apache Ignite Web Console is an interactive console for the Apache Ignite<sup>tm</sup> Grid.
+            p.navbar-text(style='font-size: 18px;') Apache Ignite Web Console
 
     .container.body-container
         .main-content(ng-controller='auth')
+            .row
+                p Apache Ignite Web Console is an interactive web management tool which allows users to:
+                ul
+                    li Create and download various configurations for Apache Ignite
+                    li Automatically load SQL metadata form any RDBMS
+                    li Connect to Ignite cluster and run SQL analytics on it
+            hr
+
             .row
                 .col-xs-12.col-md-6
                     form(name='loginForm')
@@ -115,7 +123,7 @@ block body
                                 img(src='/images/query-chart.png', alt='Query chart')
                                 .carousel-caption
                                     h3 Query chart
-                                    h3 View data in tabular form and as charts
+                                    p View data in tabular form and as charts
                         // Controls
                         a.left.carousel-control(href='#carousel', role='button', data-slide='prev')
                             span.fa.fa-chevron-left(aria-hidden='true')

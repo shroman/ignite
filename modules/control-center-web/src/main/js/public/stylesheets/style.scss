@@ -1765,7 +1765,6 @@ treecontrol.tree-classic {
         margin-top: -10px;
         z-index: 5;
         display: inline-block;
-        left: 50%;
         margin-left: -10px;
     }
 
@@ -1778,4 +1777,16 @@ treecontrol.tree-classic {
         right: 50%;
         margin-right: -10px;
     }
+}
+
+.carousel-control.left {
+    background-image: none;
+    margin-left: -50px;
+    padding-right: 50px;
+}
+
+.carousel-control.right {
+    background-image: none;
+    margin-right: -50px;
+    padding-left: 50px;
 }
