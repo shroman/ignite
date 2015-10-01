@@ -344,9 +344,12 @@ consoleModule.controller('sqlController',
             if (paragraph.columnFilter(meta)) {
                 paragraph.chartColumns.push({value: idx, label: meta.fieldName});
 
+                // Index for explain, execute and fieldName for scan.
+                var colName = paragraph.queryArgs.query ? idx : '"' + meta.fieldName + '"';
+
                 columnDefs.push({
                     headerName: meta.fieldName,
-                    valueGetter: 'JSON.stringify(data[' + (idx) + '])'
+                    valueGetter: 'JSON.stringify(data[' +  colName + '])'
                 });
             }
         });
