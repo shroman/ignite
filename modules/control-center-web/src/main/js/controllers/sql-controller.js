@@ -143,6 +143,7 @@ consoleModule.controller('sqlController',
 
             renderer.setHighlightGutterLine(false);
             renderer.setShowPrintMargin(false);
+            renderer.setOption('fontFamily', 'monospace');
             renderer.setOption('fontSize', '14px');
             renderer.setOption('minLines', '5');
             renderer.setOption('maxLines', '15');
@@ -503,9 +504,11 @@ consoleModule.controller('sqlController',
 
         _cancelRefresh(paragraph);
 
+        paragraph.queryArgs = { cacheName: paragraph.cacheName };
+
         _showLoading(paragraph, true);
 
-        $http.post('/agent/query', {query: 'EXPLAIN ' + paragraph.query, pageSize: paragraph.pageSize, cacheName: paragraph.cacheName})
+        $http.post('/agent/query', paragraph.queryArgs)
             .success(_processQueryResult(paragraph))
             .error(function (errMsg) {
                 paragraph.errMsg = errMsg;
@@ -521,9 +524,11 @@ consoleModule.controller('sqlController',
 
         _cancelRefresh(paragraph);
 
+        paragraph.queryArgs = { cacheName: paragraph.cacheName };
+
         _showLoading(paragraph, true);
 
-        $http.post('/agent/scan', {pageSize: paragraph.pageSize, cacheName: paragraph.cacheName})
+        $http.post('/agent/scan', paragraph.queryArgs)
             .success(_processQueryResult(paragraph))
             .error(function (errMsg) {
                 paragraph.errMsg = errMsg;
