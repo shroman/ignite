@@ -46,6 +46,7 @@ import org.apache.ignite.lang.IgnitePredicate;
 import org.jsr166.ConcurrentHashMap8;
 
 import static org.apache.ignite.events.EventType.EVT_NODE_FAILED;
+import static org.apache.ignite.events.EventType.EVT_NODE_LEFT;
 import static org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionState.OWNING;
 
 /**
@@ -104,7 +105,7 @@ class GridDhtPartitionSupplier {
 
                             clearContext(sctx, log);
 
-                            U.log(log, "Supply context removed for failed node [node=" + t.get1() + "]");
+                            U.log(log, "Supply context removed for node failed or left [node=" + t.get1() + "]");
 
                             scMap.remove(t, sctx);
                         }
@@ -116,7 +117,7 @@ class GridDhtPartitionSupplier {
             }
         };
 
-        cctx.events().addListener(lsnr, EVT_NODE_FAILED);
+        cctx.events().addListener(lsnr, EVT_NODE_LEFT, EVT_NODE_FAILED);
 
         startOldListeners();
     }
@@ -301,12 +302,12 @@ class GridDhtPartitionSupplier {
                                     swapLsnr = null;
                                     loc = null;
 
-                                    reply(node, d, s);
+                                    reply(node, d, s, scId);
 
                                     return;
                                 }
                                 else {
-                                    if (!reply(node, d, s))
+                                    if (!reply(node, d, s, scId))
                                         return;
 
                                     s = new GridDhtPartitionSupplyMessageV2(d.updateSequence(),
@@ -388,12 +389,12 @@ class GridDhtPartitionSupplier {
                                         swapLsnr = null;
                                         loc = null;
 
-                                        reply(node, d, s);
+                                        reply(node, d, s, scId);
 
                                         return;
                                     }
                                     else {
-                                        if (!reply(node, d, s))
+                                        if (!reply(node, d, s, scId))
                                             return;
 
                                         s = new GridDhtPartitionSupplyMessageV2(d.updateSequence(),
@@ -510,12 +511,12 @@ class GridDhtPartitionSupplier {
 
                                     loc = null;
 
-                                    reply(node, d, s);
+                                    reply(node, d, s, scId);
 
                                     return;
                                 }
                                 else {
-                                    if (!reply(node, d, s))
+                                    if (!reply(node, d, s, scId))
                                         return;
 
                                     s = new GridDhtPartitionSupplyMessageV2(d.updateSequence(),
@@ -553,7 +554,7 @@ class GridDhtPartitionSupplier {
 
             scMap.remove(scId);
 
-            reply(node, d, s);
+            reply(node, d, s, scId);
         }
         catch (IgniteCheckedException e) {
             U.error(log, "Failed to send partition supply message to node: " + id, e);
@@ -567,7 +568,10 @@ class GridDhtPartitionSupplier {
      * @return {@code True} if message was sent, {@code false} if recipient left grid.
      * @throws IgniteCheckedException If failed.
      */
-    private boolean reply(ClusterNode n, GridDhtPartitionDemandMessage d, GridDhtPartitionSupplyMessageV2 s)
+    private boolean reply(ClusterNode n,
+        GridDhtPartitionDemandMessage d,
+        GridDhtPartitionSupplyMessageV2 s,
+        T2<UUID, Integer> scId)
         throws IgniteCheckedException {
 
         try {
@@ -575,8 +579,11 @@ class GridDhtPartitionSupplier {
                 log.debug("Replying to partition demand [node=" + n.id() + ", demand=" + d + ", supply=" + s + ']');
 
             if (!cctx.affinity().affinityTopologyVersion().equals(d.topologyVersion()) || // Topology already changed.
-                cctx.shared().exchange().hasPendingExchange()) // New topology pending.
-                return true;
+                cctx.shared().exchange().hasPendingExchange()) { // New topology pending.
+                clearContext(scMap.remove(scId), log);
+
+                return false;
+            }
 
             cctx.io().sendOrderedMessage(n, d.topic(), s, cctx.ioPolicy(), d.timeout());
 
@@ -589,6 +596,8 @@ class GridDhtPartitionSupplier {
         catch (ClusterTopologyCheckedException ignore) {
             if (log.isDebugEnabled())
                 log.debug("Failed to send partition supply message because node left grid: " + n.id());
+
+            clearContext(scMap.remove(scId), log);
 
             return false;
         }
@@ -611,14 +620,15 @@ class GridDhtPartitionSupplier {
         GridDhtLocalPartition loc,
         AffinityTopologyVersion topVer,
         long updateSeq) {
-        SupplyContext old = scMap.putIfAbsent(t, new SupplyContext(phase,
-            partIt,
-            entryIt,
-            swapLsnr,
-            part,
-            loc,
-            topVer,
-            updateSeq));
+        SupplyContext old = scMap.putIfAbsent(t,
+            new SupplyContext(phase,
+                partIt,
+                entryIt,
+                swapLsnr,
+                part,
+                loc,
+                topVer,
+                updateSeq));
 
         assert old == null;
     }
@@ -643,13 +653,13 @@ class GridDhtPartitionSupplier {
         private final int part;
 
         /** Local partition. */
-        GridDhtLocalPartition loc;
+        private final GridDhtLocalPartition loc;
 
         /** Topology version. */
-        AffinityTopologyVersion topVer;
+        private final AffinityTopologyVersion topVer;
 
         /** Update seq. */
-        long updateSeq;
+        private final long updateSeq;
 
         /**
          * @param phase Phase.

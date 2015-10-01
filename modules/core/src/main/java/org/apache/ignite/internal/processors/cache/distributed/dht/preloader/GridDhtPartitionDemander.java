@@ -199,8 +199,8 @@ public class GridDhtPartitionDemander {
     private boolean topologyChanged(SyncFuture fut) {
         return
             !cctx.affinity().affinityTopologyVersion().equals(fut.topologyVersion()) || // Topology already changed.
-            fut != syncFut || // Same topology, but dummy exchange forced because of missing partitions.
-            cctx.shared().exchange().hasPendingExchange(); // New topology pending.
+                fut != syncFut || // Same topology, but dummy exchange forced because of missing partitions.
+                cctx.shared().exchange().hasPendingExchange(); // New topology pending.
     }
 
     /**
@@ -262,12 +262,6 @@ public class GridDhtPartitionDemander {
 
             final SyncFuture oldFut = syncFut;
 
-            if (cctx.shared().exchange().hasPendingExchange()) { // Will rebalance at actual topology.
-                U.log(log, "Skipping obsolete exchange. [top=" + assigns.topologyVersion() + "]");
-
-                return;
-            }
-
             final SyncFuture fut = new SyncFuture(assigns, cctx, log, oldFut.isDummy(), ++updateSeq);
 
             if (!oldFut.isDummy())
@@ -280,6 +274,14 @@ public class GridDhtPartitionDemander {
                 });
 
             syncFut = fut;
+
+            if (cctx.shared().exchange().hasPendingExchange()) { // Will rebalance at actual topology.
+                U.log(log, "Skipping obsolete exchange. [top=" + assigns.topologyVersion() + "]");
+
+                fut.cancel();
+
+                return;
+            }
 
             if (assigns.isEmpty()) {
                 fut.doneIfEmpty();
@@ -397,7 +399,9 @@ public class GridDhtPartitionDemander {
                     ", fromNode=" + node.id() + ", partitionsCount=" + d.partitions().size() +
                     ", topology=" + d.topologyVersion() + ", updateSeq=" + fut.updateSeq + "]");
 
-                fut.appendPartitions(node.id(), d.partitions());
+                Collection<Integer> parts = new HashSet<>(d.partitions());
+
+                fut.appendPartitions(node.id(), parts);
 
                 int lsnrCnt = cctx.gridConfig().getRebalanceThreadPoolSize();
 
@@ -406,7 +410,7 @@ public class GridDhtPartitionDemander {
                 for (int cnt = 0; cnt < lsnrCnt; cnt++)
                     sParts.add(new HashSet<Integer>());
 
-                Iterator<Integer> it = d.partitions().iterator();
+                Iterator<Integer> it = parts.iterator();
 
                 int cnt = 0;
 
