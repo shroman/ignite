@@ -400,7 +400,7 @@ consoleModule.controller('sqlController',
         return retainedCols;
     }
 
-    var _processQueryResult = function (paragraph) {
+    var _processQueryResult = function (paragraph, columnsToFit) {
         return function (res) {
             paragraph.meta = [];
             paragraph.chartColumns = [];
@@ -442,9 +442,10 @@ consoleModule.controller('sqlController',
 
             _showLoading(paragraph, false);
 
-            setTimeout(function () {
-                paragraph.gridOptions.api.sizeColumnsToFit();
-            });
+            if (columnsToFit)
+                setTimeout(function () {
+                    paragraph.gridOptions.api.sizeColumnsToFit();
+                });
 
             if (paragraph.result == 'none')
                 paragraph.result = 'table';
@@ -487,7 +488,7 @@ consoleModule.controller('sqlController',
 
         $http.post('/agent/query', paragraph.queryArgs)
             .success(function (res) {
-                _processQueryResult(paragraph)(res);
+                _processQueryResult(paragraph, true)(res);
 
                 _tryStartRefresh(paragraph);
             })
@@ -512,7 +513,7 @@ consoleModule.controller('sqlController',
         _showLoading(paragraph, true);
 
         $http.post('/agent/query', paragraph.queryArgs)
-            .success(_processQueryResult(paragraph))
+            .success(_processQueryResult(paragraph, true))
             .error(function (errMsg) {
                 paragraph.errMsg = errMsg;
 
@@ -532,7 +533,7 @@ consoleModule.controller('sqlController',
         _showLoading(paragraph, true);
 
         $http.post('/agent/scan', paragraph.queryArgs)
-            .success(_processQueryResult(paragraph))
+            .success(_processQueryResult(paragraph, true))
             .error(function (errMsg) {
                 paragraph.errMsg = errMsg;
 
