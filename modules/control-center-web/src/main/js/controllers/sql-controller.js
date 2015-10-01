@@ -504,7 +504,7 @@ consoleModule.controller('sqlController',
 
         _cancelRefresh(paragraph);
 
-        paragraph.queryArgs = { cacheName: paragraph.cacheName };
+        paragraph.queryArgs = {query: 'EXPLAIN ' + paragraph.query, pageSize: paragraph.pageSize, cacheName: paragraph.cacheName };
 
         _showLoading(paragraph, true);
 
@@ -524,7 +524,7 @@ consoleModule.controller('sqlController',
 
         _cancelRefresh(paragraph);
 
-        paragraph.queryArgs = { cacheName: paragraph.cacheName };
+        paragraph.queryArgs = { pageSize: paragraph.pageSize, cacheName: paragraph.cacheName };
 
         _showLoading(paragraph, true);
 
