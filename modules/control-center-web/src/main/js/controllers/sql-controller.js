@@ -534,23 +534,23 @@ consoleModule.controller('sqlController',
         paragraph.ace.focus();
     };
 
-    $scope.nextPage = function(item) {
-        _showLoading(true);
+    $scope.nextPage = function(paragraph) {
+        _showLoading(paragraph, true);
 
-        $http.post('/agent/query/fetch', {queryId: item.queryId, pageSize: item.pageSize, cacheName: item.queryArgs.cacheName})
+        $http.post('/agent/query/fetch', {queryId: paragraph.queryId, pageSize: paragraph.pageSize, cacheName: paragraph.queryArgs.cacheName})
             .success(function (res) {
-                item.page++;
+                paragraph.page++;
 
-                item.total += item.rows.length;
+                paragraph.total += paragraph.rows.length;
 
-                item.rows = res.rows;
+                paragraph.rows = res.rows;
 
-                item.gridOptions.api.setRowData(res.rows);
+                paragraph.gridOptions.api.setRowData(res.rows);
 
                 _showLoading(paragraph, false);
 
                 if (res.last)
-                    delete item.queryId;
+                    delete paragraph.queryId;
             })
             .error(function (errMsg) {
                 paragraph.errMsg = errMsg;
