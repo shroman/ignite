@@ -130,7 +130,7 @@ $generatorJava.declareVariable = function (res, varNew, varName, varFullType, va
 $generatorJava.property = function (res, varName, obj, propName, dataType, setterName, dflt) {
     var val = obj[propName];
 
-    if ($commonUtils.isDefined(val)) {
+    if ($commonUtils.isDefinedAndNotEmpty(val)) {
         var hasDflt = $commonUtils.isDefined(dflt);
 
         // Add to result if no default provided or value not equals to default.
@@ -195,6 +195,32 @@ $generatorJava.listProperty = function (res, varName, obj, propName, dataType, s
 };
 
 /**
+ * Add array property.
+ *
+ * @param res Resulting output with generated code.
+ * @param varName Variable name.
+ * @param obj Source object with data.
+ * @param propName Property name to take from source object.
+ * @param dataType Optional data type.
+ * @param setterName Optional setter name.
+ */
+$generatorJava.arrayProperty = function (res, varName, obj, propName, dataType, setterName) {
+    var val = obj[propName];
+
+    if (val && val.length > 0) {
+        res.emptyLineIfNeeded();
+
+        res.line(varName + '.' + $generatorJava.setterName(propName, setterName) + '(' +
+            _.map(val, function (v) {
+                return $generatorJava.toJavaCode(v, dataType)
+            }).join(', ') +
+        ');');
+
+        res.needEmptyLine = true;
+    }
+};
+
+/**
  * Add multi-param property (setter with several arguments).
  *
  * @param res Resulting output with generated code.
@@ -248,6 +274,10 @@ $generatorJava.beanProperty = function (res, varName, bean, beanPropName, beanVa
                     switch (descr.type) {
                         case 'list':
                             $generatorJava.listProperty(res, beanVarName, bean, propName, descr.elementsType, descr.setterName);
+                            break;
+
+                        case 'array':
+                            $generatorJava.arrayProperty(res, beanVarName, bean, propName, descr.elementsType, descr.setterName);
                             break;
 
                         case 'enum':

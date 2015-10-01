@@ -334,7 +334,8 @@ var ClusterSchema = new Schema({
         keyStoreType: String,
         protocol: String,
         trustStoreFilePath: String,
-        trustStoreType: String
+        trustStoreType: String,
+        trustManagers: [String]
     }
 });
 

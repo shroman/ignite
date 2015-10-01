@@ -107,6 +107,22 @@ $generatorXml.listProperty = function (res, obj, propName, listType, rowFactory)
     }
 };
 
+// Add array property
+$generatorXml.arrayProperty = function (res, obj, propName, rowFactory) {
+    var val = obj[propName];
+
+    if (val && val.length > 0) {
+        res.emptyLineIfNeeded();
+
+        if (!rowFactory)
+            rowFactory = function (val) {
+                return $generatorXml.escape(val);
+            };
+
+        res.line('<property name="' + propName + '" value="' + _.map(val, function (v) { return rowFactory(v) }).join(',') +'"/>');
+    }
+}
+
 // Add bean property.
 $generatorXml.beanProperty = function (res, bean, beanPropName, desc, createBeanAlthoughNoProps) {
     var props = desc.fields;
@@ -125,9 +141,10 @@ $generatorXml.beanProperty = function (res, bean, beanPropName, desc, createBean
                 var descr = props[propName];
 
                 if (descr) {
-                    if (descr.type == 'list') {
+                    if (descr.type == 'list')
                         $generatorXml.listProperty(res, bean, propName, descr.setterName);
-                    }
+                    else if (descr.type == 'array')
+                        $generatorXml.arrayProperty(res, bean, propName);
                     else if (descr.type == 'jdbcDialect') {
                         if (bean[propName]) {
                             res.startBlock('<property name="' + propName + '">');

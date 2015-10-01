@@ -329,6 +329,7 @@ $generatorCommon.SSL_CONFIGURATION_FACTORY = {
         trustStoreFilePath: {type: 'path'},
         keyTrustPassword: {type: 'raw'},
         trustStoreType: null,
+        trustManagers: {type: 'array'}
     }
 };
 

@@ -131,11 +131,15 @@ consoleModule.controller('clustersController', [
             addresses: {msg: 'Such IP address already exists!', id: 'IpAddress'},
             regions: {msg: 'Such region already exists!', id: 'Region'},
             zones: {msg: 'Such zone already exists!', id: 'Zone'},
-            peerClassLoadingLocalClassPathExclude: {msg: 'Such package already exists!', id: 'PeerClsPathExclude'}
+            peerClassLoadingLocalClassPathExclude: {msg: 'Such package already exists!', id: 'PeerClsPathExclude'},
+            trustManagers: {msg: 'Such trust manager already exists!', id: 'trustManagers'}
         };
 
         $scope.tableSimpleValid = function (item, field, val, index) {
             var model = $common.getModel(item, field)[field.model];
+
+            if (field.model == 'trustManagers' && !$common.isValidJavaClass('Trust manager', val, false,  $table.tableFieldId(index, 'trustManagers'), false))
+                return false;
 
             if ($common.isDefined(model)) {
                 var idx = _.indexOf(model, val);
@@ -145,7 +149,7 @@ consoleModule.controller('clustersController', [
                     var simpleTable = simpleTables[field.model];
 
                     if (simpleTable) {
-                        $common.showError(simpleTable.msg);
+                        $common.showPopoverMessage(null, null, $table.tableFieldId(index, 'trustManagers'), simpleTable.msg);
 
                         return $table.tableFocusInvalidField(index, simpleTable.id);
                     }

@@ -812,6 +812,20 @@
           "tip": [
             "Trust store type used in context initialization"
           ]
+        },
+        {
+          "label": "Trust managers",
+          "type": "table-simple",
+          "path": "sslContextFactory",
+          "model": "trustManagers",
+          "placeholder": "Trust manager",
+          "focusId": "trustManagers",
+          "addTip": "Add new trust manager.",
+          "removeTip": "Remove trust manager",
+          "hide": "!backupItem.sslEnabled",
+          "tableTip": [
+            "Pre-configured trust managers"
+          ]
         }
       ]
     },
