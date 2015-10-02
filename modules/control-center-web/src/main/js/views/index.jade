@@ -32,14 +32,6 @@ block body
     .container.body-container
         .main-content(ng-controller='auth')
             .row
-                p Apache Ignite Web Console is an interactive web management tool which allows users to:
-                ul
-                    li Create and download various configurations for Apache Ignite
-                    li Automatically load SQL metadata form any RDBMS
-                    li Connect to Ignite cluster and run SQL analytics on it
-            hr
-
-            .row
                 .col-xs-12.col-md-6
                     form(name='loginForm')
                         .modal-body.row
@@ -76,6 +68,13 @@ block body
                                 a.labelField(ng-click='action = "password/forgot"' on-click-focus='user_email') Forgot password?
                                 a.labelLogin(ng-click='action = "register"' on-click-focus='user_name') Sign Up
                                 button#login.btn.btn-primary(ng-click='auth(action, user_info)' ng-disabled='loginForm.$invalid') Log In
+
+                    .col-xs-10.col-sm-10.col-sm-offset-1(style='margin-top:20px')
+                        p Apache Ignite Web Console is an interactive web management tool which allows users to:
+                        ul
+                            li Create and download various configurations for Apache Ignite
+                            li Automatically load SQL metadata form any RDBMS
+                            li Connect to Ignite cluster and run SQL analytics on it
                 .col-xs-12.col-md-6(style='padding-right: 20px;')
                     #carousel.carousel.slide(data-ride='carousel')
                         // Indicators

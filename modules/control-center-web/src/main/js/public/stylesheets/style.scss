@@ -1743,7 +1743,6 @@ treecontrol.tree-classic {
 }
 
 .carousel-caption {
-    color: $ignite-header-color;
     position: relative;
     left: auto;
     right: auto;
@@ -1756,14 +1755,15 @@ treecontrol.tree-classic {
 }
 
 .carousel-control {
-    font-size: 30px;
+    font-size: 20px;
+    z-index: 16;
 
     // Toggles
     .fa-chevron-left,.fa-chevron-right {
         position: absolute;
-        top: 50%;
+        top: 92.7%;
         margin-top: -10px;
-        z-index: 5;
+        z-index: 16;
         display: inline-block;
         margin-left: -10px;
     }
@@ -1781,12 +1781,10 @@ treecontrol.tree-classic {
 
 .carousel-control.left {
     background-image: none;
-    margin-left: -50px;
-    padding-right: 50px;
+    margin-left: 150px;
 }
 
 .carousel-control.right {
     background-image: none;
-    margin-right: -50px;
-    padding-left: 50px;
+    margin-right: 150px;
 }
