@@ -1788,3 +1788,12 @@ treecontrol.tree-classic {
     background-image: none;
     margin-right: 150px;
 }
+
+
+.home-panel {
+    border-radius: 5px;
+    border: thin dotted $panel-default-border;
+    background-color: $panel-default-heading-bg;
+
+    padding: 10px;
+}
