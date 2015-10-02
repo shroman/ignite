@@ -31,7 +31,10 @@ public enum TransactionIsolation {
     REPEATABLE_READ,
 
     /** Serializable isolation level. */
-    SERIALIZABLE;
+    SERIALIZABLE,
+
+    /** TODO IGNITE-1607 */
+    SERIALIZABLE_TRY_LOCK;
 
     /** Enum values. */
     private static final TransactionIsolation[] VALS = values();
@@ -42,8 +45,7 @@ public enum TransactionIsolation {
      * @param ord Ordinal value.
      * @return Enumerated value or {@code null} if ordinal out of range.
      */
-    @Nullable
-    public static TransactionIsolation fromOrdinal(int ord) {
+    @Nullable public static TransactionIsolation fromOrdinal(int ord) {
         return ord >= 0 && ord < VALS.length ? VALS[ord] : null;
     }
 }

@@ -1628,12 +1628,18 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
         throws IgniteCheckedException {
         assert tx.optimistic() || !tx.local();
 
-        long remainingTime = U.currentTimeMillis() - (tx.startTime() + tx.timeout());
+        long timeout;
 
-        // For serializable transactions, failure to acquire lock means
-        // that there is a serializable conflict. For all other isolation levels,
-        // we wait for the lock.
-        long timeout = tx.timeout() == 0 ? 0 : remainingTime;
+        if (tx.isolation() != TransactionIsolation.SERIALIZABLE_TRY_LOCK) {
+            long remainingTime = U.currentTimeMillis() - (tx.startTime() + tx.timeout());
+
+            // For serializable transactions, failure to acquire lock means
+            // that there is a serializable conflict. For all other isolation levels,
+            // we wait for the lock.
+            timeout = tx.timeout() == 0 ? 0 : remainingTime;
+        }
+        else
+            timeout = -1L;
 
         for (IgniteTxEntry txEntry1 : entries) {
             // Check if this entry was prepared before.

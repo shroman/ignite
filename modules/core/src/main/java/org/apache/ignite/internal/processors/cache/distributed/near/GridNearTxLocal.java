@@ -557,6 +557,8 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
 
 
     /**
+     * TODO IGNITE-1607: remove this method?
+     *
      * Removes mapping in case of optimistic tx failure on primary node.
      *
      * @param failedNodeId Failed node ID.
@@ -583,6 +585,13 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
                 }
             }
         }
+    }
+
+    /**
+     * @param nodeId Primary node id.
+     */
+    void onOptimisticException(UUID nodeId) {
+        mappings.remove(nodeId);
     }
 
     /**
@@ -743,8 +752,13 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
 
         if (fut == null) {
             // Future must be created before any exception can be thrown.
-            fut = optimistic() ? new GridNearOptimisticTxPrepareFuture(cctx, this) :
-                new GridNearPessimisticTxPrepareFuture(cctx, this);
+            if (optimistic()) {
+                fut = isolation() == TransactionIsolation.SERIALIZABLE_TRY_LOCK ?
+                    new GridNearOptimisticSerializableTxPrepareFuture(cctx, this) :
+                    new GridNearOptimisticTxPrepareFuture(cctx, this);
+            }
+            else
+                fut = new GridNearPessimisticTxPrepareFuture(cctx, this);
 
             if (!prepFut.compareAndSet(null, fut))
                 return prepFut.get();
