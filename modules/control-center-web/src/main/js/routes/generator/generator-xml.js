@@ -568,14 +568,18 @@ $generatorXml.clusterSsl = function(cluster, res) {
         cluster.sslContextFactory.keyStorePassword =
             ($commonUtils.isDefinedAndNotEmpty(cluster.sslContextFactory.keyStoreFilePath)) ? '${ssl.key.storage.password}' : undefined;
 
-        cluster.sslContextFactory.keyTrustPassword =
+        cluster.sslContextFactory.trustStorePassword =
             ($commonUtils.isDefinedAndNotEmpty(cluster.sslContextFactory.trustStoreFilePath)) ? '${ssl.trust.storage.password}' : undefined;
 
-        $generatorXml.beanProperty(res, cluster.sslContextFactory, 'sslContextFactory', $generatorCommon.SSL_CONFIGURATION_FACTORY, false);
+        var propsDesc = $commonUtils.isDefinedAndNotEmpty(cluster.sslContextFactory.trustManagers) ?
+            $generatorCommon.SSL_CONFIGURATION_TRUST_MANAGER_FACTORY :
+            $generatorCommon.SSL_CONFIGURATION_TRUST_FILE_FACTORY;
+
+        $generatorXml.beanProperty(res, cluster.sslContextFactory, 'sslContextFactory', propsDesc, false);
     }
 
     return res;
-}
+};
 
 // Generate cache general group.
 $generatorXml.cacheGeneral = function(cache, res) {

@@ -31,12 +31,13 @@ $commonUtils.isDefined = function (v) {
  * @returns {boolean} 'true' if value defined and not empty string.
  */
 $commonUtils.isDefinedAndNotEmpty = function (v) {
-    var definded = $commonUtils.isDefined(v);
+    var defined = $commonUtils.isDefined(v);
 
-    if (definded && typeof(v) == 'string')
-        definded = v.length > 0;
+    if (defined && (typeof(v) == 'string' ||
+        Object.prototype.toString.call(v) === '[object Array]'))
+        defined = v.length > 0;
 
-    return definded;
+    return defined;
 };
 
 /**

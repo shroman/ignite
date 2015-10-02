@@ -56,6 +56,11 @@ consoleModule.controller('clustersController', [
             $preview.previewInit(preview);
         };
 
+        $scope.trustManagersConfigured = function() {
+            return $scope.backupItem.sslEnabled && $common.isDefined($scope.backupItem.sslContextFactory)
+                && !$common.isEmptyArray($scope.backupItem.sslContextFactory.trustManagers)
+        };
+
         $scope.previewChanged = $preview.previewChanged;
 
         $scope.hidePopover = $common.hidePopover;
@@ -380,9 +385,14 @@ consoleModule.controller('clustersController', [
                     return showPopoverMessage($scope.panels, 'general', 'serviceAccountId', 'Account ID should not be empty');
             }
 
-            if (item.sslEnabled && (!$common.isDefined(item.sslContextFactory)
-                || $common.isEmptyString(item.sslContextFactory.keyStoreFilePath)))
-                return showPopoverMessage($scope.panels, 'sslConfiguration', 'keyStoreFilePath', 'Key store file should not be empty');
+            if (item.sslEnabled) {
+                if (!$common.isDefined(item.sslContextFactory)
+                    || $common.isEmptyString(item.sslContextFactory.keyStoreFilePath))
+                    return showPopoverMessage($scope.panels, 'sslConfiguration', 'keyStoreFilePath', 'Key store file should not be empty');
+
+                if ($common.isEmptyString(item.sslContextFactory.trustStoreFilePath) && $common.isEmptyArray(item.sslContextFactory.trustManagers))
+                    return showPopoverMessage($scope.panels, 'sslConfiguration', 'sslConfiguration-title', 'Trust storage file or managers should be configured');
+            }
 
             if (!item.swapSpaceSpi || !item.swapSpaceSpi.kind && item.caches) {
                 for (var i = 0; i < item.caches.length; i++) {

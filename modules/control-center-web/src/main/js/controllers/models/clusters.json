@@ -790,12 +790,26 @@
           ]
         },
         {
+          "label": "Trust managers",
+          "type": "table-simple",
+          "path": "sslContextFactory",
+          "model": "trustManagers",
+          "placeholder": "Trust manager",
+          "focusId": "trustManagers",
+          "addTip": "Add new trust manager.",
+          "removeTip": "Remove trust manager",
+          "hide": "!backupItem.sslEnabled",
+          "tableTip": [
+            "Pre-configured trust managers"
+          ]
+        },
+        {
           "label": "Trust store file",
           "id": "trustStoreFilePath",
           "type": "text",
           "path": "sslContextFactory",
           "model": "trustStoreFilePath",
-          "hide": "!backupItem.sslEnabled",
+          "hide": "!backupItem.sslEnabled || trustManagersConfigured()",
           "tip": [
             "Path to the trust store file"
           ]
@@ -808,23 +822,9 @@
           "model": "trustStoreType",
           "placeholder": "JKS",
           "items": "sslStoreType",
-          "hide": "!backupItem.sslEnabled",
+          "hide": "!backupItem.sslEnabled || trustManagersConfigured()",
           "tip": [
             "Trust store type used in context initialization"
-          ]
-        },
-        {
-          "label": "Trust managers",
-          "type": "table-simple",
-          "path": "sslContextFactory",
-          "model": "trustManagers",
-          "placeholder": "Trust manager",
-          "focusId": "trustManagers",
-          "addTip": "Add new trust manager.",
-          "removeTip": "Remove trust manager",
-          "hide": "!backupItem.sslEnabled",
-          "tableTip": [
-            "Pre-configured trust managers"
           ]
         }
       ]

@@ -318,7 +318,7 @@ $generatorCommon.TRANSACTION_CONFIGURATION = {
 };
 
 // SSL configuration code generation descriptor.
-$generatorCommon.SSL_CONFIGURATION_FACTORY = {
+$generatorCommon.SSL_CONFIGURATION_TRUST_FILE_FACTORY = {
     className: 'org.apache.ignite.ssl.SslContextFactory',
     fields: {
         keyAlgorithm: null,
@@ -327,8 +327,20 @@ $generatorCommon.SSL_CONFIGURATION_FACTORY = {
         keyStoreType: null,
         protocol: null,
         trustStoreFilePath: {type: 'path'},
-        keyTrustPassword: {type: 'raw'},
-        trustStoreType: null,
+        trustStorePassword: {type: 'raw'},
+        trustStoreType: null
+    }
+};
+
+// SSL configuration code generation descriptor.
+$generatorCommon.SSL_CONFIGURATION_TRUST_MANAGER_FACTORY = {
+    className: 'org.apache.ignite.ssl.SslContextFactory',
+    fields: {
+        keyAlgorithm: null,
+        keyStoreFilePath: {type: 'path'},
+        keyStorePassword: {type: 'raw'},
+        keyStoreType: null,
+        protocol: null,
         trustManagers: {type: 'array'}
     }
 };

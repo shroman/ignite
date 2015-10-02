@@ -1436,15 +1436,19 @@ $generatorJava.clusterSsl = function(cluster, res) {
         cluster.sslContextFactory.keyStorePassword =
             ($commonUtils.isDefinedAndNotEmpty(cluster.sslContextFactory.keyStoreFilePath)) ? '_Key_Storage_Password_' : undefined;
 
-        cluster.sslContextFactory.keyTrustPassword = ($commonUtils.isDefinedAndNotEmpty(cluster.sslContextFactory.trustStoreFilePath)) ?
+        cluster.sslContextFactory.trustStorePassword = ($commonUtils.isDefinedAndNotEmpty(cluster.sslContextFactory.trustStoreFilePath)) ?
             '_Trust_Storage_Password_' : undefined;
 
+        var propsDesc = $commonUtils.isDefinedAndNotEmpty(cluster.sslContextFactory.trustManagers) ?
+            $generatorCommon.SSL_CONFIGURATION_TRUST_MANAGER_FACTORY.fields :
+            $generatorCommon.SSL_CONFIGURATION_TRUST_FILE_FACTORY.fields;
+
         $generatorJava.beanProperty(res, 'cfg', cluster.sslContextFactory, 'sslContextFactory', 'sslContextFactory',
-            'org.apache.ignite.ssl.SslContextFactory', $generatorCommon.SSL_CONFIGURATION_FACTORY.fields, false);
+            'org.apache.ignite.ssl.SslContextFactory', propsDesc, false);
     }
 
     return res;
-}
+};
 
 /**
  * Function to generate java code for cluster configuration.
