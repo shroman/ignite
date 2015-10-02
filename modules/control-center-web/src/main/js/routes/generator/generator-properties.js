@@ -58,7 +58,7 @@ $generatorProperties.dataSourcesProperties = function (cluster, res) {
                                 res.line(beanId + '.jdbc.server_name=YOUR_JDBC_SERVER_NAME');
                                 res.line(beanId + '.jdbc.port_number=YOUR_JDBC_PORT_NUMBER');
                                 res.line(beanId + '.jdbc.database_name=YOUR_JDBC_DATABASE_TYPE');
-                                res.line(beanId + '.jdbc.driverType=YOUR_JDBC_DRIVER_TYPE');
+                                res.line(beanId + '.jdbc.driver_type=YOUR_JDBC_DRIVER_TYPE');
                                 break;
 
                             default:

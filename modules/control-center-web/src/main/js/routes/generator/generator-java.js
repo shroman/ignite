@@ -204,17 +204,17 @@ $generatorJava.listProperty = function (res, varName, obj, propName, dataType, s
  * @param dataType Optional data type.
  * @param setterName Optional setter name.
  */
-$generatorJava.arrayProperty = function (res, varName, obj, propName, dataType, setterName) {
+$generatorJava.arrayProperty = function (res, varName, obj, propName, setterName) {
     var val = obj[propName];
 
     if (val && val.length > 0) {
         res.emptyLineIfNeeded();
 
-        res.line(varName + '.' + $generatorJava.setterName(propName, setterName) + '(' +
+        res.line(varName + '.' + $generatorJava.setterName(propName, setterName) + '({ ' +
             _.map(val, function (v) {
-                return $generatorJava.toJavaCode(v, dataType)
+                return 'new ' + res.importClass(v) + '()'
             }).join(', ') +
-        ');');
+        ' });');
 
         res.needEmptyLine = true;
     }
@@ -277,7 +277,7 @@ $generatorJava.beanProperty = function (res, varName, bean, beanPropName, beanVa
                             break;
 
                         case 'array':
-                            $generatorJava.arrayProperty(res, beanVarName, bean, propName, descr.elementsType, descr.setterName);
+                            $generatorJava.arrayProperty(res, beanVarName, bean, propName, descr.setterName);
                             break;
 
                         case 'enum':

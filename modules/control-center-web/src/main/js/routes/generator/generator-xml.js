@@ -108,7 +108,7 @@ $generatorXml.listProperty = function (res, obj, propName, listType, rowFactory)
 };
 
 // Add array property
-$generatorXml.arrayProperty = function (res, obj, propName, rowFactory) {
+$generatorXml.arrayProperty = function (res, obj, propName, descr, rowFactory) {
     var val = obj[propName];
 
     if (val && val.length > 0) {
@@ -116,10 +116,18 @@ $generatorXml.arrayProperty = function (res, obj, propName, rowFactory) {
 
         if (!rowFactory)
             rowFactory = function (val) {
-                return $generatorXml.escape(val);
+                return '<bean class="' + val + '"/>';
             };
 
-        res.line('<property name="' + propName + '" value="' + _.map(val, function (v) { return rowFactory(v) }).join(',') +'"/>');
+        res.startBlock('<property name="' + propName + '">');
+        res.startBlock('<list>');
+
+        _.forEach(val, function (v) {
+            res.append(rowFactory(v))
+        });
+
+        res.endBlock('</list>');
+        res.endBlock('</property>');
     }
 }
 
@@ -144,7 +152,7 @@ $generatorXml.beanProperty = function (res, bean, beanPropName, desc, createBean
                     if (descr.type == 'list')
                         $generatorXml.listProperty(res, bean, propName, descr.setterName);
                     else if (descr.type == 'array')
-                        $generatorXml.arrayProperty(res, bean, propName);
+                        $generatorXml.arrayProperty(res, bean, propName, descr);
                     else if (descr.type == 'jdbcDialect') {
                         if (bean[propName]) {
                             res.startBlock('<property name="' + propName + '">');
