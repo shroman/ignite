@@ -249,7 +249,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         }
     }
 
-    public void test() throws Exception {
+    private void test() throws Exception {
         while (true) {
             testComplexRebalancing();
 
