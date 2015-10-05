@@ -432,12 +432,6 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
         for (AffinityReadyFuture f : readyFuts.values())
             f.onDone(stopErr);
 
-        for (GridDhtPartitionsExchangeFuture f : pendingExchangeFuts)
-            f.onDone(stopErr);
-
-        if (locExchFut != null)
-            locExchFut.onDone(stopErr);
-
         for (int cnt = 0; cnt < cctx.gridConfig().getRebalanceThreadPoolSize(); cnt++) {
             cctx.io().removeOrderedHandler(rebalanceTopic(cnt));
         }

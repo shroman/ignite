@@ -250,11 +250,6 @@ public class GridDhtPreloader extends GridCachePreloaderAdapter {
     }
 
     /** {@inheritDoc} */
-    @Override public void onReconnected() {
-        startFut = new GridFutureAdapter<>();
-    }
-
-    /** {@inheritDoc} */
     @Override public void updateLastExchangeFuture(GridDhtPartitionsExchangeFuture lastFut) {
         demander.updateLastExchangeFuture(lastFut);
     }

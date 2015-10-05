@@ -95,11 +95,6 @@ public class GridDhtPartitionSupplyMessageV2 extends GridCacheMessage implements
     }
 
     /** {@inheritDoc} */
-    @Override public boolean allowForStartup() {
-        return true;
-    }
-
-    /** {@inheritDoc} */
     @Override public boolean ignoreClassErrors() {
         return true;
     }

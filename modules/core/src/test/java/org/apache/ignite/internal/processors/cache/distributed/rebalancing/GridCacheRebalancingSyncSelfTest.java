@@ -84,8 +84,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         cachePCfg.setRebalanceMode(CacheRebalanceMode.SYNC);
         cachePCfg.setBackups(1);
         cachePCfg.setRebalanceBatchSize(1);
-        //cachePCfg.setRebalanceBatchesCount(1);
-        cachePCfg.setRebalanceBatchesCount(Integer.MAX_VALUE);
+        cachePCfg.setRebalanceBatchesCount(1);
 
         CacheConfiguration<Integer, Integer> cachePCfg2 = new CacheConfiguration<>();
 
@@ -250,7 +249,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         }
     }
 
-    private void test() throws Exception {
+    public void test() throws Exception {
         while (true) {
             testComplexRebalancing();
 
