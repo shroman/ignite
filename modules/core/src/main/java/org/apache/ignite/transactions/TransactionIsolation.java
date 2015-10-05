@@ -31,10 +31,7 @@ public enum TransactionIsolation {
     REPEATABLE_READ,
 
     /** Serializable isolation level. */
-    SERIALIZABLE,
-
-    /** TODO IGNITE-1607 */
-    SERIALIZABLE_TRY_LOCK;
+    SERIALIZABLE;
 
     /** Enum values. */
     private static final TransactionIsolation[] VALS = values();

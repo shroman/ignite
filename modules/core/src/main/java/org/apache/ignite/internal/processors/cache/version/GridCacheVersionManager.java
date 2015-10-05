@@ -53,9 +53,6 @@ public class GridCacheVersionManager extends GridCacheSharedManagerAdapter {
     /** Last version. */
     private volatile GridCacheVersion last;
 
-    /** Serializable transaction flag. */
-    private boolean txSerEnabled;
-
     /** Data center ID. */
     @SuppressWarnings("FieldAccessedSynchronizedAndUnsynchronized")
     private byte dataCenterId;
@@ -79,8 +76,6 @@ public class GridCacheVersionManager extends GridCacheSharedManagerAdapter {
 
     /** {@inheritDoc} */
     @Override public void start0() throws IgniteCheckedException {
-        txSerEnabled = cctx.gridConfig().getTransactionConfiguration().isTxSerializableEnabled();
-
         last = new GridCacheVersion(0, 0, order.get(), 0, dataCenterId);
 
         cctx.gridEvents().addLocalEventListener(discoLsnr, EVT_NODE_METRICS_UPDATED);
@@ -235,36 +230,18 @@ public class GridCacheVersionManager extends GridCacheSharedManagerAdapter {
 
         int locNodeOrder = (int)cctx.localNode().order();
 
-        if (txSerEnabled) {
-            synchronized (this) {
-                long ord = forLoad ? loadOrder.incrementAndGet() : order.incrementAndGet();
+        long ord = forLoad ? loadOrder.incrementAndGet() : order.incrementAndGet();
 
-                GridCacheVersion next = new GridCacheVersion(
-                    (int)topVer,
-                    globalTime,
-                    ord,
-                    locNodeOrder,
-                    dataCenterId);
+        GridCacheVersion next = new GridCacheVersion(
+            (int)topVer,
+            globalTime,
+            ord,
+            locNodeOrder,
+            dataCenterId);
 
-                last = next;
+        last = next;
 
-                return next;
-            }
-        }
-        else {
-            long ord = forLoad ? loadOrder.incrementAndGet() : order.incrementAndGet();
-
-            GridCacheVersion next = new GridCacheVersion(
-                (int)topVer,
-                globalTime,
-                ord,
-                locNodeOrder,
-                dataCenterId);
-
-            last = next;
-
-            return next;
-        }
+        return next;
     }
 
     /**
@@ -273,12 +250,6 @@ public class GridCacheVersionManager extends GridCacheSharedManagerAdapter {
      * @return Last generated version.
      */
     public GridCacheVersion last() {
-        if (txSerEnabled) {
-            synchronized (this) {
-                return last;
-            }
-        }
-        else
-            return last;
+        return last;
     }
 }

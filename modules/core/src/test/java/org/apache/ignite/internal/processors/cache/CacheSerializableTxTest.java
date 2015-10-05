@@ -57,17 +57,17 @@ import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
 import static org.apache.ignite.transactions.TransactionConcurrency.OPTIMISTIC;
 import static org.apache.ignite.transactions.TransactionConcurrency.PESSIMISTIC;
 import static org.apache.ignite.transactions.TransactionIsolation.REPEATABLE_READ;
-import static org.apache.ignite.transactions.TransactionIsolation.SERIALIZABLE_TRY_LOCK;
+import static org.apache.ignite.transactions.TransactionIsolation.SERIALIZABLE;
 
 /**
  *
  */
-public class CacheDeadlockFreeTxTest extends GridCommonAbstractTest {
+public class CacheSerializableTxTest extends GridCommonAbstractTest {
     /** */
     private static final TcpDiscoveryIpFinder IP_FINDER = new TcpDiscoveryVmIpFinder(true);
 
     /** */
-    private static final int SRVS = 3;
+    private static final int SRVS = 4;
 
     /** */
     private static final int CLIENTS = 3;
@@ -109,41 +109,96 @@ public class CacheDeadlockFreeTxTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If failed.
      */
-    public void testTxRollbackIfLocked1() throws Exception {
+    public void testTxRollbackRead1() throws Exception {
+        txRollbackRead(true);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testTxRollbackRead2() throws Exception {
+        txRollbackRead(false);
+    }
+
+    /**
+     * @param noVal If {@code true} there is no cache value when read in tx.
+     * @throws Exception If failed.
+     */
+    private void txRollbackRead(boolean noVal) throws Exception {
+        Ignite ignite0 = ignite(0);
+
+        final IgniteTransactions txs = ignite0.transactions();
+
+        for (CacheConfiguration<Integer, Integer> ccfg : cacheConfigurations()) {
+            logCacheInfo(ccfg);
+
+            try {
+                IgniteCache<Integer, Integer> cache = ignite0.createCache(ccfg);
+
+                List<Integer> keys = new ArrayList<>();
+
+                keys.add(nearKey(cache));
+
+                for (Integer key : keys) {
+                    log.info("Test key: " + key);
+
+                    Integer expVal = null;
+
+                    if (!noVal) {
+                        expVal = -1;
+
+                        cache.put(key, expVal);
+                    }
+
+                    try {
+                        try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                            Integer val = cache.get(key);
+
+                            assertEquals(expVal, val);
+
+                            updateKey(cache, key, 1);
+
+                            log.info("Commit");
+
+                            tx.commit();
+                        }
+
+                        fail();
+                    }
+                    catch (TransactionOptimisticException e) {
+                        log.info("Expected exception: " + e);
+                    }
+
+                    assertEquals(1, (Object) cache.get(key));
+                }
+            }
+            finally {
+                ignite0.destroyCache(ccfg.getName());
+            }
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testTxRollbackReadWrite() throws Exception {
         Ignite ignite0 = ignite(0);
 
         final IgniteTransactions txs = ignite0.transactions();
 
         final IgniteCache<Integer, Integer> cache =
-            ignite0.createCache(cacheConfiguration(PARTITIONED, FULL_SYNC, 1, false, true));
+            ignite0.createCache(cacheConfiguration(PARTITIONED, FULL_SYNC, 1, false, false));
 
         final Integer key = nearKey(cache);
 
-        final CountDownLatch latch1 = new CountDownLatch(1);
-        final CountDownLatch latch2 = new CountDownLatch(1);
-
-        IgniteInternalFuture<?> fut = GridTestUtils.runAsync(new Callable<Void>() {
-            @Override public Void call() throws Exception {
-                try (Transaction tx = txs.txStart(PESSIMISTIC, REPEATABLE_READ)) {
-                    cache.put(key, 1);
-
-                    log.info("Locked key: " + key);
-
-                    latch1.countDown();
-
-                    assertTrue(latch2.await(10, SECONDS));
-
-                    tx.commit();
-                }
-
-                return null;
-            }
-        }, "lock-thread");
-
-        assertTrue(latch1.await(10, SECONDS));
-
         try {
-            try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE_TRY_LOCK)) {
+            try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                Integer val = cache.get(key);
+
+                assertNull(val);
+
+                updateKey(cache, key, 1);
+
                 cache.put(key, 2);
 
                 log.info("Commit");
@@ -157,19 +212,70 @@ public class CacheDeadlockFreeTxTest extends GridCommonAbstractTest {
             log.info("Expected exception: " + e);
         }
 
-        latch2.countDown();
-
-        fut.get();
-
         assertEquals(1, (Object)cache.get(key));
 
-        try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE_TRY_LOCK)) {
+        try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
             cache.put(key, 2);
 
             tx.commit();
         }
 
-        assertEquals(2, (Object)cache.get(key));
+        assertEquals(2, (Object) cache.get(key));
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testTxRollbackIfLocked1() throws Exception {
+        Ignite ignite0 = ignite(0);
+
+        IgniteTransactions txs = ignite0.transactions();
+
+        for (CacheConfiguration<Integer, Integer> ccfg : cacheConfigurations()) {
+            logCacheInfo(ccfg);
+
+            try {
+                IgniteCache<Integer, Integer> cache = ignite0.createCache(ccfg);
+
+                final Integer key = nearKey(cache);
+
+                CountDownLatch latch = new CountDownLatch(1);
+
+                IgniteInternalFuture<?> fut = lockKey(latch, cache, key);
+
+                try {
+                    try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                        cache.put(key, 2);
+
+                        log.info("Commit");
+
+                        tx.commit();
+                    }
+
+                    fail();
+                }
+                catch (TransactionOptimisticException e) {
+                    log.info("Expected exception: " + e);
+                }
+
+                latch.countDown();
+
+                fut.get();
+
+                assertEquals(1, (Object)cache.get(key));
+
+                try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                    cache.put(key, 2);
+
+                    tx.commit();
+                }
+
+                assertEquals(2, (Object)cache.get(key));
+            }
+            finally {
+                ignite0.destroyCache(ccfg.getName());
+            }
+        }
     }
 
     /**
@@ -195,71 +301,58 @@ public class CacheDeadlockFreeTxTest extends GridCommonAbstractTest {
 
         final IgniteTransactions txs = ignite0.transactions();
 
-        final IgniteCache<Integer, Integer> cache =
-            ignite0.createCache(cacheConfiguration(PARTITIONED, FULL_SYNC, 1, false, true));
+        for (CacheConfiguration<Integer, Integer> ccfg : cacheConfigurations()) {
+            logCacheInfo(ccfg);
 
-        final Integer key1 = primaryKey(ignite(1).cache(cache.getName()));
-        final Integer key2 = locKey ? primaryKey(cache) : primaryKey(ignite(2).cache(cache.getName()));
+            try {
+                IgniteCache<Integer, Integer> cache = ignite0.createCache(ccfg);
 
-        final CountDownLatch latch1 = new CountDownLatch(1);
-        final CountDownLatch latch2 = new CountDownLatch(1);
+                final Integer key1 = primaryKey(ignite(1).cache(cache.getName()));
+                final Integer key2 = locKey ? primaryKey(cache) : primaryKey(ignite(2).cache(cache.getName()));
 
-        IgniteInternalFuture<?> fut = GridTestUtils.runAsync(new Callable<Void>() {
-            @Override public Void call() throws Exception {
-                try (Transaction tx = txs.txStart(PESSIMISTIC, REPEATABLE_READ)) {
-                    cache.put(key1, 1);
+                CountDownLatch latch = new CountDownLatch(1);
 
-                    log.info("Locked key: " + key1);
+                IgniteInternalFuture<?> fut = lockKey(latch, cache, key1);
 
-                    latch1.countDown();
+                try {
+                    try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                        cache.put(key1, 2);
+                        cache.put(key2, 2);
 
-                    assertTrue(latch2.await(10, SECONDS));
+                        log.info("Commit2");
 
-                    log.info("Commit1");
+                        tx.commit();
+                    }
+
+                    fail();
+                }
+                catch (TransactionOptimisticException e) {
+                    log.info("Expected exception: " + e);
+                }
+
+                latch.countDown();
+
+                fut.get();
+
+                assertEquals(1, (Object) cache.get(key1));
+                assertNull(cache.get(key2));
+
+                try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                    cache.put(key1, 2);
+                    cache.put(key2, 2);
+
+                    log.info("Commit3");
 
                     tx.commit();
                 }
 
-                return null;
+                assertEquals(2, (Object) cache.get(key2));
+                assertEquals(2, (Object) cache.get(key2));
             }
-        }, "lock-thread");
-
-        assertTrue(latch1.await(10, SECONDS));
-
-        try {
-            try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE_TRY_LOCK)) {
-                cache.put(key1, 2);
-                cache.put(key2, 2);
-
-                log.info("Commit2");
-
-                tx.commit();
+            finally {
+                ignite0.destroyCache(ccfg.getName());
             }
-
-            fail();
         }
-        catch (TransactionOptimisticException e) {
-            log.info("Expected exception: " + e);
-        }
-
-        latch2.countDown();
-
-        fut.get();
-
-        assertEquals(1, (Object) cache.get(key1));
-        assertNull(cache.get(key2));
-
-        try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE_TRY_LOCK)) {
-            cache.put(key1, 2);
-            cache.put(key2, 2);
-
-            log.info("Commit3");
-
-            tx.commit();
-        }
-
-        assertEquals(2, (Object) cache.get(key2));
-        assertEquals(2, (Object) cache.get(key2));
     }
 
     /**
@@ -386,16 +479,19 @@ public class CacheDeadlockFreeTxTest extends GridCommonAbstractTest {
                                             return null;
                                         }
                                     });
-                                } else {
-                                    try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE_TRY_LOCK)) {
+                                }
+                                else {
+                                    try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
                                         cache.putAll(keys);
 
                                         tx.commit();
                                     }
                                 }
-                            } catch (TransactionOptimisticException ignore) {
+                            }
+                            catch (TransactionOptimisticException ignore) {
                                 // No-op.
-                            } catch (Throwable e) {
+                            }
+                            catch (Throwable e) {
                                 log.error("Unexpected error: " + e, e);
 
                                 throw e;
@@ -426,6 +522,113 @@ public class CacheDeadlockFreeTxTest extends GridCommonAbstractTest {
         finally {
             finished.set(true);
         }
+    }
+
+    /**
+     * @return Cache configurations.
+     */
+    private List<CacheConfiguration<Integer, Integer>> cacheConfigurations() {
+        List<CacheConfiguration<Integer, Integer>> ccfgs = new ArrayList<>();
+
+        // No store, no near.
+        ccfgs.add(cacheConfiguration(PARTITIONED, FULL_SYNC, 0, false, false));
+        ccfgs.add(cacheConfiguration(PARTITIONED, FULL_SYNC, 1, false, false));
+        ccfgs.add(cacheConfiguration(PARTITIONED, FULL_SYNC, 2, false, false));
+
+        // Store, no near.
+        ccfgs.add(cacheConfiguration(PARTITIONED, FULL_SYNC, 0, true, false));
+        ccfgs.add(cacheConfiguration(PARTITIONED, FULL_SYNC, 1, true, false));
+        ccfgs.add(cacheConfiguration(PARTITIONED, FULL_SYNC, 2, true, false));
+
+        // No store, near.
+        ccfgs.add(cacheConfiguration(PARTITIONED, FULL_SYNC, 0, false, true));
+        ccfgs.add(cacheConfiguration(PARTITIONED, FULL_SYNC, 1, false, true));
+        ccfgs.add(cacheConfiguration(PARTITIONED, FULL_SYNC, 2, false, true));
+
+        // Store, near.
+        ccfgs.add(cacheConfiguration(PARTITIONED, FULL_SYNC, 0, true, true));
+        ccfgs.add(cacheConfiguration(PARTITIONED, FULL_SYNC, 1, true, true));
+        ccfgs.add(cacheConfiguration(PARTITIONED, FULL_SYNC, 2, true, true));
+
+        return ccfgs;
+    }
+
+    /**
+     * @param ccfg Cache configuration.
+     */
+    private void logCacheInfo(CacheConfiguration<?, ?> ccfg) {
+        log.info("Test cache [mode=" + ccfg.getCacheMode() +
+            ", sync=" + ccfg.getWriteSynchronizationMode() +
+            ", backups=" + ccfg.getBackups() +
+            ", near=" + (ccfg.getNearConfiguration() != null) +
+            ", store=" + ccfg.isWriteThrough() + ']');
+    }
+
+    /**
+     * @param cache Cache.
+     * @param key Key.
+     * @param val Value.
+     * @throws Exception If failed.
+     */
+    private void updateKey(
+        final IgniteCache<Integer, Integer> cache,
+        final Integer key,
+        final Integer val) throws Exception {
+        IgniteInternalFuture<?> fut = GridTestUtils.runAsync(new Callable<Void>() {
+            @Override public Void call() throws Exception {
+                IgniteTransactions txs = cache.unwrap(Ignite.class).transactions();
+
+                try (Transaction tx = txs.txStart(PESSIMISTIC, REPEATABLE_READ)) {
+                    cache.put(key, val);
+
+                    tx.commit();
+                }
+
+                return null;
+            }
+        }, "update-thread");
+
+        fut.get();
+    }
+
+    /**
+     * @param releaseLatch Release lock latch.
+     * @param cache Cache.
+     * @param key Key.
+     * @return Future.
+     * @throws Exception If failed.
+     */
+    private IgniteInternalFuture<?> lockKey(
+        final CountDownLatch releaseLatch,
+        final IgniteCache<Integer, Integer> cache,
+        final Integer key) throws Exception {
+        final CountDownLatch lockLatch = new CountDownLatch(1);
+
+        IgniteInternalFuture<?> fut = GridTestUtils.runAsync(new Callable<Void>() {
+            @Override public Void call() throws Exception {
+                IgniteTransactions txs = cache.unwrap(Ignite.class).transactions();
+
+                try (Transaction tx = txs.txStart(PESSIMISTIC, REPEATABLE_READ)) {
+                    cache.put(key, 1);
+
+                    log.info("Locked key: " + key);
+
+                    lockLatch.countDown();
+
+                    assertTrue(releaseLatch.await(100000, SECONDS));
+
+                    log.info("Commit tx: " + key);
+
+                    tx.commit();
+                }
+
+                return null;
+            }
+        }, "lock-thread");
+
+        assertTrue(lockLatch.await(10, SECONDS));
+
+        return fut;
     }
 
     /**

@@ -18,7 +18,6 @@
 package org.apache.ignite.internal.processors.cache.distributed.near;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,7 +81,7 @@ public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearTxPre
     public GridNearOptimisticSerializableTxPrepareFuture(GridCacheSharedContext cctx, GridNearTxLocal tx) {
         super(cctx, tx);
 
-        assert tx.optimistic() : tx;
+        assert tx.optimistic() && tx.serializable() : tx;
 
         // Should wait for all mini futures completion before finishing tx.
         ignoreChildFailures(IgniteCheckedException.class);
@@ -436,9 +435,7 @@ public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearTxPre
                 return;
             }
 
-            prepare(
-                tx.optimistic() && tx.serializable() ? tx.readEntries() : Collections.<IgniteTxEntry>emptyList(),
-                tx.writeEntries());
+            prepare(tx.readEntries(), tx.writeEntries());
 
             markInitialized();
         }
@@ -519,7 +516,7 @@ public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearTxPre
             futId,
             tx.topologyVersion(),
             tx,
-            tx.optimistic() && tx.serializable() ? m.reads() : null,
+            m.reads(),
             m.writes(),
             m.near(),
             txMapping.transactionNodes(),

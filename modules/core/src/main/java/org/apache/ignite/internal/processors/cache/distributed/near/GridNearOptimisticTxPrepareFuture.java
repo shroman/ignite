@@ -82,7 +82,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
     public GridNearOptimisticTxPrepareFuture(GridCacheSharedContext cctx, GridNearTxLocal tx) {
         super(cctx, tx);
 
-        assert tx.optimistic() : tx;
+        assert tx.optimistic() && !tx.serializable() : tx;
     }
 
     /** {@inheritDoc} */
@@ -449,9 +449,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
                 return;
             }
 
-            prepare(
-                tx.optimistic() && tx.serializable() ? tx.readEntries() : Collections.<IgniteTxEntry>emptyList(),
-                tx.writeEntries());
+            prepare(Collections.<IgniteTxEntry>emptyList(), tx.writeEntries());
 
             markInitialized();
         }
@@ -572,7 +570,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
             futId,
             tx.topologyVersion(),
             tx,
-            tx.optimistic() && tx.serializable() ? m.reads() : null,
+            null,
             m.writes(),
             m.near(),
             txMapping.transactionNodes(),
