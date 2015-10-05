@@ -52,22 +52,21 @@ public class IgniteCacheP2pUnmarshallingRebalanceErrorTest extends IgniteCacheP2
 
         readCnt.set(Integer.MAX_VALUE);
 
-        for (int i = 0; i <= 100000; i++)
+        for (int i = 0; i <= 100; i++)
             jcache(0).put(new TestKey(String.valueOf(++key)), "");
 
-        startGrid(3);
+        startGrid(10); //custom rebalanceDelay set at cfg.
 
-        Affinity<Object> aff = affinity(grid(3).cache(null));
+        Affinity<Object> aff = affinity(grid(10).cache(null));
 
-        while (!aff.isPrimary(grid(3).localNode(), new TestKey(String.valueOf(key))))
+        while (!aff.isPrimary(grid(10).localNode(), new TestKey(String.valueOf(key))))
             --key;
 
         readCnt.set(1);
 
         try {
-            jcache(3).get(new TestKey(String.valueOf(key)));
+            jcache(10).get(new TestKey(String.valueOf(key)));
 
-            //Can fail in case rebalancing finished before get
             assert false : "p2p marshalling failed, but error response was not sent";
         }
         catch (CacheException e) {
