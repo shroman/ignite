@@ -326,11 +326,20 @@ h1, h2, h3, h4, h5, h6 {
     }
 }
 
+.login-header {
+    margin-top: 0;
+    margin-bottom: 20px
+}
+
 .login-footer {
     @extend .modal-footer;
 
-    padding-left: 8px;
-    padding-right: 4px;
+    padding-left: 0;
+    padding-right: 0;
+
+    .btn {
+        margin-right: 0;
+    }
 }
 
 .modal-body {
@@ -1815,7 +1824,7 @@ treecontrol.tree-classic {
 }
 
 .home {
-    min-height: 840px;
+    min-height: 880px;
     padding: 20px;
 
     @media(min-width: 992px) {
