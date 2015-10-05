@@ -116,5 +116,5 @@ block content
                                         .col-xs-2.col-sm-2.col-md-1
                                             label Generate:
                                         .col-xs-4.col-sm-3.col-md-3
-                                            button.form-control(ng-model='backupItem.javaClassClient' bs-select bs-options='item.value as item.label for item in javaClassItems' data-sort='false')
+                                            button.select-toggle.form-control(ng-model='backupItem.javaClassClient' bs-select bs-options='item.value as item.label for item in javaClassItems' data-sort='false')
                                     div(ui-ace='{ onLoad: aceInit, mode: "java" }' ng-model='javaClient')

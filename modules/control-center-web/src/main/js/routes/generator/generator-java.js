@@ -377,7 +377,7 @@ $generatorJava.clusterGeneral = function (cluster, clientNearCfg, res) {
 
     $generatorJava.declareVariable(res, true, 'cfg', 'org.apache.ignite.configuration.IgniteConfiguration');
 
-    $generatorJava.property(res, 'cfg', cluster, 'name', null, 'gridName');
+    $generatorJava.property(res, 'cfg', cluster, 'name', null, 'setGridName');
     res.needEmptyLine = true;
 
     if (clientNearCfg) {
@@ -1465,7 +1465,7 @@ $generatorJava.cluster = function (cluster, javaClass, clientNearCfg) {
             res.line('/**');
             res.line(' * ' + $generatorCommon.mainComment());
             res.line(' */');
-            res.startBlock('public class ConfigurationFactory {');
+            res.startBlock('public class IgniteConfigurationFactory {');
             res.line('/**');
             res.line(' * Configure grid.');
             res.line(' */');
