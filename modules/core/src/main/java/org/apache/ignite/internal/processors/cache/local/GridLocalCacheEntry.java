@@ -191,7 +191,8 @@ public class GridLocalCacheEntry extends GridCacheMapEntry {
     }
 
     /** {@inheritDoc} */
-    @Override public boolean tmLock(IgniteInternalTx tx, long timeout) throws GridCacheEntryRemovedException {
+    @Override public boolean tmLock(IgniteInternalTx tx, long timeout, GridCacheVersion serReadVer)
+        throws GridCacheEntryRemovedException {
         GridCacheMvccCandidate cand = addLocal(
             tx.threadId(),
             tx.xidVersion(),

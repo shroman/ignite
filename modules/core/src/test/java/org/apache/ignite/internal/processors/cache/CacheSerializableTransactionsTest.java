@@ -121,7 +121,7 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If failed.
      */
-    public void _testTxRollbackRead2() throws Exception {
+    public void testTxRollbackRead2() throws Exception {
         txRollbackRead(false);
     }
 

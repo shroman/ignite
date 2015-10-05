@@ -1509,7 +1509,6 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
      * @param cacheCtx Cache context.
      * @param map Return map.
      * @param missedMap Missed keys.
-     * @param redos Keys to retry.
      * @param deserializePortable Deserialize portable flag.
      * @param skipVals Skip values flag.
      * @param keepCacheObjects Keep cache objects flag.
@@ -1520,14 +1519,11 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
         final GridCacheContext cacheCtx,
         final Map<K, V> map,
         final Map<KeyCacheObject, GridCacheVersion> missedMap,
-        @Nullable final Collection<KeyCacheObject> redos,
         final boolean deserializePortable,
         final boolean skipVals,
         final boolean keepCacheObjects,
         final boolean skipStore
     ) {
-        assert redos != null || pessimistic();
-
         if (log.isDebugEnabled())
             log.debug("Loading missed values for missed map: " + missedMap);
 
@@ -1863,7 +1859,6 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                             return checkMissed(cacheCtx,
                                 retMap,
                                 missed,
-                                null,
                                 deserializePortable,
                                 skipVals,
                                 keepCacheObjects,
@@ -1912,8 +1907,6 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
             else {
                 assert optimistic() || readCommitted() || skipVals;
 
-                final Collection<KeyCacheObject> redos = new ArrayList<>();
-
                 if (!missed.isEmpty()) {
                     if (!readCommitted())
                         for (Iterator<KeyCacheObject> it = missed.keySet().iterator(); it.hasNext(); ) {
@@ -1932,64 +1925,12 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                     IgniteInternalFuture<Map<K, V>> fut0 = checkMissed(cacheCtx,
                         retMap,
                         missed,
-                        redos,
                         deserializePortable,
                         skipVals,
                         keepCacheObjects,
                         skipStore);
 
-                    return new GridEmbeddedFuture<>(
-                        // First future.
-                        fut0,
-                        // Closure that returns another future, based on result from first.
-                        new PMC<Map<K, V>>() {
-                            @Override public IgniteInternalFuture<Map<K, V>> postMiss(Map<K, V> map) {
-                                if (redos.isEmpty())
-                                    return new GridFinishedFuture<>(
-                                        Collections.<K, V>emptyMap());
-
-                                if (log.isDebugEnabled())
-                                    log.debug("Starting to future-recursively get values for keys: " + redos);
-
-                                // Future recursion.
-                                return getAllAsync(cacheCtx,
-                                    redos,
-                                    null,
-                                    deserializePortable,
-                                    skipVals,
-                                    true,
-                                    skipStore);
-                            }
-                        },
-                        // Finalize.
-                        new FinishClosure<Map<K, V>>() {
-                            @Override Map<K, V> finish(Map<K, V> loaded) {
-                                for (Map.Entry<K, V> entry : loaded.entrySet()) {
-                                    KeyCacheObject cacheKey = (KeyCacheObject)entry.getKey();
-
-                                    IgniteTxEntry txEntry = entry(cacheCtx.txKey(cacheKey));
-
-                                    CacheObject val = (CacheObject)entry.getValue();
-
-                                    if (!readCommitted())
-                                        txEntry.readValue(val);
-
-                                    if (!F.isEmpty(txEntry.entryProcessors()))
-                                        val = txEntry.applyEntryProcessors(val);
-
-                                    cacheCtx.addResult(retMap,
-                                        cacheKey,
-                                        val,
-                                        skipVals,
-                                        keepCacheObjects,
-                                        deserializePortable,
-                                        false);
-                                }
-
-                                return retMap;
-                            }
-                        }
-                    );
+                    return fut0;
                 }
 
                 return new GridFinishedFuture<>(retMap);

@@ -742,7 +742,7 @@ public class GridDistributedCacheEntry extends GridCacheMapEntry {
     }
 
     /** {@inheritDoc} */
-    @Override public boolean tmLock(IgniteInternalTx tx, long timeout)
+    @Override public boolean tmLock(IgniteInternalTx tx, long timeout, GridCacheVersion serReadVer)
         throws GridCacheEntryRemovedException, GridDistributedLockCancelledException {
         if (tx.local())
             // Null is returned if timeout is negative and there is other lock owner.

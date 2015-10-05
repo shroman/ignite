@@ -400,6 +400,7 @@ public final class GridDhtLockFuture extends GridCompoundIdentityFuture<Boolean>
             topVer,
             threadId,
             lockVer,
+            null,
             timeout,
             /*reenter*/false,
             inTx(),

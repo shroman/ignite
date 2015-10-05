@@ -510,12 +510,13 @@ public interface GridCacheEntryEx {
      *
      * @param tx Cache transaction.
      * @param timeout Timeout for lock acquisition.
+     * @param serReadVer Optional read entry version for optimistic serializable transaction.
      * @return {@code True} if lock was acquired, {@code false} otherwise.
      * @throws GridCacheEntryRemovedException If this entry is obsolete.
      * @throws GridDistributedLockCancelledException If lock has been cancelled.
      */
-    public boolean tmLock(IgniteInternalTx tx, long timeout) throws GridCacheEntryRemovedException,
-        GridDistributedLockCancelledException;
+    public boolean tmLock(IgniteInternalTx tx, long timeout, @Nullable GridCacheVersion serReadVer)
+        throws GridCacheEntryRemovedException, GridDistributedLockCancelledException;
 
     /**
      * Unlocks acquired lock.

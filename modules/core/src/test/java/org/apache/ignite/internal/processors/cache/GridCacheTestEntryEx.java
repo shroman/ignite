@@ -552,7 +552,7 @@ public class GridCacheTestEntryEx extends GridMetadataAwareAdapter implements Gr
     }
 
     /** @inheritDoc */
-    @Override public boolean tmLock(IgniteInternalTx tx, long timeout) {
+    @Override public boolean tmLock(IgniteInternalTx tx, long timeout, GridCacheVersion serReadVer) {
         assert false; return false;
     }
 

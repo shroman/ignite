@@ -1396,7 +1396,11 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
                     assert !entry1.detached() : "Expected non-detached entry for near transaction " +
                         "[locNodeId=" + cctx.localNodeId() + ", entry=" + entry1 + ']';
 
-                    if (!entry1.tmLock(tx, timeout)) {
+                    GridCacheVersion serReadVer = txEntry1.serializableReadVersion();
+
+                    assert serReadVer == null || ser : txEntry1;
+
+                    if (!entry1.tmLock(tx, timeout, serReadVer)) {
                         // Unlock locks locked so far.
                         for (IgniteTxEntry txEntry2 : entries) {
                             if (txEntry2 == txEntry1)

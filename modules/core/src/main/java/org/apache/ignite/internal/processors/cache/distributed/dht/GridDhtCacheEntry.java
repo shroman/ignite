@@ -163,6 +163,7 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
      * @param topVer Topology version.
      * @param threadId Owning thread ID.
      * @param ver Lock version.
+     * @param serReadVer Optional read entry version for optimistic serializable transaction.
      * @param timeout Timeout to acquire lock.
      * @param reenter Reentry flag.
      * @param tx Tx flag.
@@ -177,6 +178,7 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
         AffinityTopologyVersion topVer,
         long threadId,
         GridCacheVersion ver,
+        @Nullable GridCacheVersion serReadVer,
         long timeout,
         boolean reenter,
         boolean tx,
@@ -212,6 +214,7 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
                 nearVer,
                 threadId,
                 ver,
+                serReadVer,
                 timeout,
                 reenter,
                 tx,
@@ -250,7 +253,7 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
     }
 
     /** {@inheritDoc} */
-    @Override public boolean tmLock(IgniteInternalTx tx, long timeout)
+    @Override public boolean tmLock(IgniteInternalTx tx, long timeout, GridCacheVersion serReadVer)
         throws GridCacheEntryRemovedException, GridDistributedLockCancelledException {
         if (tx.local()) {
             GridDhtTxLocalAdapter dhtTx = (GridDhtTxLocalAdapter)tx;
@@ -262,6 +265,7 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
                 tx.topologyVersion(),
                 tx.threadId(),
                 tx.xidVersion(),
+                serReadVer,
                 timeout,
                 /*reenter*/false,
                 /*tx*/true,
