@@ -199,7 +199,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
     /** {@inheritDoc} */
     @Override public void onResult(UUID nodeId, GridNearTxPrepareResponse res) {
         if (!isDone()) {
-            for (IgniteInternalFuture<IgniteInternalTx> fut : pending()) {
+            for (IgniteInternalFuture<GridNearTxPrepareResponse> fut : pending()) {
                 if (isMini(fut)) {
                     MiniFuture f = (MiniFuture)fut;
 
@@ -740,7 +740,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
     /**
      *
      */
-    private class MiniFuture extends GridFutureAdapter<IgniteInternalTx> {
+    private class MiniFuture extends GridFutureAdapter<GridNearTxPrepareResponse> {
         /** */
         private static final long serialVersionUID = 0L;
 
@@ -827,7 +827,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
          * @param nodeId Failed node ID.
          * @param res Result callback.
          */
-        void onResult(UUID nodeId, GridNearTxPrepareResponse res) {
+        void onResult(UUID nodeId, final GridNearTxPrepareResponse res) {
             if (isDone())
                 return;
 
@@ -849,7 +849,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
                                     try {
                                         fut.get();
 
-                                        remap();
+                                        remap(res);
                                     }
                                     catch (IgniteCheckedException e) {
                                         onDone(e);
@@ -858,7 +858,7 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
                             });
                         }
                         else
-                            remap();
+                            remap(res);
                     }
                     else {
                         onPrepareResponse(m, res);
@@ -868,19 +868,19 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
                             proceedPrepare(mappings);
 
                         // Finish this mini future.
-                        onDone(tx);
+                        onDone(res);
                     }
                 }
             }
         }
 
         /**
-         *
+         * @param res Response.
          */
-        private void remap() {
+        private void remap(final GridNearTxPrepareResponse res) {
             prepareOnTopology(true, new Runnable() {
                 @Override public void run() {
-                    onDone(tx);
+                    onDone(res);
                 }
             });
         }

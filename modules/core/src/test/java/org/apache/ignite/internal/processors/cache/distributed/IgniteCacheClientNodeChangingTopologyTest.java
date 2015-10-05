@@ -93,6 +93,7 @@ import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
 import static org.apache.ignite.transactions.TransactionConcurrency.OPTIMISTIC;
 import static org.apache.ignite.transactions.TransactionConcurrency.PESSIMISTIC;
 import static org.apache.ignite.transactions.TransactionIsolation.REPEATABLE_READ;
+import static org.apache.ignite.transactions.TransactionIsolation.SERIALIZABLE;
 
 /**
  *
@@ -857,6 +858,150 @@ public class IgniteCacheClientNodeChangingTopologyTest extends GridCommonAbstrac
         }
 
         checkData(map, null, cache, 5);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testOptimisticSerializableTx() throws Exception {
+        optimisticSerializableTx(null);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testOptimisticSerializableTxNearEnabled() throws Exception {
+        optimisticSerializableTx(new NearCacheConfiguration());
+    }
+
+    /**
+     * @param nearCfg Near cache configuration.
+     * @throws Exception If failed.
+     */
+    private void optimisticSerializableTx(NearCacheConfiguration nearCfg) throws Exception {
+        ccfg = new CacheConfiguration();
+
+        ccfg.setCacheMode(PARTITIONED);
+        ccfg.setBackups(1);
+        ccfg.setAtomicityMode(TRANSACTIONAL);
+        ccfg.setWriteSynchronizationMode(FULL_SYNC);
+        ccfg.setRebalanceMode(SYNC);
+        ccfg.setNearConfiguration(nearCfg);
+
+        IgniteEx ignite0 = startGrid(0);
+        IgniteEx ignite1 = startGrid(1);
+
+        client = true;
+
+        final Ignite ignite2 = startGrid(2);
+
+        assertTrue(ignite2.configuration().isClientMode());
+
+        final Map<Integer, Integer> map = new HashMap<>();
+
+        for (int i = 0; i < 100; i++)
+            map.put(i, i);
+
+        TestCommunicationSpi spi = (TestCommunicationSpi)ignite2.configuration().getCommunicationSpi();
+
+        spi.blockMessages(GridNearTxPrepareRequest.class, ignite0.localNode().id());
+        spi.blockMessages(GridNearTxPrepareRequest.class, ignite1.localNode().id());
+
+        spi.record(GridNearTxPrepareRequest.class);
+
+        final IgniteCache<Integer, Integer> cache = ignite2.cache(null);
+
+        IgniteInternalFuture<?> putFut = GridTestUtils.runAsync(new Callable<Object>() {
+            @Override public Object call() throws Exception {
+                Thread.currentThread().setName("put-thread");
+
+                try (Transaction tx = ignite2.transactions().txStart(OPTIMISTIC, SERIALIZABLE)) {
+                    cache.putAll(map);
+
+                    tx.commit();
+                }
+
+                return null;
+            }
+        });
+
+        assertFalse(putFut.isDone());
+
+        client = false;
+
+        IgniteEx ignite3 = startGrid(3);
+
+        log.info("Stop block1.");
+
+        spi.stopBlock();
+
+        putFut.get();
+
+        spi.record(null);
+
+        checkData(map, null, cache, 4);
+
+        List<Object> msgs = spi.recordedMessages();
+
+        for (Object msg : msgs)
+            assertTrue(((GridNearTxPrepareRequest)msg).firstClientRequest());
+
+        assertEquals(5, msgs.size());
+
+        ignite3.close();
+
+        for (int i = 0; i < 100; i++)
+            map.put(i, i + 1);
+
+        spi.blockMessages(GridNearTxPrepareRequest.class, ignite0.localNode().id());
+        spi.blockMessages(GridNearTxPrepareRequest.class, ignite1.localNode().id());
+
+        spi.record(GridNearTxPrepareRequest.class);
+
+        putFut = GridTestUtils.runAsync(new Callable<Object>() {
+            @Override public Object call() throws Exception {
+                Thread.currentThread().setName("put-thread");
+
+                try (Transaction tx = ignite2.transactions().txStart(OPTIMISTIC, SERIALIZABLE)) {
+                    for (Map.Entry<Integer, Integer> e : map.entrySet())
+                        cache.put(e.getKey(), e.getValue());
+
+                    tx.commit();
+                }
+
+                return null;
+            }
+        });
+
+        ignite3 = startGrid(3);
+
+        log.info("Stop block2.");
+
+        spi.stopBlock();
+
+        putFut.get();
+
+        spi.record(null);
+
+        msgs = spi.recordedMessages();
+
+        for (Object msg : msgs)
+            assertTrue(((GridNearTxPrepareRequest)msg).firstClientRequest());
+
+        assertEquals(5, msgs.size());
+
+        checkData(map, null, cache, 4);
+
+        for (int i = 0; i < 100; i++)
+            map.put(i, i + 2);
+
+        try (Transaction tx = ignite2.transactions().txStart(OPTIMISTIC, SERIALIZABLE)) {
+            cache.putAll(map);
+
+            tx.commit();
+        }
+
+        checkData(map, null, cache, 4);
     }
 
     /**
@@ -1816,6 +1961,8 @@ public class IgniteCacheClientNodeChangingTopologyTest extends GridCommonAbstrac
 
                     super.sendMessage(msg.get1(), msg.get2());
                 }
+
+                blockedMsgs.clear();
             }
         }
     }

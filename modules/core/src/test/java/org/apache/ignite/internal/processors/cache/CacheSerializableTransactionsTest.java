@@ -62,7 +62,7 @@ import static org.apache.ignite.transactions.TransactionIsolation.SERIALIZABLE;
 /**
  *
  */
-public class CacheSerializableTxTest extends GridCommonAbstractTest {
+public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
     /** */
     private static final TcpDiscoveryIpFinder IP_FINDER = new TcpDiscoveryVmIpFinder(true);
 
@@ -106,17 +106,22 @@ public class CacheSerializableTxTest extends GridCommonAbstractTest {
         stopAllGrids();
     }
 
+    /** {@inheritDoc} */
+    @Override protected long getTestTimeout() {
+        return 5 * 60_000;
+    }
+
     /**
      * @throws Exception If failed.
      */
-    public void testTxRollbackRead1() throws Exception {
+    public void _testTxRollbackRead1() throws Exception {
         txRollbackRead(true);
     }
 
     /**
      * @throws Exception If failed.
      */
-    public void testTxRollbackRead2() throws Exception {
+    public void _testTxRollbackRead2() throws Exception {
         txRollbackRead(false);
     }
 
@@ -181,7 +186,7 @@ public class CacheSerializableTxTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If failed.
      */
-    public void testTxRollbackReadWrite() throws Exception {
+    public void _testTxRollbackReadWrite() throws Exception {
         Ignite ignite0 = ignite(0);
 
         final IgniteTransactions txs = ignite0.transactions();
@@ -416,111 +421,116 @@ public class CacheSerializableTxTest extends GridCommonAbstractTest {
         final String cacheName =
             ignite0.createCache(cacheConfiguration(PARTITIONED, FULL_SYNC, 1, false, false)).getName();
 
-        final int KEYS = 100;
-
-        final AtomicBoolean finished = new AtomicBoolean();
-
-        IgniteInternalFuture<Object> fut = null;
-
         try {
-            if (restart) {
-                fut = GridTestUtils.runAsync(new Callable<Object>() {
-                    @Override public Object call() throws Exception {
-                        while (!finished.get()) {
-                            stopGrid(0);
+            final int KEYS = 100;
 
-                            U.sleep(300);
+            final AtomicBoolean finished = new AtomicBoolean();
 
-                            Ignite ignite = startGrid(0);
+            IgniteInternalFuture<Object> fut = null;
 
-                            assertFalse(ignite.configuration().isClientMode());
+            try {
+                if (restart) {
+                    fut = GridTestUtils.runAsync(new Callable<Object>() {
+                        @Override public Object call() throws Exception {
+                            while (!finished.get()) {
+                                stopGrid(0);
+
+                                U.sleep(300);
+
+                                Ignite ignite = startGrid(0);
+
+                                assertFalse(ignite.configuration().isClientMode());
+                            }
+
+                            return null;
                         }
+                    });
+                }
 
-                        return null;
-                    }
-                });
-            }
+                for (int i = 0; i < 10; i++) {
+                    log.info("Iteration: " + i);
 
-            for (int i = 0; i < 10; i++) {
-                log.info("Iteration: " + i);
+                    final long stopTime = U.currentTimeMillis() + 10_000;
 
-                final long stopTime = U.currentTimeMillis() + 5_000;
+                    final AtomicInteger idx = new AtomicInteger();
 
-                final AtomicInteger idx = new AtomicInteger();
+                    IgniteInternalFuture<?> updateFut = GridTestUtils.runMultiThreadedAsync(new Callable<Void>() {
+                        @Override public Void call() throws Exception {
+                            int nodeIdx = idx.getAndIncrement() % updateNodes.size();
 
-                IgniteInternalFuture<?> updateFut = GridTestUtils.runMultiThreadedAsync(new Callable<Void>() {
-                    @Override public Void call() throws Exception {
-                        int nodeIdx = idx.getAndIncrement() % updateNodes.size();
+                            Ignite node = updateNodes.get(nodeIdx);
 
-                        Ignite node = updateNodes.get(nodeIdx);
+                            log.info("Tx thread: " + node.name());
 
-                        log.info("Tx thread: " + node.name());
+                            final IgniteTransactions txs = node.transactions();
 
-                        final IgniteTransactions txs = node.transactions();
+                            final IgniteCache<Integer, Integer> cache = node.cache(cacheName);
 
-                        final IgniteCache<Integer, Integer> cache = node.cache(cacheName);
+                            assertNotNull(cache);
 
-                        assertNotNull(cache);
+                            ThreadLocalRandom rnd = ThreadLocalRandom.current();
 
-                        ThreadLocalRandom rnd = ThreadLocalRandom.current();
+                            while (U.currentTimeMillis() < stopTime) {
+                                final Map<Integer, Integer> keys = new LinkedHashMap<>();
 
-                        while (U.currentTimeMillis() < stopTime) {
-                            final Map<Integer, Integer> keys = new LinkedHashMap<>();
+                                for (int i = 0; i < KEYS / 2; i++)
+                                    keys.put(rnd.nextInt(KEYS), rnd.nextInt());
 
-                            for (int i = 0; i < KEYS / 2; i++)
-                                keys.put(rnd.nextInt(KEYS), rnd.nextInt());
+                                try {
+                                    if (restart) {
+                                        doInTransaction(node, OPTIMISTIC, SERIALIZABLE, new Callable<Void>() {
+                                            @Override public Void call() throws Exception {
+                                                cache.putAll(keys);
 
-                            try {
-                                if (restart) {
-                                    doInTransaction(node, OPTIMISTIC, REPEATABLE_READ, new Callable<Void>() {
-                                        @Override public Void call() throws Exception {
+                                                return null;
+                                            }
+                                        });
+                                    }
+                                    else {
+                                        try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
                                             cache.putAll(keys);
 
-                                            return null;
+                                            tx.commit();
                                         }
-                                    });
-                                }
-                                else {
-                                    try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
-                                        cache.putAll(keys);
-
-                                        tx.commit();
                                     }
                                 }
-                            }
-                            catch (TransactionOptimisticException ignore) {
-                                // No-op.
-                            }
-                            catch (Throwable e) {
-                                log.error("Unexpected error: " + e, e);
+                                catch (TransactionOptimisticException ignore) {
+                                    // No-op.
+                                }
+                                catch (Throwable e) {
+                                    log.error("Unexpected error: " + e, e);
 
-                                throw e;
+                                    throw e;
+                                }
                             }
+
+                            return null;
                         }
+                    }, threads, "tx-thread");
 
-                        return null;
+                    updateFut.get(60, SECONDS);
+
+                    IgniteCache<Integer, Integer> cache = ignite(1).cache(cacheName);
+
+                    for (int key = 0; key < KEYS; key++) {
+                        Integer val = cache.get(key);
+
+                        for (int node = 1; node < SRVS + CLIENTS; node++)
+                            assertEquals(val, ignite(node).cache(cache.getName()).get(key));
                     }
-                }, threads, "tx-thread");
-
-                updateFut.get(60, SECONDS);
-
-                IgniteCache<Integer, Integer> cache = ignite(1).cache(cacheName);
-
-                for (int key = 0; key < KEYS; key++) {
-                    Integer val = cache.get(key);
-
-                    for (int node = 1; node < SRVS + CLIENTS; node++)
-                        assertEquals(val, ignite(node).cache(cache.getName()).get(key));
                 }
+
+                finished.set(true);
+
+                if (fut != null)
+                    fut.get();
             }
-
-            finished.set(true);
-
-            if (fut != null)
-                fut.get();
+            finally {
+                finished.set(true);
+            }
         }
         finally {
-            finished.set(true);
+            ignite(1).destroyCache(cacheName);
         }
     }
 

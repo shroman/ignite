@@ -29,6 +29,7 @@ import org.apache.ignite.internal.processors.cache.CacheReadThroughReplicatedAto
 import org.apache.ignite.internal.processors.cache.CacheReadThroughReplicatedRestartSelfTest;
 import org.apache.ignite.internal.processors.cache.CacheReadThroughRestartSelfTest;
 import org.apache.ignite.internal.processors.cache.CacheRemoveAllSelfTest;
+import org.apache.ignite.internal.processors.cache.CacheSerializableTransactionsTest;
 import org.apache.ignite.internal.processors.cache.CacheStopAndDestroySelfTest;
 import org.apache.ignite.internal.processors.cache.CacheStoreUsageMultinodeDynamicStartAtomicTest;
 import org.apache.ignite.internal.processors.cache.CacheStoreUsageMultinodeDynamicStartTxTest;
@@ -138,6 +139,8 @@ public class IgniteCacheTestSuite4 extends TestSuite {
      */
     public static TestSuite suite() throws Exception {
         TestSuite suite = new TestSuite("IgniteCache Test Suite part 4");
+
+        suite.addTestSuite(CacheSerializableTransactionsTest.class);
 
         // Multi node update.
         suite.addTestSuite(GridCacheMultinodeUpdateSelfTest.class);
