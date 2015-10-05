@@ -199,8 +199,7 @@ public class GridDhtPartitionDemander {
     private boolean topologyChanged(SyncFuture fut) {
         return
             !cctx.affinity().affinityTopologyVersion().equals(fut.topologyVersion()) || // Topology already changed.
-                fut != syncFut || // Same topology, but dummy exchange forced because of missing partitions.
-                cctx.shared().exchange().hasPendingExchange(); // New topology pending.
+                fut != syncFut; // Same topology, but dummy exchange forced because of missing partitions.
     }
 
     /**
