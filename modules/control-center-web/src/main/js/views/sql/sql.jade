@@ -104,7 +104,7 @@ block container
                                             .input-tip
                                                 input.form-control(type='text' st-search placeholder='Filter caches...')
                                             table.links
-                                                tbody.scrollable-y(style='max-height: 19em;display:block;' ng-model='paragraph.cacheName' bs-radio-group)
+                                                tbody.scrollable-y(style='max-height: 15em;display:block;' ng-model='paragraph.cacheName' bs-radio-group)
                                                     tr(ng-repeat='cache in displayedCaches track by cache.name')
                                                         td(style='width: 100%')
                                                             input.labelField(type='radio' value='{{cache.name}}')
