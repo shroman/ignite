@@ -149,8 +149,10 @@ block container
                                         .chart-settings-link
                                             i.fa.fa-chevron-circle-down
                                             a(ng-show='paragraph.chart' ng-click='$event.stopPropagation()' bs-popover data-template-url='chart-settings' data-placement='bottom' data-auto-close='1' data-trigger='click') Chart settings
-                                        div(ng-repeat='chart in paragraph.charts')
+                                        div(ng-repeat='chart in paragraph.charts' ng-hide='paragraph.chartTimeLineEnabled() && !paragraph.timeLineSupported()')
                                             nvd3(options='chart.options' data='chart.data' api='chart.api')
+                                        .sql-empty-result(ng-show='paragraph.chartTimeLineEnabled() && !paragraph.timeLineSupported()') Pie chart does not supported 'TIME_LINE' column for X-axis.
+                                    div(ng-show='paragraph.chart() && paragraph.nonEmpty() && ')
                                     div(ng-show='paragraph.queryId')
                                         hr(style='margin-top: 0; margin-bottom: 5px')
                                         i.fa.fa-chevron-circle-right(style='float: right;margin-right: 10px;' ng-click='nextPage(paragraph)')

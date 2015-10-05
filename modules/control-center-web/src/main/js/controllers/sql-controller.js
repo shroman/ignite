@@ -127,6 +127,10 @@ consoleModule.controller('sqlController',
             return !$common.isEmptyArray(this.chartKeyCols) && this.chartKeyCols[0].label == TIME_LINE;
         };
 
+        paragraph.timeLineSupported = function () {
+            return this.result != 'pie';
+        };
+
         Object.defineProperty(paragraph, 'gridOptions', { value: {
             enableColResize: true,
             columnDefs: [],
@@ -703,18 +707,15 @@ consoleModule.controller('sqlController',
     };
 
     function _chartNumber(arr, idx, dflt) {
-        if (arr && arr.length > idx) {
-            var val = arr[idx];
-
-            if (_.isNumber(val))
-                return val;
+        if (arr && arr.length > idx && _.isNumber(arr[idx])) {
+            return arr[idx];
         }
 
         return dflt;
     }
 
     function _chartLabel(arr, idx, dflt) {
-        if (arr && arr.length > idx)
+        if (arr && arr.length > idx && _.isString(arr[idx]))
             return arr[idx];
 
         return dflt;
@@ -760,6 +761,7 @@ consoleModule.controller('sqlController',
                      values = _.map(paragraph.rows, function (row) {
                          return {
                              x: _chartNumber(row, paragraph.chartKeyCols[0].value, index++),
+                             xLbl: _chartLabel(row, paragraph.chartKeyCols[0].value, undefined),
                              y: _chartNumber(row, valCol.value, 0)
                          }
                      });
@@ -849,7 +851,7 @@ consoleModule.controller('sqlController',
         var datum = _chartDatumLblNum(paragraph);
 
         if (datum.length == 0)
-            datum = [{key: 'No data', values: []}];
+            datum = [{values: []}];
 
         paragraph.charts = _.map(datum, function (data) {
             return {
@@ -892,6 +894,14 @@ consoleModule.controller('sqlController',
         return d3.time.format('%X')(new Date(d));
     }
 
+    var _chartWithLabelFormat = function(values) {
+        return function (d) {
+            var lbl = values[d].xLbl;
+
+            return lbl ? lbl : d3.format(',.2f')(d);
+        }
+    };
+
     function _lineChart(paragraph) {
         var data = _chartDatumNumNum(paragraph);
 
@@ -905,8 +915,8 @@ consoleModule.controller('sqlController',
                     x: _xX,
                     y: _yY,
                     xAxis: {
-                        axisLabel:  _chartAxisLabel(paragraph.chartKeyCols, 'X'),
-                        tickFormat: paragraph.chartTimeLineEnabled() ? _chartTimeTickFormat : d3.format(',.2f')
+                        axisLabel: _chartAxisLabel(paragraph.chartKeyCols, 'X'),
+                        tickFormat: paragraph.chartTimeLineEnabled() ? _chartTimeTickFormat : _chartWithLabelFormat(data[0].values)
                     },
                     yAxis: {
                         axisLabel:  _chartAxisLabel(paragraph.chartValCols, 'Y'),
@@ -940,7 +950,7 @@ consoleModule.controller('sqlController',
                     y: _yY,
                     xAxis: {
                         axisLabel:  _chartAxisLabel(paragraph.chartKeyCols, 'X'),
-                        tickFormat: paragraph.chartTimeLineEnabled() ? _chartTimeTickFormat : d3.format(',.2f')
+                        tickFormat: paragraph.chartTimeLineEnabled() ? _chartTimeTickFormat : _chartWithLabelFormat(data[0].values)
                     },
                     yAxis: {
                         axisLabel:  _chartAxisLabel(paragraph.chartValCols, 'Y'),
