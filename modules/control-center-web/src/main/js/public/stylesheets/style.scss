@@ -1797,3 +1797,12 @@ treecontrol.tree-classic {
 
     padding: 10px;
 }
+
+.home {
+    min-height: 800px;
+    padding: 20px;
+
+    @media(min-width: 940px) {
+        min-height: 450px;
+    }
+}

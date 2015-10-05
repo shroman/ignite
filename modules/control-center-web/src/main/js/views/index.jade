@@ -31,45 +31,45 @@ block body
 
     .container.body-container
         .main-content(ng-controller='auth')
-            .row.greedy(style='padding: 20px; min-height: 450px')
+            .row.greedy.home
                 .col-xs-12.col-md-6
                     form(name='loginForm')
                         .modal-body.row(style='padding-top: 0')
                             .details-row
-                                p.col-xs-12.col-sm-12(ng-show='action == "password/forgot"')
+                                p.col-xs-12.col-md-12(ng-show='action == "password/forgot"')
                                     | That's ok! Simply enter your email below and a reset password link will be sent to you via email. You can then follow that link and select a new password.
                             .details-row(ng-show='action == "register"')
                                 +lbl('Full Name:')
-                                .col-xs-6.col-sm-8
+                                .col-xs-6.col-md-8
                                     input#user_name.form-control(enter-focus-next='user_email' type='text' ng-model='user_info.username' placeholder='John Smith' ng-required='action=="register"')
                             .details-row
                                 +lbl('Email:')
-                                .col-xs-6.col-sm-8
+                                .col-xs-6.col-md-8
                                     input#user_email.form-control(enter-focus-next='user_password' type='email' ng-model='user_info.email' placeholder='you@domain.com' required on-enter='action == "password/forgot" && loginForm.$valid && auth(action, user_info)')
                             .details-row(ng-show='action != "password/forgot"')
                                 +lbl('Password:')
-                                .col-xs-6.col-sm-8
+                                .col-xs-6.col-md-8
                                     input#user_password.form-control(enter-focus-next='user_confirm' type='password' ng-model='user_info.password' placeholder='Password' ng-required='action != "password/forgot"' on-enter='action == "login" && loginForm.$valid && auth(action, user_info)')
                             .details-row(ng-if='action == "register"')
                                 +lbl('Confirm:')
-                                .col-xs-6.col-sm-8
+                                .col-xs-6.col-md-8
                                     input#user_confirm.form-control(type='password' ng-model='user_info.confirm' match='user_info.password' placeholder='Confirm password' ng-required='action == "register"' on-enter='loginForm.$valid && auth(action, user_info)')
-                        .col-xs-10.col-sm-11
+                        .col-xs-10.col-md-11
                             .login-footer(ng-show='action == "register"')
                                 a.labelField(ng-click='action = "password/forgot"' on-click-focus='user_email') Forgot password?
                                 a.labelLogin(ng-click='action = "login"' on-click-focus='user_email') Log In
                                 button#signup.btn.btn-primary(ng-click='auth(action, user_info)' ng-disabled='loginForm.$invalid') Sign Up
-                        .col-xs-12.col-sm-11
+                        .col-xs-12.col-md-11
                             .login-footer(ng-show='action == "password/forgot"')
                                 a.labelField(ng-click='action = "login"' on-click-focus='user_email') Log In
                                 button#forgot.btn.btn-primary(ng-click='auth(action, user_info)' ng-disabled='loginForm.$invalid') Send it to me
-                        .col-xs-12.col-sm-11
+                        .col-xs-12.col-md-11
                             .login-footer(ng-show='action == "login"')
                                 a.labelField(ng-click='action = "password/forgot"' on-click-focus='user_email') Forgot password?
                                 a.labelLogin(ng-click='action = "register"' on-click-focus='user_name') Sign Up
                                 button#login.btn.btn-primary(ng-click='auth(action, user_info)' ng-disabled='loginForm.$invalid') Log In
 
-                    .col-xs-12.col-sm-11.home-panel(style='margin-top:20px')
+                    .col-xs-12.col-md-11.home-panel(style='margin-top:20px')
                         p Apache Ignite Web Console is an interactive web management tool which allows users to:
                         ul
                             li Create and download various configurations for Apache Ignite
