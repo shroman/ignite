@@ -20,7 +20,7 @@ append scripts
     script(src='//cdn.rawgit.com/twbs/bootstrap/master/js/carousel.js')
 
 mixin lbl(txt)
-    label.col-xs-4.col-sm-3.col-sm-offset-1.required #{txt}
+    label.col-xs-4.col-md-3.col-md-offset-1.required #{txt}
 
 block body
     header#header.header
@@ -35,6 +35,10 @@ block body
                 .col-xs-12.col-md-6
                     form(name='loginForm')
                         .modal-body.row(style='padding-top: 0')
+                            .details-row(ng-if='action == "register"')
+                                h3.col-xs-offset-4.col-md-offset-4(style='margin-top: 0; margin-bottom: 15px') Sign up
+                            .details-row(ng-if='action == "login"')
+                                h3.col-xs-offset-4.col-md-offset-4(style='margin-top: 0; margin-bottom: 15px') Log in
                             .details-row
                                 p.col-xs-12.col-md-12(ng-show='action == "password/forgot"')
                                     | That's ok! Simply enter your email below and a reset password link will be sent to you via email. You can then follow that link and select a new password.
@@ -69,7 +73,7 @@ block body
                                 a.labelLogin(ng-click='action = "register"' on-click-focus='user_name') Sign Up
                                 button#login.btn.btn-primary(ng-click='auth(action, user_info)' ng-disabled='loginForm.$invalid') Log In
 
-                    .col-xs-12.col-md-11.home-panel(style='margin-top:20px')
+                    .col-xs-12.col-md-11.home-panel
                         p Apache Ignite Web Console is an interactive web management tool which allows users to:
                         ul
                             li Create and download various configurations for Apache Ignite
