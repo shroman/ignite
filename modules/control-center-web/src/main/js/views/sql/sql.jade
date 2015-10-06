@@ -132,7 +132,7 @@ block container
                                     .sql-error-result(ng-show='paragraph.errMsg') Error: {{paragraph.errMsg}}
                                 .col-sm-12(ng-show='!paragraph.errMsg && paragraph.result != "none"')
                                     hr(style='margin-top: 0; margin-bottom: 10px')
-                                    .sql-empty-result(ng-show='!paragraph.nonEmpty()') Result set is empty.
+                                    .sql-empty-result(ng-show='!paragraph.nonEmpty()') Result set is empty
                                     div(ng-show='paragraph.table() && paragraph.nonEmpty()')
                                         .sql-table-total
                                             label Page #&nbsp;
@@ -146,14 +146,24 @@ block container
                                                         span.caret
                                         .sql-table.ag-bootstrap(ag-grid='paragraph.gridOptions')
                                     div(ng-show='paragraph.chart() && paragraph.nonEmpty()')
-                                        .chart-settings-link
-                                            i.fa.fa-chevron-circle-down
-                                            a(ng-show='paragraph.chart' ng-click='$event.stopPropagation()' bs-popover data-template-url='chart-settings' data-placement='bottom' data-auto-close='1' data-trigger='click') Chart settings
-                                        div(ng-repeat='chart in paragraph.charts' ng-hide='paragraph.chartTimeLineEnabled() && !paragraph.timeLineSupported()')
-                                            nvd3(options='chart.options' data='chart.data' api='chart.api')
-                                        .sql-empty-result(ng-show='paragraph.chartTimeLineEnabled() && !paragraph.timeLineSupported()') Pie chart does not supported 'TIME_LINE' column for X-axis.
-                                    div(ng-show='paragraph.chart() && paragraph.nonEmpty() && ')
-                                    div(ng-show='paragraph.queryId')
+                                        div(ng-show='paragraph.queryExecute()')
+                                            .sql-empty-result(ng-hide='paragraph.chartColumnsConfigured()') Can't display chart. Need configure axis using&nbsp
+                                                b Chart settings
+                                            div(ng-show='paragraph.chartColumnsConfigured()')
+                                                div(ng-show='paragraph.timeLineSupported() || !paragraph.chartTimeLineEnabled()')
+                                                    .chart-settings-link
+                                                        i.fa.fa-chevron-circle-down
+                                                        a(ng-show='paragraph.chart' ng-click='$event.stopPropagation()' bs-popover data-template-url='chart-settings' data-placement='bottom' data-auto-close='1' data-trigger='click') Chart settings
+                                                    div(ng-repeat='chart in paragraph.charts')
+                                                        nvd3(options='chart.options' data='chart.data' api='chart.api')
+                                                .sql-empty-result(ng-show='!paragraph.timeLineSupported() && paragraph.chartTimeLineEnabled()') Pie chart does not supported 'TIME_LINE' column for X-axis
+                                        .sql-empty-result(ng-hide='paragraph.queryExecute()')
+                                            | Charts does not support&nbsp
+                                            b Explain
+                                            | &nbspand&nbsp
+                                            b Scan
+                                            | &nbspquery
+                                    div(ng-show='paragraph.queryId && (paragraph.table() || paragraph.chart() && paragraph.queryExecute())')
                                         hr(style='margin-top: 0; margin-bottom: 5px')
                                         i.fa.fa-chevron-circle-right(style='float: right;margin-right: 10px;' ng-click='nextPage(paragraph)')
                                         a(style='float: right; margin-bottom: 5px;margin-right: 5px;' ng-click='nextPage(paragraph)') Next
