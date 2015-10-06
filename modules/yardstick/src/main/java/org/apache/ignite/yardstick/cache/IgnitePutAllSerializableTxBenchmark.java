@@ -73,4 +73,5 @@ public class IgnitePutAllSerializableTxBenchmark extends IgniteCacheAbstractBenc
     /** {@inheritDoc} */
     @Override protected IgniteCache<Integer, Object> cache() {
         return ignite().cache("tx");
-    }}
+    }
+}
