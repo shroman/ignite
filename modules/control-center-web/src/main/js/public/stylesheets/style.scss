@@ -1831,3 +1831,16 @@ treecontrol.tree-classic {
         min-height: 450px;
     }
 }
+
+.additional-filter {
+    input[type="checkbox"] {
+        position: absolute;
+        margin-top: 8px;
+    }
+
+    a {
+        font-family: normal;
+        padding-left: 20px;
+        float: none;
+    }
+}

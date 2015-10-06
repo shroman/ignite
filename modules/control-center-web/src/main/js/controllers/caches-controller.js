@@ -17,8 +17,8 @@
 
 // Controller for Caches screen.
 consoleModule.controller('cachesController', [
-    '$scope', '$controller', '$http', '$timeout', '$common', '$focus', '$confirm', '$message', '$clone', '$table', '$preview', '$loading', '$unsavedChangesGuard',
-    function ($scope, $controller, $http, $timeout, $common, $focus, $confirm, $message, $clone, $table, $preview, $loading, $unsavedChangesGuard) {
+    '$scope', '$controller', '$filter', '$http', '$timeout', '$common', '$focus', '$confirm', '$message', '$clone', '$table', '$preview', '$loading', '$unsavedChangesGuard',
+    function ($scope, $controller, $filter, $http, $timeout, $common, $focus, $confirm, $message, $clone, $table, $preview, $loading, $unsavedChangesGuard) {
             $unsavedChangesGuard.install($scope);
 
             // Initialize the super class and extend it.
@@ -233,10 +233,12 @@ consoleModule.controller('cachesController', [
             // When landing on the page, get caches and show them.
             $http.post('caches/list')
                 .success(function (data) {
+                    var validFilter = $filter('metadatasValidation');
+
                     $scope.spaces = data.spaces;
                     $scope.caches = data.caches;
                     $scope.clusters = data.clusters;
-                    $scope.metadatas = _.sortBy(_.map(data.metadatas, function (meta) {
+                    $scope.metadatas = _.sortBy(_.map(validFilter(data.metadatas, true, false), function (meta) {
                         return {value: meta._id, label: meta.valueType, kind: meta.kind, meta: meta}
                     }), 'label');
 

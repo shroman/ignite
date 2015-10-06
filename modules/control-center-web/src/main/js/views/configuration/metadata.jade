@@ -29,7 +29,28 @@ block content
             div(ng-show='ui.ready')
                 +block-callout('{{screenTip.workflowTitle}}', 'screenTip.workflowContent', '{{screenTip.whatsNextTitle}}', 'screenTip.whatsNextContent')
                 hr
-                +main-table('Types metadata:', 'metadatas', 'metadataName', 'selectItem(row)', '{{$index + 1}}) {{row.valueType}}')
+                .padding-bottom-dflt(ng-show='metadatas && metadatas.length > 0')
+                    table.links(st-set-filter='metadatasSearch' st-table='displayedRows' st-safe-src='metadatas')
+                        thead
+                            tr
+                                th
+                                    lable.labelHeader.labelFormField Types metadata:
+                                    .col-sm-8.pull-right(style='padding: 0')
+                                        .col-sm-6
+                                            .pull-right.labelLogin.additional-filter(ng-if='(displayedRows | metadatasValidation:false:true).length > 0')
+                                                a.labelFormField(ng-if='ui.showValid' ng-click='ui.showValid = !ui.showValid') Key fields should be configured: {{(displayedRows | metadatasValidation:false:true).length}}&nbsp
+                                                a.labelFormField(ng-if='!ui.showValid' ng-click='ui.showValid = !ui.showValid') Show all metadata: {{displayedRows.length}}&nbsp
+                                        .col-sm-6
+                                            input.form-control.pull-right(type='text' st-search='' placeholder='Filter metadatas...')
+                            tbody
+                                tr
+                                    td
+                                        .scrollable-y(style='max-height: 200px')
+                                            table
+                                                tbody
+                                                    tr(ng-repeat='row in (displayedRows | metadatasValidation:ui.showValid:true) track by row._id')
+                                                        td
+                                                            a(ng-class='{active: row._id == selectedItem._id}' ng-click='selectItem(row)') '{{$index + 1}}) {{row.valueType}}'
                 .padding-top-dflt(bs-affix)
                     .panel-tip-container(data-placement='bottom' bs-tooltip data-title='Create new metadata')
                         button.btn.btn-primary(id='new-item' ng-click='createItem()') Add metadata

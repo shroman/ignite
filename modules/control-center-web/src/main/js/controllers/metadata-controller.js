@@ -131,6 +131,8 @@ consoleModule.controller('metadataController', [
                 tablesOnly: true
             };
 
+            $scope.ui.showValid = true;
+
             var jdbcDrivers = [];
 
             function _findPreset(jdbcDriverJar) {
@@ -300,6 +302,12 @@ consoleModule.controller('metadataController', [
                         $scope.loadMeta.tables = tables;
                         $scope.loadMeta.action = 'tables';
                         $scope.loadMeta.button = 'Save';
+
+                        _.forEach(tables, function (tbl) {
+                            tbl.use = $common.isDefined(_.find(tbl.cols, function (col) {
+                                return col.key;
+                            }));
+                        })
                     })
                     .error(function (errMsg) {
                         $common.showError(errMsg);
@@ -410,6 +418,8 @@ consoleModule.controller('metadataController', [
                 var tables = [];
                 var dupCnt = 0;
 
+                var containKey = true;
+
                 _.forEach($scope.loadMeta.tables, function (table) {
                     if (table.use) {
                         var qryFields = [];
@@ -448,6 +458,8 @@ consoleModule.controller('metadataController', [
                             return 'Unknown';
                         }
 
+                        var _containKey = false;
+
                         _.forEach(table.cols, function (col) {
                             var colName = col.name;
                             var jdbcType = $common.findJdbcType(col.type);
@@ -461,11 +473,16 @@ consoleModule.controller('metadataController', [
                             if (_.includes(table.descCols, colName))
                                 descFields.push(queryField(colName, jdbcType));
 
-                            if (col.key)
+                            if (col.key) {
                                 keyFields.push(dbField(colName, jdbcType));
+
+                                _containKey = true;
+                            }
                             else
                                 valFields.push(dbField(colName, jdbcType));
                         });
+
+                        containKey &= _containKey;
 
                         var idxs = table.idxs;
 
@@ -554,15 +571,26 @@ consoleModule.controller('metadataController', [
 
                 var itemsToConfirm = _.filter(batch, function (item) { return item.confirm; });
 
-                if (itemsToConfirm.length > 0)
-                    $confirmBatch.confirm(overwriteMessage, itemsToConfirm)
-                        .then(function () {
-                            _saveBatch(_.filter(batch, function (item) {return !item.skip}));
-                        }, function () {
-                            $common.showError('Cache type metadata loading interrupted by user.');
-                        });
+                function checkOverwrite() {
+                    if (itemsToConfirm.length > 0)
+                        $confirmBatch.confirm(overwriteMessage, itemsToConfirm)
+                            .then(function () {
+                                _saveBatch(_.filter(batch, function (item) {
+                                    return !item.skip
+                                }));
+                            }, function () {
+                                $common.showError('Cache type metadata loading interrupted by user.');
+                            });
+                    else
+                        _saveBatch(batch);
+                }
+
+                if (containKey)
+                    checkOverwrite();
                 else
-                    _saveBatch(batch);
+                    $confirm.confirm('Imported tables contain tables without primary key.<br/>' +
+                        'You should manually configure key type and key fields for these metadata types.')
+                        .then(function () { checkOverwrite(); })
             }
 
             $scope.loadMetadataNext = function () {

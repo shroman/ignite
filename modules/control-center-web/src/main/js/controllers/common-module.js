@@ -865,19 +865,13 @@ consoleModule.service('$confirm', function ($modal, $rootScope, $q) {
     var confirmModal = $modal({templateUrl: '/confirm', scope: scope, placement: 'center', show: false});
 
     scope.confirmOk = function () {
-        deferred.reject('cancelled');
-
-        confirmModal.hide();
-    };
-
-    scope.confirmOk = function () {
         deferred.resolve(true);
 
         confirmModal.hide();
     };
 
     scope.confirmCancel = function () {
-        deferred.resolve(false);
+        deferred.reject('cancelled');
 
         confirmModal.hide();
     };
@@ -1606,6 +1600,25 @@ consoleModule.filter('metadatasSearch', function() {
             return array;
     }
 });
+
+// Filter metadata with key fields configuration.
+consoleModule.filter('metadatasValidation', ['$common', function ($common) {
+    return function(metadatas, valid, invalid) {
+        if (valid && invalid)
+            return metadatas;
+
+        var out = [];
+
+        _.forEach(metadatas, function (meta) {
+            var _valid = !$common.metadataForStoreConfigured(meta) || $common.isJavaBuildInClass(meta.keyType) || !$common.isEmptyArray(meta.keyFields);
+
+            if (valid && _valid || invalid && !_valid)
+                out.push(meta);
+        });
+
+        return out;
+    }
+}]);
 
 // Directive to enable validation for IP addresses.
 consoleModule.directive('ipaddress', function () {
