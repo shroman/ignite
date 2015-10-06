@@ -1886,8 +1886,6 @@ consoleModule.controller('agent-download', [
         var _agentDownloadModal = $modal({scope: $scope, templateUrl: '/agent/download', show: false});
 
         $scope.downloadAgent = function () {
-            _agentDownloadModal.hide();
-
             var lnk = document.createElement('a');
 
             lnk.setAttribute('href', '/agent/ignite-web-agent-1.5.0-SNAPSHOT.zip');
