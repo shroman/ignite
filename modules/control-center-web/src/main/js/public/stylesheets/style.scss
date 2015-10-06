@@ -1779,42 +1779,23 @@ treecontrol.tree-classic {
     }
 
     .fa-chevron-left {
-        @media(min-width: 1200px) {
-            left: 50%;
-        }
-
-        @media(min-width: 992px) {
-            left: -75%;
-        }
-
-        left: 50%;
+        left: 90%;
         margin-left: -10px;
     }
 
     .fa-chevron-right {
-        @media(min-width: 1200px) {
-            right: 50%;
-        }
-
-        @media(min-width: 992px) {
-            right: -75%;
-        }
-
-        right: 50%;
+        right: 90%;
         margin-right: -10px;
     }
 }
 
 .carousel-control.left {
     background-image: none;
-    margin-left: 150px;
 }
 
 .carousel-control.right {
     background-image: none;
-    margin-right: 150px;
 }
-
 
 .home-panel {
     border-radius: 5px;
