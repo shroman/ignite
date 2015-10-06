@@ -20,7 +20,7 @@ append scripts
     script(src='//cdn.rawgit.com/twbs/bootstrap/master/js/carousel.js')
 
 mixin lbl(txt)
-    label.col-xs-3.col-md-2.required #{txt}
+    label.col-xs-3.col-md-3.required #{txt}
 
 block body
     header#header.header
@@ -38,7 +38,7 @@ block body
                             .settings-row(ng-if='action == "register"')
                                 h3.login-header Sign Up
                             .settings-row(ng-if='action == "login"')
-                                h3.login-header Log In
+                                h3.login-header Sign In
                             .settings-row(ng-if='action == "password/forgot"')
                                 h3.login-header Forgot password?
                             .settings-row
@@ -63,17 +63,17 @@ block body
                         .col-xs-12.col-md-11
                             .login-footer(ng-show='action == "register"')
                                 a.labelField(ng-click='action = "password/forgot"' on-click-focus='user_email') Forgot password?
-                                a.labelLogin(ng-click='action = "login"' on-click-focus='user_email') Log In
+                                a.labelLogin(ng-click='action = "login"' on-click-focus='user_email') Sign In
                                 button#signup.btn.btn-primary(ng-click='auth(action, user_info)' ng-disabled='loginForm.$invalid') Sign Up
                         .col-xs-12.col-md-11
                             .login-footer(ng-show='action == "password/forgot"')
-                                a.labelField(ng-click='action = "login"' on-click-focus='user_email') Log In
+                                a.labelField(ng-click='action = "login"' on-click-focus='user_email') Sign In
                                 button#forgot.btn.btn-primary(ng-click='auth(action, user_info)' ng-disabled='loginForm.$invalid') Send it to me
                         .col-xs-12.col-md-11
                             .login-footer(ng-show='action == "login"')
                                 a.labelField(ng-click='action = "password/forgot"' on-click-focus='user_email') Forgot password?
                                 a.labelLogin(ng-click='action = "register"' on-click-focus='user_name') Sign Up
-                                button#login.btn.btn-primary(ng-click='auth(action, user_info)' ng-disabled='loginForm.$invalid') Log In
+                                button#login.btn.btn-primary(ng-click='auth(action, user_info)' ng-disabled='loginForm.$invalid') Sign In
 
                     .col-xs-12.col-md-11.home-panel
                         p Apache Ignite Web Console is an interactive web management tool which allows users to:
