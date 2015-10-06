@@ -59,8 +59,6 @@ public class IgnitePutAllSerializableTxBenchmark extends IgniteCacheAbstractBenc
                 tx.commit();
             }
             catch (TransactionOptimisticException e) {
-                ignite().log().info("Optimistic exception, will retry: " + e);
-
                 continue;
             }
 
