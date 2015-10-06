@@ -35,6 +35,7 @@ import org.apache.ignite.internal.managers.deployment.GridDeploymentInfo;
 import org.apache.ignite.internal.managers.deployment.GridDeploymentInfoBean;
 import org.apache.ignite.internal.managers.eventstorage.GridLocalEventListener;
 import org.apache.ignite.internal.processors.cache.GridCacheAdapter;
+import org.apache.ignite.internal.processors.cache.GridCacheContext;
 import org.apache.ignite.internal.processors.cache.GridCacheDeployable;
 import org.apache.ignite.internal.processors.cache.GridCacheDeploymentManager;
 import org.apache.ignite.internal.processors.continuous.GridContinuousHandler;
@@ -197,16 +198,16 @@ class GridEventConsumeHandler implements GridContinuousHandler {
                                                     if (node == null)
                                                         continue;
 
-                                                    if (ctx.config().isPeerClassLoadingEnabled()
-                                                        && ctx.discovery().cacheNode(node, cacheName)) {
+                                                    GridCacheContext cctx = ctx.cache().internalCache(
+                                                        cacheName).context();
+
+                                                    if (cctx.deploymentEnabled() &&
+                                                        ctx.discovery().cacheNode(node, cacheName)) {
                                                         wrapper.p2pMarshal(ctx.config().getMarshaller());
 
                                                         wrapper.cacheName = cacheName;
 
-                                                        GridCacheDeploymentManager depMgr = ctx.cache()
-                                                            .internalCache(cacheName).context().deploy();
-
-                                                        depMgr.prepare(wrapper);
+                                                        cctx.deploy().prepare(wrapper);
                                                     }
                                                 }
 

@@ -269,34 +269,36 @@ public class GridCacheQueryRequest extends GridCacheMessage implements GridCache
     @Override public void prepareMarshal(GridCacheSharedContext ctx) throws IgniteCheckedException {
         super.prepareMarshal(ctx);
 
-        if (keyValFilter != null) {
-            if (ctx.deploymentEnabled())
-                prepareObject(keyValFilter, ctx);
+        GridCacheContext cctx = ctx.cacheContext(cacheId);
 
-            keyValFilterBytes = CU.marshal(ctx, keyValFilter);
+        if (keyValFilter != null) {
+            if (cctx.deploymentEnabled())
+                prepareObject(keyValFilter, cctx);
+
+            keyValFilterBytes = CU.marshal(cctx, keyValFilter);
         }
 
         if (rdc != null) {
-            if (ctx.deploymentEnabled())
-                prepareObject(rdc, ctx);
+            if (cctx.deploymentEnabled())
+                prepareObject(rdc, cctx);
 
-            rdcBytes = CU.marshal(ctx, rdc);
+            rdcBytes = CU.marshal(cctx, rdc);
         }
 
         if (trans != null) {
-            if (ctx.deploymentEnabled())
-                prepareObject(trans, ctx);
+            if (cctx.deploymentEnabled())
+                prepareObject(trans, cctx);
 
-            transBytes = CU.marshal(ctx, trans);
+            transBytes = CU.marshal(cctx, trans);
         }
 
         if (!F.isEmpty(args)) {
-            if (ctx.deploymentEnabled()) {
+            if (cctx.deploymentEnabled()) {
                 for (Object arg : args)
-                    prepareObject(arg, ctx);
+                    prepareObject(arg, cctx);
             }
 
-            argsBytes = CU.marshal(ctx, args);
+            argsBytes = CU.marshal(cctx, args);
         }
     }
 

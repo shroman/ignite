@@ -539,7 +539,7 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
         prepareMarshalCacheObjects(keys, cctx);
 
         if (op == TRANSFORM)
-            entryProcessorsBytes = marshalCollection(entryProcessors, ctx);
+            entryProcessorsBytes = marshalCollection(entryProcessors, cctx);
         else
             prepareMarshalCacheObjects(vals, cctx);
 
@@ -558,10 +558,10 @@ public class GridNearAtomicUpdateRequest extends GridCacheMessage implements Gri
                 filter = null;
         }
 
-        invokeArgsBytes = marshalInvokeArguments(invokeArgs, ctx);
+        invokeArgsBytes = marshalInvokeArguments(invokeArgs, cctx);
 
         if (expiryPlc != null)
-            expiryPlcBytes = CU.marshal(ctx, new IgniteExternalizableExpiryPolicy(expiryPlc));
+            expiryPlcBytes = CU.marshal(cctx, new IgniteExternalizableExpiryPolicy(expiryPlc));
     }
 
     /** {@inheritDoc} */

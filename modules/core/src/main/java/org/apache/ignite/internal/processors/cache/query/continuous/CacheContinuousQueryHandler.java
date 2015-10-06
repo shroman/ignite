@@ -236,13 +236,10 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
                         try {
                             ClusterNode node = ctx.discovery().node(nodeId);
 
-                            if (ctx.config().isPeerClassLoadingEnabled() && node != null) {
+                            if (cctx.deploymentEnabled() && node != null) {
                                 evt.entry().prepareMarshal(cctx);
 
-                                GridCacheDeploymentManager depMgr =
-                                    ctx.cache().internalCache(cacheName).context().deploy();
-
-                                depMgr.prepare(evt.entry());
+                                cctx.deploy().prepare(evt.entry());
                             }
                             else
                                 evt.entry().prepareMarshal(cctx);

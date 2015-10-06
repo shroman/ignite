@@ -732,16 +732,18 @@ public class IgniteTxEntry implements GridPeerDeployAware, Message {
      * @throws IgniteCheckedException If failed.
      */
     public void marshal(GridCacheSharedContext<?, ?> ctx, boolean transferExpiry) throws IgniteCheckedException {
+        GridCacheContext cctx = ctx.cacheContext(cacheId);
+
         if (filters != null) {
             for (CacheEntryPredicate p : filters) {
                 if (p != null)
-                    p.prepareMarshal(ctx.cacheContext(cacheId));
+                    p.prepareMarshal(cctx);
             }
         }
 
         // Do not serialize filters if they are null.
         if (transformClosBytes == null && entryProcessorsCol != null)
-            transformClosBytes = CU.marshal(ctx, entryProcessorsCol);
+            transformClosBytes = CU.marshal(cctx, entryProcessorsCol);
 
         if (transferExpiry)
             transferExpiryPlc = expiryPlc != null && expiryPlc != this.ctx.expiry();
@@ -750,7 +752,7 @@ public class IgniteTxEntry implements GridPeerDeployAware, Message {
 
         val.marshal(ctx, context());
 
-        expiryPlcBytes = transferExpiryPlc ?  CU.marshal(ctx, new IgniteExternalizableExpiryPolicy(expiryPlc)) : null;
+        expiryPlcBytes = transferExpiryPlc ?  CU.marshal(cctx, new IgniteExternalizableExpiryPolicy(expiryPlc)) : null;
     }
 
     /**

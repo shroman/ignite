@@ -617,7 +617,9 @@ public class GridCacheIoManager extends GridCacheSharedManagerAdapter {
         if (destNodeId == null || !cctx.localNodeId().equals(destNodeId)) {
             msg.prepareMarshal(cctx);
 
-            if (depEnabled && msg instanceof GridCacheDeployable)
+            GridCacheContext ctx = cctx.cacheContext(msg.cacheId());
+
+            if (depEnabled && ctx.deploymentEnabled() && msg instanceof GridCacheDeployable)
                 cctx.deploy().prepare((GridCacheDeployable)msg);
         }
 

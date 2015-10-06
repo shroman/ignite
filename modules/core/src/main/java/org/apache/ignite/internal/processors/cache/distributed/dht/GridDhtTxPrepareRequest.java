@@ -29,6 +29,7 @@ import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.internal.GridDirectCollection;
 import org.apache.ignite.internal.GridDirectTransient;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
+import org.apache.ignite.internal.processors.cache.GridCacheContext;
 import org.apache.ignite.internal.processors.cache.GridCacheSharedContext;
 import org.apache.ignite.internal.processors.cache.distributed.GridDistributedTxPrepareRequest;
 import org.apache.ignite.internal.processors.cache.transactions.IgniteTxEntry;
@@ -288,8 +289,12 @@ public class GridDhtTxPrepareRequest extends GridDistributedTxPrepareRequest {
                 key.prepareMarshal(ctx.cacheContext(key.cacheId()));
 
             if (ctx.deploymentEnabled()) {
-                for (IgniteTxKey k : owned.keySet())
-                    prepareObject(k, ctx);
+                for (IgniteTxKey k : owned.keySet()) {
+                    GridCacheContext cctx = ctx.cacheContext(k.cacheId());
+
+                    if (cctx.deploymentEnabled())
+                        prepareObject(k, cctx);
+                }
             }
         }
 

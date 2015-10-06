@@ -546,13 +546,13 @@ public class GridDhtAtomicUpdateRequest extends GridCacheMessage implements Grid
         prepareMarshalCacheObjects(nearVals, cctx);
 
         if (forceTransformBackups) {
-            invokeArgsBytes = marshalInvokeArguments(invokeArgs, ctx);
+            invokeArgsBytes = marshalInvokeArguments(invokeArgs, cctx);
 
-            entryProcessorsBytes = marshalCollection(entryProcessors, ctx);
+            entryProcessorsBytes = marshalCollection(entryProcessors, cctx);
         }
 
         if (forceTransformBackups)
-            nearEntryProcessorsBytes = marshalCollection(nearEntryProcessors, ctx);
+            nearEntryProcessorsBytes = marshalCollection(nearEntryProcessors, cctx);
     }
 
     /** {@inheritDoc} */
