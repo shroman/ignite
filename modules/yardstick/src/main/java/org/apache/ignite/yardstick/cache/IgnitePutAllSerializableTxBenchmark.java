@@ -44,10 +44,12 @@ public class IgnitePutAllSerializableTxBenchmark extends IgniteCacheAbstractBenc
 
     /** {@inheritDoc} */
     @Override public boolean test(Map<Object, Object> ctx) throws Exception {
+        ThreadRange r = threadRange();
+
         Map<Integer, Integer> vals = new HashMap<>();
 
         for (int i = 0; i < args.batch(); i++) {
-            int key = nextRandom(args.range());
+            int key = r.nextRandom();
 
             vals.put(key, key);
         }
