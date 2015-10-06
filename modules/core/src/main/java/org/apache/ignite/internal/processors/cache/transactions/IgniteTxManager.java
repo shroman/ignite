@@ -993,6 +993,14 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
     }
 
     /**
+     * @param tx Transaction.
+     * @return {@code True} if transaction read entries should be unlocked.
+     */
+    private boolean unlockReadEntries(IgniteInternalTx tx) {
+        return (tx.pessimistic() && !tx.readCommitted()) || (tx.optimistic() && tx.serializable());
+    }
+
+    /**
      * Commits a transaction.
      *
      * @param tx Transaction to commit.
@@ -1046,8 +1054,8 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
             // 4. Unlock write resources.
             unlockMultiple(tx, tx.writeEntries());
 
-            // 5. For pessimistic transaction, unlock read resources if required.
-            if (tx.pessimistic() && !tx.readCommitted())
+            // 5. Unlock read resources if required.
+            if (unlockReadEntries(tx))
                 unlockMultiple(tx, tx.readEntries());
 
             // 6. Notify evictions.
@@ -1125,8 +1133,8 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
             // 2. Unlock write resources.
             unlockMultiple(tx, tx.writeEntries());
 
-            // 3. For pessimistic transaction, unlock read resources if required.
-            if (tx.pessimistic() && !tx.readCommitted())
+            // 3. Unlock read resources if required.
+            if (unlockReadEntries(tx))
                 unlockMultiple(tx, tx.readEntries());
 
             // 4. Notify evictions.
@@ -1188,8 +1196,8 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
             // 1. Unlock write resources.
             unlockMultiple(tx, tx.writeEntries());
 
-            // 2. For pessimistic transaction, unlock read resources if required.
-            if (tx.pessimistic() && !tx.readCommitted())
+            // 2. Unlock read resources if required.
+            if (unlockReadEntries(tx))
                 unlockMultiple(tx, tx.readEntries());
 
             // 3. Notify evictions.

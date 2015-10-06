@@ -29,6 +29,7 @@ import org.apache.ignite.internal.processors.cache.GridCacheReturn;
 import org.apache.ignite.internal.processors.cache.KeyCacheObject;
 import org.apache.ignite.internal.processors.cache.dr.GridCacheDrInfo;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
+import org.apache.ignite.internal.util.lang.GridInClosure3;
 import org.apache.ignite.lang.IgniteBiInClosure;
 import org.jetbrains.annotations.Nullable;
 
@@ -173,5 +174,6 @@ public interface IgniteTxLocalEx extends IgniteInternalTx {
         Collection<KeyCacheObject> keys,
         boolean deserializePortable,
         boolean skipVals,
-        IgniteBiInClosure<KeyCacheObject, Object> c);
+        boolean needVer,
+        GridInClosure3<KeyCacheObject, Object, GridCacheVersion> c);
 }

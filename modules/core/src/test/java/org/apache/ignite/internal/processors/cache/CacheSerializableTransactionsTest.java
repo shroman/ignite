@@ -114,7 +114,59 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If failed.
      */
-    public void _testTxRollbackRead1() throws Exception {
+    public void testTxCommitReadOnly() throws Exception {
+        Ignite ignite0 = ignite(0);
+
+        final IgniteTransactions txs = ignite0.transactions();
+
+        for (CacheConfiguration<Integer, Integer> ccfg : cacheConfigurations()) {
+            logCacheInfo(ccfg);
+
+            try {
+                IgniteCache<Integer, Integer> cache = ignite0.createCache(ccfg);
+
+                List<Integer> keys = new ArrayList<>();
+
+                keys.add(nearKey(cache));
+                keys.add(primaryKey(cache));
+
+                if (ccfg.getBackups() != 0)
+                    keys.add(backupKey(cache));
+
+                for (Integer key : keys) {
+                    log.info("Test key: " + key);
+
+                    try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                        Integer val = cache.get(key);
+
+                        assertNull(val);
+
+                        tx.commit();
+                    }
+
+                    checkValue(key, null, ccfg.getName());
+
+                    try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                        Integer val = cache.get(key);
+
+                        assertNull(val);
+
+                        tx.rollback();
+                    }
+
+                    checkValue(key, null, ccfg.getName());
+                }
+            }
+            finally {
+                ignite0.destroyCache(ccfg.getName());
+            }
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testTxRollbackRead1() throws Exception {
         txRollbackRead(true);
     }
 
@@ -134,7 +186,11 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
 
         final IgniteTransactions txs = ignite0.transactions();
 
-        for (CacheConfiguration<Integer, Integer> ccfg : cacheConfigurations()) {
+        List<CacheConfiguration<Integer, Integer>> ccfgs = new ArrayList<>();
+
+        ccfgs.add(cacheConfiguration(PARTITIONED, FULL_SYNC, 0, false, false));
+
+        for (CacheConfiguration<Integer, Integer> ccfg : ccfgs) {
             logCacheInfo(ccfg);
 
             try {
@@ -163,8 +219,6 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
 
                             updateKey(cache, key, 1);
 
-                            log.info("Commit");
-
                             tx.commit();
                         }
 
@@ -174,7 +228,17 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
                         log.info("Expected exception: " + e);
                     }
 
-                    assertEquals(1, (Object) cache.get(key));
+                    assertEquals(1, (Object)cache.get(key));
+
+                    try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                        Object val = cache.get(key);
+
+                        assertEquals(1, val);
+
+                        tx.commit();
+                    }
+
+                    assertEquals(1, (Object)cache.get(key));
                 }
             }
             finally {
@@ -602,6 +666,19 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
     }
 
     /**
+     * @param key Key.
+     * @param expVal Expected value.
+     * @param cacheName Cache name.
+     */
+    private void checkValue(Object key, Object expVal, String cacheName) {
+        for (int i = 0; i < SRVS + CLIENTS; i++) {
+            IgniteCache<Object, Object> cache = ignite(i).cache(cacheName);
+
+            assertEquals(expVal, cache.get(key));
+        }
+    }
+
+    /**
      * @param releaseLatch Release lock latch.
      * @param cache Cache.
      * @param key Key.
@@ -665,6 +742,7 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
         if (storeEnabled) {
             ccfg.setCacheStoreFactory(new TestStoreFactory());
             ccfg.setWriteThrough(true);
+            ccfg.setReadThrough(true);
         }
 
         if (nearCache)

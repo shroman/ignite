@@ -53,12 +53,14 @@ import org.apache.ignite.internal.util.GridLeanMap;
 import org.apache.ignite.internal.util.future.GridCompoundIdentityFuture;
 import org.apache.ignite.internal.util.future.GridFinishedFuture;
 import org.apache.ignite.internal.util.future.GridFutureAdapter;
+import org.apache.ignite.internal.util.lang.GridInClosure3;
 import org.apache.ignite.internal.util.tostring.GridToStringInclude;
 import org.apache.ignite.internal.util.typedef.C1;
 import org.apache.ignite.internal.util.typedef.CI1;
 import org.apache.ignite.internal.util.typedef.CIX1;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.P1;
+import org.apache.ignite.internal.util.typedef.T2;
 import org.apache.ignite.internal.util.typedef.internal.CU;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
@@ -138,6 +140,12 @@ public final class GridNearGetFuture<K, V> extends GridCompoundIdentityFuture<Ma
     /** Flag indicating that get should be done on a locked topology version. */
     private final boolean canRemap;
 
+    /** */
+    private final boolean needVer;
+
+    /** */
+    private final GridInClosure3<KeyCacheObject, Object, GridCacheVersion> resC;
+
     /**
      * @param cctx Context.
      * @param keys Keys.
@@ -164,11 +172,14 @@ public final class GridNearGetFuture<K, V> extends GridCompoundIdentityFuture<Ma
         boolean deserializePortable,
         @Nullable IgniteCacheExpiryPolicy expiryPlc,
         boolean skipVals,
-        boolean canRemap
+        boolean canRemap,
+        boolean needVer,
+        @Nullable GridInClosure3<KeyCacheObject, Object, GridCacheVersion> resC
     ) {
         super(cctx.kernalContext(), CU.<K, V>mapsReducer(keys.size()));
 
         assert !F.isEmpty(keys);
+        assert !needVer || resC != null;
 
         this.cctx = cctx;
         this.keys = keys;
@@ -182,6 +193,8 @@ public final class GridNearGetFuture<K, V> extends GridCompoundIdentityFuture<Ma
         this.expiryPlc = expiryPlc;
         this.skipVals = skipVals;
         this.canRemap = canRemap;
+        this.needVer = needVer;
+        this.resC = resC;
 
         futId = IgniteUuid.randomUuid();
 
@@ -453,23 +466,43 @@ public final class GridNearGetFuture<K, V> extends GridCompoundIdentityFuture<Ma
         while (true) {
             try {
                 CacheObject v = null;
+                GridCacheVersion ver = null;
 
                 boolean isNear = entry != null;
 
                 // First we peek into near cache.
-                if (isNear)
-                    v = entry.innerGet(tx,
-                        /*swap*/false,
-                        /*read-through*/false,
-                        /*fail-fast*/true,
-                        /*unmarshal*/true,
-                        /*metrics*/true,
-                        /*events*/!skipVals,
-                        /*temporary*/false,
-                        subjId,
-                        null,
-                        taskName,
-                        expiryPlc);
+                if (isNear) {
+                    if (needVer) {
+                        T2<CacheObject, GridCacheVersion> res = entry.innerGetVersioned(
+                            /*swap*/true,
+                            /*unmarshal*/true,
+                            /**update-metrics*/true,
+                            /*event*/!skipVals,
+                            subjId,
+                            null,
+                            taskName,
+                            expiryPlc);
+
+                        if (res != null) {
+                            v = res.get1();
+                            ver = res.get2();
+                        }
+                    }
+                    else {
+                        v = entry.innerGet(tx,
+                            /*swap*/false,
+                            /*read-through*/false,
+                            /*fail-fast*/true,
+                            /*unmarshal*/true,
+                            /*metrics*/true,
+                            /*events*/!skipVals,
+                            /*temporary*/false,
+                            subjId,
+                            null,
+                            taskName,
+                            expiryPlc);
+                    }
+                }
 
                 ClusterNode affNode = null;
 
@@ -485,18 +518,36 @@ public final class GridNearGetFuture<K, V> extends GridCompoundIdentityFuture<Ma
                         if (dhtEntry != null) {
                             boolean isNew = dhtEntry.isNewLocked() || !dhtEntry.valid(topVer);
 
-                            v = dhtEntry.innerGet(tx,
-                                /*swap*/true,
-                                /*read-through*/false,
-                                /*fail-fast*/true,
-                                /*unmarshal*/true,
-                                /*update-metrics*/false,
-                                /*events*/!isNear && !skipVals,
-                                /*temporary*/false,
-                                subjId,
-                                null,
-                                taskName,
-                                expiryPlc);
+                            if (needVer) {
+                                T2<CacheObject, GridCacheVersion> res = entry.innerGetVersioned(
+                                    /*swap*/true,
+                                    /*unmarshal*/true,
+                                    /**update-metrics*/false,
+                                    /*event*/!isNear && !skipVals,
+                                    subjId,
+                                    null,
+                                    taskName,
+                                    expiryPlc);
+
+                                if (res != null) {
+                                    v = res.get1();
+                                    ver = res.get2();
+                                }
+                            }
+                            else {
+                                v = dhtEntry.innerGet(tx,
+                                    /*swap*/true,
+                                    /*read-through*/false,
+                                    /*fail-fast*/true,
+                                    /*unmarshal*/true,
+                                    /*update-metrics*/false,
+                                    /*events*/!isNear && !skipVals,
+                                    /*temporary*/false,
+                                    subjId,
+                                    null,
+                                    taskName,
+                                    expiryPlc);
+                            }
 
                             // Entry was not in memory or in swap, so we remove it from cache.
                             if (v == null && isNew && dhtEntry.markObsoleteIfEmpty(ver))
@@ -534,13 +585,17 @@ public final class GridNearGetFuture<K, V> extends GridCompoundIdentityFuture<Ma
                 }
 
                 if (v != null && !reload) {
-                    K key0 = key.value(cctx.cacheObjectContext(), true);
-                    V val0 = v.value(cctx.cacheObjectContext(), true);
+                    if (resC == null) {
+                        K key0 = key.value(cctx.cacheObjectContext(), true);
+                        V val0 = v.value(cctx.cacheObjectContext(), true);
 
-                    val0 = (V)cctx.unwrapPortableIfNeeded(val0, !deserializePortable);
-                    key0 = (K)cctx.unwrapPortableIfNeeded(key0, !deserializePortable);
+                        val0 = (V)cctx.unwrapPortableIfNeeded(val0, !deserializePortable);
+                        key0 = (K)cctx.unwrapPortableIfNeeded(key0, !deserializePortable);
 
-                    add(new GridFinishedFuture<>(Collections.singletonMap(key0, val0)));
+                        add(new GridFinishedFuture<>(Collections.singletonMap(key0, val0)));
+                    }
+                    else
+                        resC.apply(key, v, ver);
                 }
                 else {
                     if (affNode == null) {
@@ -667,7 +722,7 @@ public final class GridNearGetFuture<K, V> extends GridCompoundIdentityFuture<Ma
     ) {
         boolean empty = F.isEmpty(keys);
 
-        Map<K, V> map = empty ? Collections.<K, V>emptyMap() : new GridLeanMap<K, V>(keys.size());
+        Map<K, V> map = (resC != null || empty) ? Collections.<K, V>emptyMap() : new GridLeanMap<K, V>(keys.size());
 
         if (!empty) {
             boolean atomic = cctx.atomic();
@@ -705,7 +760,10 @@ public final class GridNearGetFuture<K, V> extends GridCompoundIdentityFuture<Ma
 
                     assert skipVals == (info.value() == null);
 
-                    cctx.addResult(map, key, val, skipVals, false, deserializePortable, false);
+                    if (resC != null)
+                        resC.apply(key, skipVals ? true : val, info.version());
+                    else
+                        cctx.addResult(map, key, val, skipVals, false, deserializePortable, false);
                 }
                 catch (GridCacheEntryRemovedException ignore) {
                     if (log.isDebugEnabled())

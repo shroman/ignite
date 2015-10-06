@@ -430,6 +430,9 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
 
     /** {@inheritDoc} */
     @Override public Collection<IgniteTxEntry> optimisticLockEntries() {
+        if (optimistic() && serializable())
+            return allEntries();
+
         return writeEntries();
     }
 

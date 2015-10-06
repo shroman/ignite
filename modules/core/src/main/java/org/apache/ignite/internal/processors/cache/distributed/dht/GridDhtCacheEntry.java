@@ -38,6 +38,7 @@ import org.apache.ignite.internal.processors.cache.KeyCacheObject;
 import org.apache.ignite.internal.processors.cache.distributed.GridDistributedCacheEntry;
 import org.apache.ignite.internal.processors.cache.distributed.GridDistributedLockCancelledException;
 import org.apache.ignite.internal.processors.cache.transactions.IgniteInternalTx;
+import org.apache.ignite.internal.processors.cache.transactions.IgniteTxEntry;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
 import org.apache.ignite.internal.util.lang.GridPlainRunnable;
 import org.apache.ignite.internal.util.tostring.GridToStringInclude;
@@ -196,6 +197,13 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
 
             checkObsolete();
 
+            if (serReadVer != null) {
+                if (!serReadVer.equals(this.ver)) {
+                    if (!(isNewLocked() && serReadVer.equals(IgniteTxEntry.SER_READ_NEW_ENTRY_VER)))
+                        return null;
+                }
+            }
+
             GridCacheMvcc mvcc = mvccExtras();
 
             if (mvcc == null) {
@@ -214,7 +222,6 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
                 nearVer,
                 threadId,
                 ver,
-                serReadVer,
                 timeout,
                 reenter,
                 tx,

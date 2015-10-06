@@ -52,12 +52,14 @@ import org.apache.ignite.internal.util.GridLeanMap;
 import org.apache.ignite.internal.util.future.GridCompoundIdentityFuture;
 import org.apache.ignite.internal.util.future.GridFinishedFuture;
 import org.apache.ignite.internal.util.future.GridFutureAdapter;
+import org.apache.ignite.internal.util.lang.GridInClosure3;
 import org.apache.ignite.internal.util.tostring.GridToStringInclude;
 import org.apache.ignite.internal.util.typedef.C1;
 import org.apache.ignite.internal.util.typedef.CI1;
 import org.apache.ignite.internal.util.typedef.CIX1;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.P1;
+import org.apache.ignite.internal.util.typedef.T2;
 import org.apache.ignite.internal.util.typedef.internal.CU;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
@@ -136,6 +138,12 @@ public class GridPartitionedGetFuture<K, V> extends GridCompoundIdentityFuture<M
     /** Flag indicating whether future can be remapped on a newer topology version. */
     private final boolean canRemap;
 
+    /** */
+    private final boolean needVer;
+
+    /** */
+    private final GridInClosure3<KeyCacheObject, Object, GridCacheVersion> resC;
+
     /**
      * @param cctx Context.
      * @param keys Keys.
@@ -149,6 +157,8 @@ public class GridPartitionedGetFuture<K, V> extends GridCompoundIdentityFuture<M
      * @param deserializePortable Deserialize portable flag.
      * @param expiryPlc Expiry policy.
      * @param skipVals Skip values flag.
+     * @param canRemap Flag indicating whether future can be remapped on a newer topology version.
+     * @param resC Closure applied on 'get' result.
      */
     public GridPartitionedGetFuture(
         GridCacheContext<K, V> cctx,
@@ -162,11 +172,14 @@ public class GridPartitionedGetFuture<K, V> extends GridCompoundIdentityFuture<M
         boolean deserializePortable,
         @Nullable IgniteCacheExpiryPolicy expiryPlc,
         boolean skipVals,
-        boolean canRemap
+        boolean canRemap,
+        boolean needVer,
+        @Nullable GridInClosure3<KeyCacheObject, Object, GridCacheVersion> resC
     ) {
         super(cctx.kernalContext(), CU.<K, V>mapsReducer(keys.size()));
 
         assert !F.isEmpty(keys);
+        assert !needVer || resC != null;
 
         this.cctx = cctx;
         this.keys = keys;
@@ -180,6 +193,8 @@ public class GridPartitionedGetFuture<K, V> extends GridCompoundIdentityFuture<M
         this.expiryPlc = expiryPlc;
         this.skipVals = skipVals;
         this.canRemap = canRemap;
+        this.needVer = needVer;
+        this.resC = resC;
 
         futId = IgniteUuid.randomUuid();
 
@@ -463,18 +478,39 @@ public class GridPartitionedGetFuture<K, V> extends GridCompoundIdentityFuture<M
                         if (entry != null) {
                             boolean isNew = entry.isNewLocked();
 
-                            CacheObject v = entry.innerGet(null,
-                                /*swap*/true,
-                                /*read-through*/false,
-                                /*fail-fast*/true,
-                                /*unmarshal*/true,
-                                /**update-metrics*/false,
-                                /*event*/!skipVals,
-                                /*temporary*/false,
-                                subjId,
-                                null,
-                                taskName,
-                                expiryPlc);
+                            CacheObject v = null;
+                            GridCacheVersion ver = null;
+
+                            if (needVer) {
+                                T2<CacheObject, GridCacheVersion> res = entry.innerGetVersioned(
+                                    /*swap*/true,
+                                    /*unmarshal*/true,
+                                    /**update-metrics*/false,
+                                    /*event*/!skipVals,
+                                    subjId,
+                                    null,
+                                    taskName,
+                                    expiryPlc);
+
+                                if (res != null) {
+                                    v = res.get1();
+                                    ver = res.get2();
+                                }
+                            }
+                            else {
+                                v = entry.innerGet(null,
+                                    /*swap*/true,
+                                    /*read-through*/false,
+                                    /*fail-fast*/true,
+                                    /*unmarshal*/true,
+                                    /**update-metrics*/false,
+                                    /*event*/!skipVals,
+                                    /*temporary*/false,
+                                    subjId,
+                                    null,
+                                    taskName,
+                                    expiryPlc);
+                            }
 
                             colocated.context().evicts().touch(entry, topVer);
 
@@ -484,7 +520,10 @@ public class GridPartitionedGetFuture<K, V> extends GridCompoundIdentityFuture<M
                                     colocated.removeIfObsolete(key);
                             }
                             else {
-                                cctx.addResult(locVals, key, v, skipVals, false, deserializePortable, true);
+                                if (resC != null)
+                                    resC.apply(key, skipVals ? true : v, ver);
+                                else
+                                    cctx.addResult(locVals, key, v, skipVals, false, deserializePortable, true);
 
                                 return false;
                             }
@@ -585,15 +624,24 @@ public class GridPartitionedGetFuture<K, V> extends GridCompoundIdentityFuture<M
         int keysSize = infos.size();
 
         if (keysSize != 0) {
-            Map<K, V> map = new GridLeanMap<>(keysSize);
+            if (resC != null) {
+                for (GridCacheEntryInfo info : infos) {
+                    assert skipVals == (info.value() == null);
 
-            for (GridCacheEntryInfo info : infos) {
-                assert skipVals == (info.value() == null);
-
-                cctx.addResult(map, info.key(), info.value(), skipVals, false, deserializePortable, false);
+                    resC.apply(info.key(), skipVals ? true : info.value(), info.version());
+                }
             }
+            else {
+                Map<K, V> map = new GridLeanMap<>(keysSize);
 
-            return map;
+                for (GridCacheEntryInfo info : infos) {
+                    assert skipVals == (info.value() == null);
+
+                    cctx.addResult(map, info.key(), info.value(), skipVals, false, deserializePortable, false);
+                }
+
+                return map;
+            }
         }
 
         return Collections.emptyMap();

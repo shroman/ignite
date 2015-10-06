@@ -54,7 +54,7 @@ import org.apache.ignite.internal.transactions.IgniteTxRollbackCheckedException;
 import org.apache.ignite.internal.transactions.IgniteTxTimeoutCheckedException;
 import org.apache.ignite.internal.util.future.GridEmbeddedFuture;
 import org.apache.ignite.internal.util.future.GridFinishedFuture;
-import org.apache.ignite.internal.util.lang.GridClosureException;
+import org.apache.ignite.internal.util.lang.GridInClosure3;
 import org.apache.ignite.internal.util.tostring.GridToStringExclude;
 import org.apache.ignite.internal.util.typedef.C1;
 import org.apache.ignite.internal.util.typedef.CI1;
@@ -349,7 +349,8 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
         final Collection<KeyCacheObject> keys,
         boolean deserializePortable,
         boolean skipVals,
-        final IgniteBiInClosure<KeyCacheObject, Object> c
+        boolean needVer,
+        final GridInClosure3<KeyCacheObject, Object, GridCacheVersion> c
     ) {
         if (cacheCtx.isNear()) {
             return cacheCtx.nearTx().txLoadAsync(this,
@@ -357,23 +358,11 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
                 readThrough,
                 deserializePortable,
                 accessPolicy(cacheCtx, keys),
-                skipVals).chain(new C1<IgniteInternalFuture<Map<Object, Object>>, Boolean>() {
+                skipVals,
+                needVer,
+                c).chain(new C1<IgniteInternalFuture<Map<Object, Object>>, Boolean>() {
                 @Override public Boolean apply(IgniteInternalFuture<Map<Object, Object>> f) {
-                    try {
-                        Map<Object, Object> map = f.get();
-
-                        // Must loop through keys, not map entries,
-                        // as map entries may not have all the keys.
-                        for (KeyCacheObject key : keys)
-                            c.apply(key, map.get(key.value(cacheCtx.cacheObjectContext(), false)));
-
-                        return true;
-                    }
-                    catch (Exception e) {
-                        setRollbackOnly();
-
-                        throw new GridClosureException(e);
-                    }
+                    return true;
                 }
             });
         }
@@ -389,31 +378,18 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
                 deserializePortable,
                 accessPolicy(cacheCtx, keys),
                 skipVals,
-                /*can remap*/true
+                /*can remap*/true,
+                needVer,
+                c
             ).chain(new C1<IgniteInternalFuture<Map<Object, Object>>, Boolean>() {
-                    @Override public Boolean apply(IgniteInternalFuture<Map<Object, Object>> f) {
-                        try {
-                            Map<Object, Object> map = f.get();
-
-                            // Must loop through keys, not map entries,
-                            // as map entries may not have all the keys.
-                            for (KeyCacheObject key : keys)
-                                c.apply(key, map.get(key.value(cacheCtx.cacheObjectContext(), false)));
-
-                            return true;
-                        }
-                        catch (Exception e) {
-                            setRollbackOnly();
-
-                            throw new GridClosureException(e);
-                        }
-                    }
-                });
-        }
-        else {
+                @Override public Boolean apply(IgniteInternalFuture<Map<Object, Object>> f) {
+                    return true;
+                }
+            });
+        } else {
             assert cacheCtx.isLocal();
 
-            return super.loadMissing(cacheCtx, readThrough, async, keys, deserializePortable, skipVals, c);
+            return super.loadMissing(cacheCtx, readThrough, async, keys, deserializePortable, skipVals, needVer, c);
         }
     }
 

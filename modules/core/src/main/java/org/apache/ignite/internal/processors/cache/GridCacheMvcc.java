@@ -455,7 +455,6 @@ public final class GridCacheMvcc {
             /*nearVer*/null,
             threadId,
             ver,
-            null,
             timeout,
             reenter,
             tx,
@@ -470,7 +469,6 @@ public final class GridCacheMvcc {
      * @param nearVer Near version.
      * @param threadId Thread ID.
      * @param ver Lock version.
-     * @param serReadVer Optional read entry version for optimistic serializable transaction.
      * @param timeout Lock acquisition timeout.
      * @param reenter Reentry flag ({@code true} if reentry is allowed).
      * @param tx Transaction flag.
@@ -485,7 +483,6 @@ public final class GridCacheMvcc {
         @Nullable GridCacheVersion nearVer,
         long threadId,
         GridCacheVersion ver,
-        @Nullable GridCacheVersion serReadVer,
         long timeout,
         boolean reenter,
         boolean tx,
@@ -513,9 +510,6 @@ public final class GridCacheMvcc {
                 if (owner == null || owner.threadId() != threadId)
                     return null;
             }
-
-            if (serReadVer != null && !serReadVer.equals(ver))
-                return null;
         }
 
         UUID locNodeId = cctx.nodeId();
