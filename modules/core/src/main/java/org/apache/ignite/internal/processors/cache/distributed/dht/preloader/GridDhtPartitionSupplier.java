@@ -126,7 +126,8 @@ class GridDhtPartitionSupplier {
      *
      */
     void stop() {
-        cctx.events().removeListener(lsnr);
+        if (lsnr != null)
+            cctx.events().removeListener(lsnr);
 
         stopOldListeners();
     }
