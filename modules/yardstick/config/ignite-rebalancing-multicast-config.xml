@@ -165,7 +165,7 @@
 
         <property name="warmupClosure" ref="warmupClosure"/>
 
-        <property name="rebalanceThreadPoolSize" value="0"/>
+        <property name="rebalanceThreadPoolSize" value="8"/>
     </bean>
 
     <bean id="warmupClosure" class="org.apache.ignite.startup.BasicWarmupClosure">
