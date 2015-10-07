@@ -241,7 +241,8 @@ public class IgniteTxHandler {
                         req.version(),
                         null,
                         e,
-                        null);
+                        null,
+                        req.deployInfo() != null);
                 }
             }
         });
@@ -327,7 +328,8 @@ public class IgniteTxHandler {
                         req.version(),
                         null,
                         null,
-                        top.topologyVersion());
+                        top.topologyVersion(),
+                        req.deployInfo() != null);
 
                     try {
                         ctx.io().send(nearNode, res, req.policy());
@@ -787,7 +789,7 @@ public class IgniteTxHandler {
         GridDhtTxPrepareResponse res;
 
         try {
-            res = new GridDhtTxPrepareResponse(req.version(), req.futureId(), req.miniId());
+            res = new GridDhtTxPrepareResponse(req.version(), req.futureId(), req.miniId(), req.deployInfo() != null);
 
             // Start near transaction first.
             nearTx = !F.isEmpty(req.nearWrites()) ? startNearRemoteTx(ctx.deploy().globalLoader(), nodeId, req) : null;
@@ -1053,7 +1055,8 @@ public class IgniteTxHandler {
      */
     protected void sendReply(UUID nodeId, GridDhtTxFinishRequest req, boolean committed) {
         if (req.replyRequired()) {
-            GridDhtTxFinishResponse res = new GridDhtTxFinishResponse(req.version(), req.futureId(), req.miniId());
+            GridDhtTxFinishResponse res = new GridDhtTxFinishResponse(req.version(), req.futureId(), req.miniId(),
+                req.deployInfo() != null);
 
             if (req.checkCommitted()) {
                 res.checkCommitted(true);

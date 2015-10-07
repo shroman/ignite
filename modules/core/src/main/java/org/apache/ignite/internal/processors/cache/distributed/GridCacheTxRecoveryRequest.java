@@ -80,6 +80,7 @@ public class GridCacheTxRecoveryRequest extends GridDistributedBaseMessage {
         this.miniId = miniId;
         this.txNum = txNum;
         this.nearTxCheck = nearTxCheck;
+        this.depEnabled = tx.activeCachesDeploymentEnabled();
     }
 
     /**

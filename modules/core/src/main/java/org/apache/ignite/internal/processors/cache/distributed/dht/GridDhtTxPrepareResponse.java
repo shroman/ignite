@@ -84,8 +84,9 @@ public class GridDhtTxPrepareResponse extends GridDistributedTxPrepareResponse {
      * @param xid Xid version.
      * @param futId Future ID.
      * @param miniId Mini future ID.
+     * @param depEnabled Deployment enabled.
      */
-    public GridDhtTxPrepareResponse(GridCacheVersion xid, IgniteUuid futId, IgniteUuid miniId) {
+    public GridDhtTxPrepareResponse(GridCacheVersion xid, IgniteUuid futId, IgniteUuid miniId, boolean depEnabled) {
         super(xid);
 
         assert futId != null;
@@ -93,6 +94,7 @@ public class GridDhtTxPrepareResponse extends GridDistributedTxPrepareResponse {
 
         this.futId = futId;
         this.miniId = miniId;
+        this.depEnabled = depEnabled;
     }
 
     /**

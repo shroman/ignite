@@ -131,7 +131,8 @@ public class GridDhtTxPrepareRequest extends GridDistributedTxPrepareRequest {
         boolean last,
         boolean onePhaseCommit,
         UUID subjId,
-        int taskNameHash) {
+        int taskNameHash,
+        boolean depEnabled) {
         super(tx, null, dhtWrites, txNodes, onePhaseCommit);
 
         assert futId != null;
@@ -145,6 +146,7 @@ public class GridDhtTxPrepareRequest extends GridDistributedTxPrepareRequest {
         this.last = last;
         this.subjId = subjId;
         this.taskNameHash = taskNameHash;
+        this.depEnabled = depEnabled;
 
         invalidateNearEntries = new BitSet(dhtWrites == null ? 0 : dhtWrites.size());
 

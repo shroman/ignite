@@ -115,6 +115,7 @@ public class GridNearTxPrepareResponse extends GridDistributedTxPrepareResponse 
      * @param retVal Return value.
      * @param err Error.
      * @param clientRemapVer Not {@code null} if client node should remap transaction.
+     * @param depEnabled Deployment enabled.
      */
     public GridNearTxPrepareResponse(
         GridCacheVersion xid,
@@ -124,7 +125,8 @@ public class GridNearTxPrepareResponse extends GridDistributedTxPrepareResponse 
         GridCacheVersion writeVer,
         GridCacheReturn retVal,
         Throwable err,
-        AffinityTopologyVersion clientRemapVer
+        AffinityTopologyVersion clientRemapVer,
+        boolean depEnabled
     ) {
         super(xid, err);
 
@@ -138,6 +140,7 @@ public class GridNearTxPrepareResponse extends GridDistributedTxPrepareResponse 
         this.writeVer = writeVer;
         this.retVal = retVal;
         this.clientRemapVer = clientRemapVer;
+        this.depEnabled = depEnabled;
     }
 
     /**

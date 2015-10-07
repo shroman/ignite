@@ -404,7 +404,8 @@ public class GridCacheIoManager extends GridCacheSharedManagerAdapter {
                 GridDhtTxPrepareResponse res = new GridDhtTxPrepareResponse(
                     req.version(),
                     req.futureId(),
-                    req.miniId());
+                    req.miniId(),
+                    req.deployInfo() != null);
 
                 res.error(req.classError());
 
@@ -533,7 +534,8 @@ public class GridCacheIoManager extends GridCacheSharedManagerAdapter {
                     req.version(),
                     null,
                     null,
-                    null);
+                    null,
+                    req.deployInfo() != null);
 
                 res.error(req.classError());
 
@@ -617,10 +619,24 @@ public class GridCacheIoManager extends GridCacheSharedManagerAdapter {
         if (destNodeId == null || !cctx.localNodeId().equals(destNodeId)) {
             msg.prepareMarshal(cctx);
 
-            GridCacheContext ctx = cctx.cacheContext(msg.cacheId());
+            if (depEnabled) {
+                boolean depEnabled0;
 
-            if (depEnabled && ctx.deploymentEnabled() && msg instanceof GridCacheDeployable)
-                cctx.deploy().prepare((GridCacheDeployable)msg);
+                if (msg.deploymentEnabled() != null)
+                    depEnabled0 = msg.deploymentEnabled();
+                else {
+                    GridCacheContext ctx = cctx.cacheContext(msg.cacheId());
+
+                    if (ctx == null)
+                        throw new IgniteCheckedException("Deployment related info is missing in message: [msg=" +
+                            msg +']');
+
+                    depEnabled0 = ctx.deploymentEnabled();
+                }
+
+                if (depEnabled0 && msg instanceof GridCacheDeployable)
+                    cctx.deploy().prepare((GridCacheDeployable)msg);
+            }
         }
 
         return true;

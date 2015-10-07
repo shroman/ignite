@@ -77,6 +77,7 @@ public class GridNearTxFinishRequest extends GridDistributedTxFinishRequest {
      * @param committedVers Committed versions.
      * @param rolledbackVers Rolled back versions.
      * @param txSize Expected transaction size.
+     * @param depEnabled Deployment enabled.
      */
     public GridNearTxFinishRequest(
         IgniteUuid futId,
@@ -96,7 +97,8 @@ public class GridNearTxFinishRequest extends GridDistributedTxFinishRequest {
         Collection<GridCacheVersion> rolledbackVers,
         int txSize,
         @Nullable UUID subjId,
-        int taskNameHash) {
+        int taskNameHash,
+        boolean depEnabled) {
         super(
             xidVer,
             futId,
@@ -119,6 +121,7 @@ public class GridNearTxFinishRequest extends GridDistributedTxFinishRequest {
         this.topVer = topVer;
         this.subjId = subjId;
         this.taskNameHash = taskNameHash;
+        this.depEnabled = depEnabled;
     }
 
     /**

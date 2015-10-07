@@ -53,6 +53,9 @@ abstract class GridDhtPartitionsAbstractMessage extends GridCacheMessage {
     GridDhtPartitionsAbstractMessage(GridDhtPartitionExchangeId exchId, @Nullable GridCacheVersion lastVer) {
         this.exchId = exchId;
         this.lastVer = lastVer;
+
+        // Partitions related messages don't have objects for which deployment info has to be written.
+        this.depEnabled = false;
     }
 
     /** {@inheritDoc} */

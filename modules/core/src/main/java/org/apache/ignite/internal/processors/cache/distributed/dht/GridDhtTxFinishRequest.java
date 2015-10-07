@@ -104,6 +104,7 @@ public class GridDhtTxFinishRequest extends GridDistributedTxFinishRequest {
      * @param txSize Expected transaction size.
      * @param subjId Subject ID.
      * @param taskNameHash Task name hash.
+     * @param depEnabled Deployment enabled flag.
      */
     public GridDhtTxFinishRequest(
         UUID nearNodeId,
@@ -127,7 +128,8 @@ public class GridDhtTxFinishRequest extends GridDistributedTxFinishRequest {
         Collection<GridCacheVersion> pendingVers,
         int txSize,
         @Nullable UUID subjId,
-        int taskNameHash
+        int taskNameHash,
+        boolean depEnabled
     ) {
         super(
             xidVer,
@@ -157,6 +159,7 @@ public class GridDhtTxFinishRequest extends GridDistributedTxFinishRequest {
         this.sysInvalidate = sysInvalidate;
         this.subjId = subjId;
         this.taskNameHash = taskNameHash;
+        this.depEnabled = depEnabled;
     }
 
     /** {@inheritDoc} */

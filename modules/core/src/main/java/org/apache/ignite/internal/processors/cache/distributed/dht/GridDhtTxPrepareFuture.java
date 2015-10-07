@@ -666,7 +666,8 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
             tx.writeVersion(),
             ret,
             prepErr,
-            null);
+            null,
+            tx.activeCachesDeploymentEnabled());
 
         if (prepErr == null) {
             addDhtValues(res);
@@ -972,7 +973,8 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
                         true,
                         tx.onePhaseCommit(),
                         tx.subjectId(),
-                        tx.taskNameHash());
+                        tx.taskNameHash(),
+                        tx.activeCachesDeploymentEnabled());
 
                     int idx = 0;
 
@@ -1071,7 +1073,8 @@ public final class GridDhtTxPrepareFuture extends GridCompoundFuture<IgniteInter
                             true,
                             tx.onePhaseCommit(),
                             tx.subjectId(),
-                            tx.taskNameHash());
+                            tx.taskNameHash(),
+                            tx.activeCachesDeploymentEnabled());
 
                         for (IgniteTxEntry entry : nearMapping.writes()) {
                             try {

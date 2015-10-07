@@ -192,6 +192,11 @@ public class GridDistributedTxRemoteAdapter extends IgniteTxAdapter
         return Collections.emptyList();
     }
 
+    /** {@inheritDoc} */
+    @Nullable @Override public Boolean activeCachesDeploymentEnabled() {
+        return null;
+    }
+
     /**
      * @return Checks if transaction has no entries.
      */

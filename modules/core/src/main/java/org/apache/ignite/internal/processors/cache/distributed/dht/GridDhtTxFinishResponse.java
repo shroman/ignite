@@ -61,13 +61,15 @@ public class GridDhtTxFinishResponse extends GridDistributedTxFinishResponse {
      * @param xid Xid version.
      * @param futId Future ID.
      * @param miniId Mini future ID.
+     * @param depEnabled Deployment enabled.
      */
-    public GridDhtTxFinishResponse(GridCacheVersion xid, IgniteUuid futId, IgniteUuid miniId) {
+    public GridDhtTxFinishResponse(GridCacheVersion xid, IgniteUuid futId, IgniteUuid miniId, boolean depEnabled) {
         super(xid, futId);
 
         assert miniId != null;
 
         this.miniId = miniId;
+        this.depEnabled = depEnabled;
     }
 
     /**

@@ -1757,6 +1757,11 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
         }
 
         /** {@inheritDoc} */
+        @Nullable @Override public Boolean activeCachesDeploymentEnabled() {
+            return null;
+        }
+
+        /** {@inheritDoc} */
         @Nullable @Override public Object addMeta(int key, Object val) {
             throw new IllegalStateException("Deserialized transaction can only be used as read-only.");
         }
