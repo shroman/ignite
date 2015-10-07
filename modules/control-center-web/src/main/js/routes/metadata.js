@@ -109,7 +109,7 @@ function _save(metas, res) {
                         callback(err);
                     else
                         if (metadata)
-                            callback('Cache type metadata with value type: "' + metadata.valueType + '" already exist.');
+                            return callback('Cache type metadata with value type: "' + metadata.valueType + '" already exist.');
 
                         (new db.CacheTypeMetadata(meta)).save(function (err, metadata) {
                             if (err)
