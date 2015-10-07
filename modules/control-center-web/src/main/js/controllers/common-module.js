@@ -1347,7 +1347,7 @@ consoleModule.service('$preview', ['$timeout', '$interval', function ($timeout, 
 
         var newContent = content.lines;
 
-        if (content.checkFn == 'remove')
+        if (content.action == 'remove')
             prevContent = content.lines;
         else if (prevContent.length > 0 && newContent.length > 0 && editor.attractAttention) {
             if (clearPromise) {
@@ -1825,7 +1825,7 @@ consoleModule.controller('activeLink', [
 consoleModule.controller('auth', [
     '$scope', '$modal', '$http', '$window', '$common', '$focus',
     function ($scope, $modal, $http, $window, $common, $focus) {
-        $scope.checkFn = 'login';
+        $scope.action = 'login';
 
         $scope.userDropdown = [{text: 'Profile', href: '/profile'}];
 
@@ -1843,7 +1843,7 @@ consoleModule.controller('auth', [
 
         // Try to authorize user with provided credentials.
         $scope.auth = function (action, user_info) {
-            $http.post('/' + checkFn, user_info)
+            $http.post('/' + action, user_info)
                 .success(function () {
                     $window.location = '/configuration/clusters';
                 })
