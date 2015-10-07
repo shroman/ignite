@@ -232,40 +232,43 @@ consoleModule.controller('metadataController', [
                     info: 'Configure connection to database'
                 };
 
-                // Get available JDBC drivers via agent.
-                $http.post('/agent/drivers')
-                    .success(function (drivers) {
-                        if (drivers && drivers.length > 0) {
-                            $scope.jdbcDriverJars = _.map(drivers, function (driver) {
-                                return {value: driver.jdbcDriverJar, label: driver.jdbcDriverJar};
-                            });
+                function getDrivers(onSuccess, onException) {
+                    // Get available JDBC drivers via agent.
+                    $http.post('/agent/drivers')
+                        .success(function (drivers) {
+                            onSuccess();
 
-                            jdbcDrivers = drivers;
-
-                            $scope.preset.jdbcDriverJar = drivers[0].jdbcDriverJar;
-
-                            function openLoadMetadataModal() {
-                                loadMetaModal.$promise.then(function () {
-                                    $scope.loadMeta.action = 'connect';
-                                    $scope.loadMeta.tables = [];
-
-                                    loadMetaModal.show();
-
-                                    $focus('jdbcUrl');
+                            if (drivers && drivers.length > 0) {
+                                $scope.jdbcDriverJars = _.map(drivers, function (driver) {
+                                    return {value: driver.jdbcDriverJar, label: driver.jdbcDriverJar};
                                 });
-                            }
 
-                            $common.confirmUnsavedChanges($scope.ui.isDirty(), openLoadMetadataModal);
-                        }
-                        else
-                            $common.showError('JDBC drivers not found!');
-                    })
-                    .error(function (errMsg, status) {
-                        if (status == 503)
-                            $scope.showDownloadAgent();
-                        else
-                            $common.showError(errMsg);
-                    });
+                                jdbcDrivers = drivers;
+
+                                $scope.preset.jdbcDriverJar = drivers[0].jdbcDriverJar;
+
+                                function openLoadMetadataModal() {
+                                    loadMetaModal.$promise.then(function () {
+                                        $scope.loadMeta.action = 'connect';
+                                        $scope.loadMeta.tables = [];
+
+                                        loadMetaModal.show();
+
+                                        $focus('jdbcUrl');
+                                    });
+                                }
+
+                                $common.confirmUnsavedChanges($scope.ui.isDirty(), openLoadMetadataModal);
+                            }
+                            else
+                                $common.showError('JDBC drivers not found!');
+                        })
+                        .error(function (errMsg, status) {
+                            onException(errMsg, status);
+                        });
+                }
+
+                $scope.awaitAgent(getDrivers);
             };
 
             function _loadSchemas() {

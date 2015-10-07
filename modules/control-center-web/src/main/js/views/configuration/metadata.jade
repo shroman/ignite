@@ -50,7 +50,7 @@ block content
                                                 tbody
                                                     tr(ng-repeat='row in (displayedRows | metadatasValidation:ui.showValid:true) track by row._id')
                                                         td
-                                                            a(ng-class='{active: row._id == selectedItem._id}' ng-click='selectItem(row)') '{{$index + 1}}) {{row.valueType}}'
+                                                            a(ng-class='{active: row._id == selectedItem._id}' ng-click='selectItem(row)') {{$index + 1}}) {{row.valueType}}
                 .padding-top-dflt(bs-affix)
                     .panel-tip-container(data-placement='bottom' bs-tooltip data-title='Create new metadata')
                         button.btn.btn-primary(id='new-item' ng-click='createItem()') Add metadata

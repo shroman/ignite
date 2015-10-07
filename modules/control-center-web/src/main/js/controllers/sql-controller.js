@@ -333,19 +333,21 @@ consoleModule.controller('sqlController',
             });
     };
 
-    $http.post('/agent/topology')
-        .success(function (caches) {
-            $scope.caches = _.sortBy(caches, 'name');
+    function getTopology(onSuccess, onException) {
+        $http.post('/agent/topology')
+            .success(function (caches) {
+                onSuccess();
 
-            _setActiveCache();
-        })
-        .error(function (err, status) {
-            if (status == 503)
-                $scope.showDownloadAgent();
-            else
-                $common.showError('Receive agent error: ' + err);
-        });
+                $scope.caches = _.sortBy(caches, 'name');
 
+                _setActiveCache();
+            })
+            .error(function (err, status) {
+                onException(err, status);
+            });
+    }
+
+    $scope.awaitAgent(getTopology, '/');
 
     var _columnFilter = function(paragraph) {
         return paragraph.disabledSystemColumns || paragraph.systemColumns ? _allColumn : _hideColumn;

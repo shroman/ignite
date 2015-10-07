@@ -561,10 +561,7 @@ consoleModule.service('$common', [
                 var isCur = isDefined(curValue);
                 var isSrc = isDefined(srcValue);
 
-                if ((isCur && !isSrc) || (!isCur && isSrc) || (isCur && isSrc && !angular.equals(curValue, srcValue)))
-                    return true;
-
-                return false;
+                return !!((isCur && !isSrc) || (!isCur && isSrc) || (isCur && isSrc && !angular.equals(curValue, srcValue)));
             }
 
             function _compareFields(fields) {
@@ -1350,7 +1347,7 @@ consoleModule.service('$preview', ['$timeout', '$interval', function ($timeout, 
 
         var newContent = content.lines;
 
-        if (content.action == 'remove')
+        if (content.checkFn == 'remove')
             prevContent = content.lines;
         else if (prevContent.length > 0 && newContent.length > 0 && editor.attractAttention) {
             if (clearPromise) {
@@ -1828,7 +1825,7 @@ consoleModule.controller('activeLink', [
 consoleModule.controller('auth', [
     '$scope', '$modal', '$http', '$window', '$common', '$focus',
     function ($scope, $modal, $http, $window, $common, $focus) {
-        $scope.action = 'login';
+        $scope.checkFn = 'login';
 
         $scope.userDropdown = [{text: 'Profile', href: '/profile'}];
 
@@ -1846,7 +1843,7 @@ consoleModule.controller('auth', [
 
         // Try to authorize user with provided credentials.
         $scope.auth = function (action, user_info) {
-            $http.post('/' + action, user_info)
+            $http.post('/' + checkFn, user_info)
                 .success(function () {
                     $window.location = '/configuration/clusters';
                 })
@@ -1881,9 +1878,24 @@ consoleModule.controller('auth', [
 
 // Download agent controller.
 consoleModule.controller('agent-download', [
-    '$scope', '$modal', function ($scope, $modal) {
+    '$common', '$scope', '$timeout', '$modal', '$window', function ($common, $scope, $timeout, $modal, $window) {
         // Pre-fetch modal dialogs.
         var _agentDownloadModal = $modal({scope: $scope, templateUrl: '/agent/download', show: false});
+
+        var _agentDownloadHide = _agentDownloadModal.hide;
+
+        _agentDownloadModal.hide = function () {
+            $timeout.cancel(_agentDownloadModal.checker);
+
+            _agentDownloadHide();
+        };
+
+        $scope.goBackAndHide = function () {
+            if ($scope.backLink)
+                $window.location = $scope.backLink;
+
+            _agentDownloadModal.hide()
+        };
 
         $scope.downloadAgent = function () {
             var lnk = document.createElement('a');
@@ -1898,9 +1910,28 @@ consoleModule.controller('agent-download', [
             document.body.removeChild(lnk);
         };
 
-        $scope.showDownloadAgent = function () {
-            _agentDownloadModal.$promise.then(_agentDownloadModal.show);
+        var _handleException = function (errMsg, status) {
+            if (status == 503) {
+                if (!_agentDownloadModal.$isShown)
+                    _agentDownloadModal.$promise.then(_agentDownloadModal.show);
+
+                _agentDownloadModal.checker = $timeout(function () {
+                    _agentDownloadModal.checkFn(_agentDownloadModal.hide, _handleException);
+                }, 3000);
+            }
+            else
+                $common.showError(errMsg);
         };
+
+        $scope.awaitAgent = function (checkFn, backLink) {
+            _agentDownloadModal.checkFn = checkFn;
+
+            $scope.backLink = backLink;
+
+            _agentDownloadModal.$options.backdrop = $common.isDefined(backLink) ? 'static' : true;
+
+            checkFn(_agentDownloadModal.hide, _handleException);
+        }
     }]);
 
 // Navigation bar controller.
