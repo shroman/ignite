@@ -67,7 +67,7 @@ public class IgniteTxEntry implements GridPeerDeployAware, Message {
     private static final long serialVersionUID = 0L;
 
     /** Dummy version for non-existing entry read in SERIALIZABLE transaction. */
-    public static final GridCacheVersion SER_READ_NEW_ENTRY_VER = new GridCacheVersion(0, 0, 0, 0);
+    public static final GridCacheVersion READ_NEW_ENTRY_VER = new GridCacheVersion(0, 0, 0, 0);
 
     /** Owning transaction. */
     @GridToStringExclude
@@ -322,6 +322,7 @@ public class IgniteTxEntry implements GridPeerDeployAware, Message {
         cp.conflictVer = conflictVer;
         cp.expiryPlc = expiryPlc;
         cp.flags = flags;
+        cp.serReadVer = serReadVer;
 
         return cp;
     }

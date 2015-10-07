@@ -570,7 +570,7 @@ public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearTxPre
         // Must lock near entries separately.
         if (m.near()) {
             try {
-                tx.optimisticLockEntries(req.writes());
+                tx.optimisticLockEntries(m.entries());
 
                 tx.userPrepare();
             }

@@ -199,7 +199,7 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
 
             if (serReadVer != null) {
                 if (!serReadVer.equals(this.ver)) {
-                    if (!(isNewLocked() && serReadVer.equals(IgniteTxEntry.SER_READ_NEW_ENTRY_VER)))
+                    if (!((isNew() || deleted()) && serReadVer.equals(IgniteTxEntry.READ_NEW_ENTRY_VER)))
                         return null;
                 }
             }

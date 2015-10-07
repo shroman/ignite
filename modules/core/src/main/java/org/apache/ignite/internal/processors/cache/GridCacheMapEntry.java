@@ -691,6 +691,7 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
 
     /** {@inheritDoc} */
     @Nullable @Override public T2<CacheObject, GridCacheVersion> innerGetVersioned(
+        IgniteInternalTx tx,
         boolean readSwap,
         boolean unmarshal,
         boolean updateMetrics,
@@ -700,7 +701,7 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
         String taskName,
         @Nullable IgniteCacheExpiryPolicy expiryPlc)
         throws IgniteCheckedException, GridCacheEntryRemovedException {
-        return (T2<CacheObject, GridCacheVersion>)innerGet0(null,
+        return (T2<CacheObject, GridCacheVersion>)innerGet0(tx,
             readSwap,
             false,
             evt,
@@ -711,7 +712,7 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
             transformClo,
             taskName,
             expiryPlc,
-            false);
+            true);
     }
 
     /** {@inheritDoc} */
