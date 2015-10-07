@@ -361,11 +361,11 @@ consoleModule.controller('sqlController',
                 paragraph.chartColumns.push({value: idx, label: meta.fieldName});
 
                 // Index for explain, execute and fieldName for scan.
-                var colName = paragraph.queryArgs.query ? idx : '"' + meta.fieldName + '"';
+                var colValue = 'data[' +  (paragraph.queryArgs.query ? idx : '"' + meta.fieldName + '"') + ']';
 
                 columnDefs.push({
                     headerName: meta.fieldName,
-                    valueGetter: 'JSON.stringify(data[' +  colName + '])'
+                    valueGetter: meta.fieldTypeName == 'java.lang.String' ? colValue : 'JSON.stringify(' + colValue + ')'
                 });
             }
         });
@@ -450,7 +450,7 @@ consoleModule.controller('sqlController',
                 paragraph.rows = [];
 
                 res.rows.forEach(function (row) {
-                    (row[0] + '\n ').replace(/\"/g, '').split('\n').forEach(function (line) {
+                    (row[0]).replace(/\"/g, '').split('\n').forEach(function (line) {
                         paragraph.rows.push([line]);
                     });
                 });
