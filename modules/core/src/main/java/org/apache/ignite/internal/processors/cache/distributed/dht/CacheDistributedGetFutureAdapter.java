@@ -174,6 +174,9 @@ public abstract class CacheDistributedGetFutureAdapter<K, V> extends GridCompoun
      */
     private static class ResultClosureReducer<K, V> implements IgniteReducer<Map<K, V>, Map<K, V>>  {
         /** */
+        private static final long serialVersionUID = 0L;
+
+        /** */
         private final ConcurrentHashMap8<KeyCacheObject, Boolean> map;
 
         /**
