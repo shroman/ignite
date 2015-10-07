@@ -112,9 +112,8 @@ public class PortableContext implements Externalizable {
     /** */
     private final ConcurrentMap<Class<?>, PortableClassDescriptor> descByCls = new ConcurrentHashMap8<>();
 
-    /** */
-    private final ConcurrentMap<ClassLoader, ConcurrentMap<Integer, PortableClassDescriptor>> userTypes
-        = new ConcurrentHashMap8<>(0);
+    /** Holds classes loaded by default class loader only. */
+    private final ConcurrentMap<Integer, PortableClassDescriptor> userTypes = new ConcurrentHashMap8<>();
 
     /** */
     private final Map<Integer, PortableClassDescriptor> predefinedTypes = new HashMap<>();
@@ -129,7 +128,7 @@ public class PortableContext implements Externalizable {
     private final Map<Class<? extends Map>, Byte> mapTypes = new HashMap<>();
 
     /** */
-    private final Map<Integer, PortableIdMapper> mappers = new ConcurrentHashMap8<>(0);
+    private final ConcurrentMap<Integer, PortableIdMapper> mappers = new ConcurrentHashMap8<>(0);
 
     /** */
     private final Map<String, PortableIdMapper> typeMappers = new ConcurrentHashMap8<>(0);
@@ -468,12 +467,12 @@ public class PortableContext implements Externalizable {
         if (ldr == null)
             ldr = dfltLdr;
 
-        if (userType) {
-            desc = userTypesMap(ldr).get(typeId);
+        // If the type hasn't been loaded by default class loader then we mustn't return the descriptor from here
+        // giving a chance to a custom class loader to reload type's class.
+        if (userType && ldr.equals(dfltLdr)) {
+            desc = userTypes.get(typeId);
 
-            // If the type hasn't been loaded by default class loader then we mustn't return the descriptor from here
-            // giving a chance to a custom class loader to reload type's class.
-            if (desc != null && ldr.equals(dfltLdr))
+            if (desc != null)
                 return desc;
         }
 
@@ -485,13 +484,15 @@ public class PortableContext implements Externalizable {
             desc = descByCls.get(cls);
         }
         catch (ClassNotFoundException e) {
-            if (userType && !ldr.equals(dfltLdr) && (desc = descriptorLoadingFailover(typeId, ldr)) != null)
+            // Class might have been loaded by default class loader.
+            if (userType && !ldr.equals(dfltLdr) && (desc = descriptorForTypeId(true, typeId, dfltLdr)) != null)
                 return desc;
 
             throw new PortableInvalidClassException(e);
         }
         catch (IgniteCheckedException e) {
-            if (userType && !ldr.equals(dfltLdr) && (desc = descriptorLoadingFailover(typeId, ldr)) != null)
+            // Class might have been loaded by default class loader.
+            if (userType && !ldr.equals(dfltLdr) && (desc = descriptorForTypeId(true, typeId, dfltLdr)) != null)
                 return desc;
 
             throw new PortableException("Failed resolve class for ID: " + typeId, e);
@@ -502,29 +503,6 @@ public class PortableContext implements Externalizable {
 
             assert desc.typeId() == typeId;
         }
-
-        return desc;
-    }
-
-    /**
-     * The method must be used in case when it wasn't possible to load user type's class using custom class loader.
-     *
-     * There are several reasons why this may happen. First, type's name can be not registered in a system cache.
-     * Second, class might have been predefined explicitly and loaded by default class loader.
-     *
-     * @param typeId Type ID.
-     * @param ldr Class loader that failed to load type's class.
-     * @return Type descriptor on success, {@code null} on failure.
-     */
-    private PortableClassDescriptor descriptorLoadingFailover(int typeId, ClassLoader ldr) {
-        assert !ldr.equals(dfltLdr);
-
-        // Type name can be not registered in a system cache. Try to get from local map.
-        PortableClassDescriptor desc = userTypesMap(ldr).get(typeId);
-
-        if (desc == null)
-            // Class might have been loaded by default class loader.
-            desc = descriptorForTypeId(true, typeId, dfltLdr);
 
         return desc;
     }
@@ -577,7 +555,7 @@ public class PortableContext implements Externalizable {
 
         String typeName = typeName(cls.getName());
 
-        PortableIdMapper idMapper = idMapper(typeName);
+        PortableIdMapper idMapper = userTypeIdMapper(typeName);
 
         int typeId = idMapper.typeId(typeName);
 
@@ -605,9 +583,12 @@ public class PortableContext implements Externalizable {
 
         // perform put() instead of putIfAbsent() because "registered" flag might have been changed or class loader
         // might have reloaded described class.
-        userTypesMap(IgniteUtils.detectClassLoader(cls)).put(typeId, desc);
+        if (IgniteUtils.detectClassLoader(cls).equals(dfltLdr))
+            userTypes.put(typeId, desc);
 
         descByCls.put(cls, desc);
+
+        mappers.putIfAbsent(typeId, idMapper);
 
         // TODO uncomment for https://issues.apache.org/jira/browse/IGNITE-1377
 //        if (registerMetadata && isMetaDataEnabled(typeId))
@@ -658,7 +639,7 @@ public class PortableContext implements Externalizable {
         if (marshCtx.isSystemType(typeName))
             return typeName.hashCode();
 
-        return idMapper(shortTypeName).typeId(shortTypeName);
+        return userTypeIdMapper(shortTypeName).typeId(shortTypeName);
     }
 
     /**
@@ -667,14 +648,14 @@ public class PortableContext implements Externalizable {
      * @return Field ID.
      */
     public int fieldId(int typeId, String fieldName) {
-        return idMapper(typeId).fieldId(typeId, fieldName);
+        return userTypeIdMapper(typeId).fieldId(typeId, fieldName);
     }
 
     /**
      * @param typeId Type ID.
      * @return Instance of ID mapper.
      */
-    public PortableIdMapper idMapper(int typeId) {
+    public PortableIdMapper userTypeIdMapper(int typeId) {
         PortableIdMapper idMapper = mappers.get(typeId);
 
         if (idMapper != null)
@@ -683,11 +664,6 @@ public class PortableContext implements Externalizable {
         if (predefinedTypes.containsKey(typeId))
             return DFLT_ID_MAPPER;
 
-        for (ConcurrentMap<Integer, PortableClassDescriptor> types : userTypes.values()) {
-            if (types.containsKey(typeId))
-                return DFLT_ID_MAPPER;
-        }
-
         return BASIC_CLS_ID_MAPPER;
     }
 
@@ -695,7 +671,7 @@ public class PortableContext implements Externalizable {
      * @param typeName Type name.
      * @return Instance of ID mapper.
      */
-    private PortableIdMapper idMapper(String typeName) {
+    private PortableIdMapper userTypeIdMapper(String typeName) {
         PortableIdMapper idMapper = typeMappers.get(typeName);
 
         return idMapper != null ? idMapper : DFLT_ID_MAPPER;
@@ -828,7 +804,8 @@ public class PortableContext implements Externalizable {
 
             fieldsMeta = desc.fieldsMeta();
 
-            userTypesMap(IgniteUtils.detectClassLoader(cls)).put(id, desc);
+            if (IgniteUtils.detectClassLoader(cls).equals(dfltLdr))
+                userTypes.put(id, desc);
 
             descByCls.put(cls, desc);
         }
@@ -994,27 +971,6 @@ public class PortableContext implements Externalizable {
 
         U.clearClassCache(ldr);
     }
-
-    /**
-     * Returns user type map for specific class loader.
-     *
-     * @param ldr Class loader that loaded user type's class.
-     * @return User type map.
-     */
-    private ConcurrentMap<Integer, PortableClassDescriptor> userTypesMap(ClassLoader ldr) {
-        ConcurrentMap<Integer, PortableClassDescriptor> ldrMap = userTypes.get(ldr);
-
-        if (ldrMap == null) {
-            ConcurrentMap<Integer, PortableClassDescriptor> old = userTypes.putIfAbsent(ldr,
-                ldrMap = new ConcurrentHashMap8<>());
-
-            if (old != null)
-                ldrMap = old;
-        }
-
-        return ldrMap;
-    }
-
 
     /**
      */
