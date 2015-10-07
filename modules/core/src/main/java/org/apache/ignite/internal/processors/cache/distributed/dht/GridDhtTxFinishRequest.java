@@ -162,11 +162,6 @@ public class GridDhtTxFinishRequest extends GridDistributedTxFinishRequest {
         this.depEnabled = depEnabled;
     }
 
-    /** {@inheritDoc} */
-    @Override public boolean allowForStartup() {
-        return true;
-    }
-
     /**
      * @return Mini ID.
      */

@@ -30,7 +30,6 @@ import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.cache.CacheEntryEventSerializableFilter;
-import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.events.CacheQueryExecutedEvent;
 import org.apache.ignite.events.CacheQueryReadEvent;
 import org.apache.ignite.internal.GridKernalContext;
@@ -234,9 +233,7 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
                         locLsnr.onUpdated(F.<CacheEntryEvent<? extends K, ? extends V>>asList(evt));
                     else {
                         try {
-                            ClusterNode node = ctx.discovery().node(nodeId);
-
-                            if (cctx.deploymentEnabled() && node != null) {
+                            if (cctx.deploymentEnabled() && ctx.discovery().node(nodeId) != null) {
                                 evt.entry().prepareMarshal(cctx);
 
                                 cctx.deploy().prepare(evt.entry());
@@ -317,7 +314,7 @@ class CacheContinuousQueryHandler<K, V> implements GridContinuousHandler {
         assert routineId != null;
         assert ctx != null;
 
-        GridCacheAdapter<K, V> cache = ctx.cache().<K, V>internalCache(cacheName);
+        GridCacheAdapter<K, V> cache = ctx.cache().internalCache(cacheName);
 
         if (cache != null)
             cache.context().continuousQueries().unregisterListener(internal, routineId);

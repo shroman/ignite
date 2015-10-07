@@ -59,11 +59,6 @@ abstract class GridDhtPartitionsAbstractMessage extends GridCacheMessage {
     }
 
     /** {@inheritDoc} */
-    @Override public boolean allowForStartup() {
-        return true;
-    }
-
-    /** {@inheritDoc} */
     @Override public boolean partitionExchangeMessage() {
         return true;
     }
