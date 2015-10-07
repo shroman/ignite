@@ -427,21 +427,13 @@ public class GridDhtPartitionDemander {
                         initD.updateSequence(fut.updateSeq);
 
                         try {
-                            if (!topologyChanged(fut)) {
-                                cctx.io().sendOrderedMessage(node,
-                                    GridCachePartitionExchangeManager.rebalanceTopic(cnt), initD, cctx.ioPolicy(), d.timeout());
+                            cctx.io().sendOrderedMessage(node,
+                                GridCachePartitionExchangeManager.rebalanceTopic(cnt), initD, cctx.ioPolicy(), d.timeout());
 
-                                if (log.isDebugEnabled())
-                                    log.debug("Requested rebalancing [from node=" + node.id() + ", listener index=" +
-                                        cnt + ", partitions count=" + sParts.get(cnt).size() +
-                                        " (" + partitionsList(sParts.get(cnt)) + ")]");
-
-                            }
-                            else {
-                                fut.cancel();
-
-                                return;
-                            }
+                            if (log.isDebugEnabled())
+                                log.debug("Requested rebalancing [from node=" + node.id() + ", listener index=" +
+                                    cnt + ", partitions count=" + sParts.get(cnt).size() +
+                                    " (" + partitionsList(sParts.get(cnt)) + ")]");
                         }
                         catch (IgniteCheckedException ex) {
                             fut.cancel();
@@ -530,10 +522,15 @@ public class GridDhtPartitionDemander {
 
         assert node != null;
 
-        if (!fut.topologyVersion().equals(topVer) || // Current future based on another topology.
-            topologyChanged(fut) || // Topology already changed (for current future) or new topology pending.
+        if (//!fut.topologyVersion().equals(topVer) || // Current future based on another topology.
             !fut.isActual(supply.updateSequence())) // Current future have same topology, but another update sequence.
+            return; // Supple message based on another future.
+
+        if (topologyChanged(fut)) { // Topology already changed (for the future that supply message based on).
+            fut.cancel();
+
             return;
+        }
 
         if (log.isDebugEnabled())
             log.debug("Received supply message: " + supply);
@@ -553,12 +550,6 @@ public class GridDhtPartitionDemander {
         try {
             // Preload.
             for (Map.Entry<Integer, CacheEntryInfoCollection> e : supply.infos().entrySet()) {
-                if (topologyChanged(fut)) {
-                    fut.cancel();
-
-                    return;
-                }
-
                 int p = e.getKey();
 
                 if (cctx.affinity().localNode(p, topVer)) {
@@ -642,7 +633,7 @@ public class GridDhtPartitionDemander {
 
             d.topic(GridCachePartitionExchangeManager.rebalanceTopic(idx));
 
-            if (!topologyChanged(fut)) {
+            if (!topologyChanged(fut) && !fut.isDone()) {
                 // Send demand message.
                 cctx.io().sendOrderedMessage(node, GridCachePartitionExchangeManager.rebalanceTopic(idx),
                     d, cctx.ioPolicy(), cctx.config().getRebalanceTimeout());
