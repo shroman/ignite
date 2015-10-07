@@ -359,10 +359,13 @@ consoleModule.controller('cachesController', [
 
                     $scope.selectedItem = angular.copy(item);
 
-                    if (item)
-                        sessionStorage.lastSelectedCache = angular.toJson(item._id);
-                    else
-                        sessionStorage.removeItem('lastSelectedCache');
+                    try {
+                        if (item)
+                            sessionStorage.lastSelectedCache = angular.toJson(item._id);
+                        else
+                            sessionStorage.removeItem('lastSelectedCache');
+                    }
+                    catch (error) { }
 
                     _.forEach(previews, function(preview) {
                         preview.attractAttention = false;

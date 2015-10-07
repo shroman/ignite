@@ -300,10 +300,13 @@ consoleModule.controller('clustersController', [
 
                 $scope.selectedItem = angular.copy(item);
 
-                if (item && item._id)
-                    sessionStorage.lastSelectedCluster = angular.toJson(item._id);
-                else
-                    sessionStorage.removeItem('lastSelectedCluster');
+                try {
+                    if (item && item._id)
+                        sessionStorage.lastSelectedCluster = angular.toJson(item._id);
+                    else
+                        sessionStorage.removeItem('lastSelectedCluster');
+                }
+                catch (error) { }
 
                 _.forEach(previews, function(preview) {
                     preview.attractAttention = false;

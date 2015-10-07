@@ -733,10 +733,13 @@ consoleModule.controller('metadataController', [
 
                     $scope.selectedItem = angular.copy(item);
 
-                    if (item && item._id)
-                        sessionStorage.lastSelectedMetadata = angular.toJson(item._id);
-                    else
-                        sessionStorage.removeItem('lastSelectedMetadata');
+                    try {
+                        if (item && item._id)
+                            sessionStorage.lastSelectedMetadata = angular.toJson(item._id);
+                        else
+                            sessionStorage.removeItem('lastSelectedMetadata');
+                    }
+                    catch (error) { }
 
                     _.forEach(previews, function(preview) {
                         preview.attractAttention = false;
