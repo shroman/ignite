@@ -429,16 +429,17 @@ consoleModule.controller('sqlController',
 
     var _processQueryResult = function (paragraph, refreshMode) {
         return function (res) {
-            paragraph.meta = [];
-            paragraph.chartColumns = [];
-
-            if (!$common.isDefined(paragraph.chartKeyCols))
-                paragraph.chartKeyCols = [];
-
-            if (!$common.isDefined(paragraph.chartValCols ))
-                paragraph.chartValCols = [];
-
             if (res.meta && !refreshMode) {
+                paragraph.meta = [];
+
+                paragraph.chartColumns = [];
+
+                if (!$common.isDefined(paragraph.chartKeyCols))
+                    paragraph.chartKeyCols = [];
+
+                if (!$common.isDefined(paragraph.chartValCols ))
+                    paragraph.chartValCols = [];
+
                 paragraph.disabledSystemColumns = res.meta.length == 2 &&
                     _.find(res.meta, {fieldName: '_KEY'}) && _.find(res.meta, {fieldName: '_VAL'});
 
