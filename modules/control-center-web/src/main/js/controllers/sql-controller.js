@@ -381,13 +381,13 @@ consoleModule.controller('sqlController',
             }
         });
 
-        if (paragraph.chartColumns.length > 0)
-            paragraph.chartColumns.push({value: -1, label: TIME_LINE});
-
         paragraph.gridOptions.api.setColumnDefs(columnDefs);
 
         paragraph.chartKeyCols = _retainColumns(paragraph.chartColumns, paragraph.chartKeyCols, 0);
         paragraph.chartValCols = _retainColumns(paragraph.chartColumns, paragraph.chartValCols, 1);
+
+        if (paragraph.chartColumns.length > 0)
+            paragraph.chartColumns.push({value: -1, label: TIME_LINE});
     };
 
     $scope.toggleSystemColumns = function (paragraph) {
@@ -397,6 +397,8 @@ consoleModule.controller('sqlController',
         paragraph.systemColumns = !paragraph.systemColumns;
 
         paragraph.columnFilter = _columnFilter(paragraph);
+
+        paragraph.chartColumns = [];
 
         _rebuildColumns(paragraph);
 
