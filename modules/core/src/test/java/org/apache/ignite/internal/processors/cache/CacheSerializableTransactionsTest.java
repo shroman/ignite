@@ -46,6 +46,7 @@ import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.configuration.NearCacheConfiguration;
 import org.apache.ignite.internal.IgniteInternalFuture;
+import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteClosure;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
@@ -77,7 +78,7 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
     private static final TcpDiscoveryIpFinder IP_FINDER = new TcpDiscoveryVmIpFinder(true);
 
     /** */
-    private static final boolean FAST = true;
+    private static final boolean FAST = false;
 
     /** */
     private static Map<Integer, Integer> storeMap = new ConcurrentHashMap8<>();
@@ -94,6 +95,8 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
     /** {@inheritDoc} */
     @Override protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
         IgniteConfiguration cfg = super.getConfiguration(gridName);
+
+        cfg.setPeerClassLoadingEnabled(false);
 
         ((TcpDiscoverySpi)cfg.getDiscoverySpi()).setIpFinder(IP_FINDER);
 
@@ -266,8 +269,7 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
 
                         txAsync(cache, OPTIMISTIC, SERIALIZABLE,
                             new IgniteClosure<IgniteCache<Integer, Integer>, Void>() {
-                                @Override
-                                public Void apply(IgniteCache<Integer, Integer> cache) {
+                                @Override public Void apply(IgniteCache<Integer, Integer> cache) {
                                     cache.get(key);
 
                                     return null;
@@ -1305,6 +1307,329 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If failed.
      */
+    public void testRollbackNearCache1() throws Exception {
+        rollbackNearCacheWrite(true);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testRollbackNearCache2() throws Exception {
+        rollbackNearCacheWrite(false);
+    }
+
+    /**
+     * @param near If {@code true} locks entry using the same near cache.
+     * @throws Exception If failed.
+     */
+    private void rollbackNearCacheWrite(boolean near) throws Exception {
+        Ignite ignite0 = ignite(0);
+
+        IgniteCache<Integer, Integer> cache0 =
+            ignite0.createCache(cacheConfiguration(PARTITIONED, FULL_SYNC, 1, false, false));
+
+        final String cacheName = cache0.getName();
+
+        try {
+            Ignite ignite = ignite(SRVS);
+
+            IgniteCache<Integer, Integer> cache = ignite.createNearCache(cacheName,
+                new NearCacheConfiguration<Integer, Integer>());
+
+            IgniteTransactions txs = ignite.transactions();
+
+            Integer key1 = primaryKey(ignite(0).cache(cacheName));
+            Integer key2 = primaryKey(ignite(1).cache(cacheName));
+            Integer key3 = primaryKey(ignite(2).cache(cacheName));
+
+            CountDownLatch latch = new CountDownLatch(1);
+
+            IgniteInternalFuture<?> fut = null;
+
+            try {
+                try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                    cache.put(key1, key1);
+                    cache.put(key2, key2);
+                    cache.put(key3, key3);
+
+                    fut = lockKey(latch, near ? cache : cache0, key2);
+
+                    tx.commit();
+                }
+
+                fail();
+            }
+            catch (TransactionOptimisticException e) {
+                log.info("Expected exception: " + e);
+            }
+
+            latch.countDown();
+
+            assert fut != null;
+
+            fut.get();
+
+            checkValue(key1, null, cacheName);
+            checkValue(key2, 1, cacheName);
+            checkValue(key3, null, cacheName);
+
+            try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                cache.put(key1, key1);
+                cache.put(key2, key2);
+                cache.put(key3, key3);
+
+                tx.commit();
+            }
+
+            checkValue(key1, key1, cacheName);
+            checkValue(key2, key2, cacheName);
+            checkValue(key3, key3, cacheName);
+        }
+        finally {
+            ignite0.destroyCache(cacheName);
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testRollbackNearCache3() throws Exception {
+        rollbackNearCacheRead(true);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testRollbackNearCache4() throws Exception {
+        rollbackNearCacheRead(false);
+    }
+
+    /**
+     * @param near If {@code true} updates entry using the same near cache.
+     * @throws Exception If failed.
+     */
+    private void rollbackNearCacheRead(boolean near) throws Exception {
+        Ignite ignite0 = ignite(0);
+
+        IgniteCache<Integer, Integer> cache0 =
+            ignite0.createCache(cacheConfiguration(PARTITIONED, FULL_SYNC, 1, false, false));
+
+        final String cacheName = cache0.getName();
+
+        try {
+            Ignite ignite = ignite(SRVS);
+
+            IgniteCache<Integer, Integer> cache = ignite.createNearCache(cacheName,
+                new NearCacheConfiguration<Integer, Integer>());
+
+            IgniteTransactions txs = ignite.transactions();
+
+            Integer key1 = primaryKey(ignite(0).cache(cacheName));
+            Integer key2 = primaryKey(ignite(1).cache(cacheName));
+            Integer key3 = primaryKey(ignite(2).cache(cacheName));
+
+            cache0.put(key1, -1);
+            cache0.put(key2, -1);
+            cache0.put(key3, -1);
+
+            try {
+                try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                    cache.get(key1);
+                    cache.get(key2);
+                    cache.get(key3);
+
+                    updateKey(near ? cache : cache0, key2, -2);
+
+                    tx.commit();
+                }
+
+                fail();
+            }
+            catch (TransactionOptimisticException e) {
+                log.info("Expected exception: " + e);
+            }
+
+            checkValue(key1, -1, cacheName);
+            checkValue(key2, -2, cacheName);
+            checkValue(key3, -1, cacheName);
+
+            try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                cache.put(key1, key1);
+                cache.put(key2, key2);
+                cache.put(key3, key3);
+
+                tx.commit();
+            }
+
+            checkValue(key1, key1, cacheName);
+            checkValue(key2, key2, cacheName);
+            checkValue(key3, key3, cacheName);
+        }
+        finally {
+            ignite0.destroyCache(cacheName);
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testAccountTx1() throws Exception {
+        accountTx(false, false);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void _testAccountTxNearCache() throws Exception {
+        accountTx(false, true);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testAccountTx2() throws Exception {
+        accountTx(true, false);
+    }
+
+    /**
+     * @param getAll If {@code true} uses getAll/putAll in transaction.
+     * @param nearCache If {@code true} near cache is enabled.
+     * @throws Exception If failed.
+     */
+    private void accountTx(final boolean getAll, final boolean nearCache) throws Exception {
+        final Ignite ignite0 = ignite(0);
+
+        final String cacheName =
+            ignite0.createCache(cacheConfiguration(PARTITIONED, FULL_SYNC, 1, false, false)).getName();
+
+        try {
+            final List<Ignite> clients = clients();
+
+            final int ACCOUNTS = 100;
+            final int VAL_PER_ACCOUNT = 10_000;
+
+            IgniteCache<Integer, Account> cache = ignite0.cache(cacheName);
+
+            for (int i = 0; i < ACCOUNTS; i++)
+                cache.put(i, new Account(VAL_PER_ACCOUNT));
+
+            final AtomicInteger idx = new AtomicInteger();
+
+            final int THREADS = 20;
+
+            final long stopTime = System.currentTimeMillis() + 10_000;
+
+            IgniteInternalFuture<?> fut = GridTestUtils.runMultiThreadedAsync(new Callable<Void>() {
+                @Override public Void call() throws Exception {
+                    int nodeIdx = idx.getAndIncrement() % clients.size();
+
+                    Ignite node = clients.get(nodeIdx);
+
+                    log.info("Tx thread: " + node.name());
+
+                    final IgniteTransactions txs = node.transactions();
+
+                    final IgniteCache<Integer, Account> cache =
+                        nearCache ? node.createNearCache(cacheName, new NearCacheConfiguration<Integer, Account>()) :
+                            node.<Integer, Account>cache(cacheName);
+
+                    assertNotNull(cache);
+
+                    ThreadLocalRandom rnd = ThreadLocalRandom.current();
+
+                    while (U.currentTimeMillis() < stopTime) {
+                        int id1 = rnd.nextInt(ACCOUNTS);
+
+                        int id2 = rnd.nextInt(ACCOUNTS);
+
+                        while (id2 == id1)
+                            id2 = rnd.nextInt(ACCOUNTS);
+
+                        try {
+                            while (true) {
+                                try {
+                                    try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                                        if (getAll) {
+                                            Map<Integer, Account> map = cache.getAll(F.asSet(id1, id2));
+
+                                            Account a1 = cache.get(id1);
+                                            Account a2 = cache.get(id2);
+
+                                            assertNotNull(a1);
+                                            assertNotNull(a2);
+
+                                            if (a1.value() > 0) {
+                                                a1 = new Account(a1.value() - 1);
+                                                a2 = new Account(a2.value() + 1);
+                                            }
+
+                                            map.put(id1, a1);
+                                            map.put(id2, a2);
+
+                                            cache.putAll(map);
+                                        }
+                                        else {
+                                            Account a1 = cache.get(id1);
+                                            Account a2 = cache.get(id2);
+
+                                            assertNotNull(a1);
+                                            assertNotNull(a2);
+
+                                            if (a1.value() > 0) {
+                                                a1 = new Account(a1.value() - 1);
+                                                a2 = new Account(a2.value() + 1);
+                                            }
+
+                                            cache.put(id1, a1);
+                                            cache.put(id2, a2);
+                                        }
+
+                                        tx.commit();
+                                    }
+
+                                    break;
+                                }
+                                catch (TransactionOptimisticException ignore) {
+                                    // Retry.
+                                }
+                            }
+                        }
+                        catch (Throwable e) {
+                            log.error("Unexpected error: " + e, e);
+
+                            throw e;
+                        }
+                    }
+
+                    return null;
+                }
+            }, THREADS, "tx-thread");
+
+            fut.get(30_000);
+
+            int sum = 0;
+
+            for (int i = 0; i < ACCOUNTS; i++) {
+                Account a = cache.get(i);
+
+                assertNotNull(a);
+                assertTrue(a.value() >= 0);
+
+                log.info("Account: " + a.value());
+
+                sum += a.value();
+            }
+
+            assertEquals(ACCOUNTS * VAL_PER_ACCOUNT, sum);
+        }
+        finally {
+            ignite0.destroyCache(cacheName);
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testConcurrentUpdateNoDeadlock() throws Exception {
         concurrentUpdateNoDeadlock(Collections.singletonList(ignite(0)), 10, false);
     }
@@ -1319,14 +1644,14 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If failed.
      */
-    public void testConcurrentUpdateNoDeadlockClients() throws Exception {
+    public void testConcurrentUpdateNoDeadlockFromClients() throws Exception {
         concurrentUpdateNoDeadlock(clients(), 20, false);
     }
 
     /**
      * @throws Exception If failed.
      */
-    public void testConcurrentUpdateNoDeadlockClientsNodeRestart() throws Exception {
+    public void testConcurrentUpdateNoDeadlockFromClientsNodeRestart() throws Exception {
         concurrentUpdateNoDeadlock(clients(), 20, true);
     }
 
@@ -1356,12 +1681,15 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
     private void concurrentUpdateNoDeadlock(final List<Ignite> updateNodes,
         int threads,
         final boolean restart) throws Exception {
+        if (FAST)
+            return;
+
         assert updateNodes.size() > 0;
 
-        final Ignite ignite0 = ignite(0);
+        final Ignite srv = ignite(1);
 
         final String cacheName =
-            ignite0.createCache(cacheConfiguration(PARTITIONED, FULL_SYNC, 1, false, false)).getName();
+            srv.createCache(cacheConfiguration(PARTITIONED, FULL_SYNC, 1, false, false)).getName();
 
         try {
             final int KEYS = 100;
@@ -1389,12 +1717,10 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
                     });
                 }
 
-                int ITERS = FAST ? 1 : 10;
-
-                for (int i = 0; i < ITERS; i++) {
+                for (int i = 0; i < 10; i++) {
                     log.info("Iteration: " + i);
 
-                    final long stopTime = U.currentTimeMillis() + (FAST ? 1000 : 10_000);
+                    final long stopTime = U.currentTimeMillis() + 10_000;
 
                     final AtomicInteger idx = new AtomicInteger();
 
@@ -1454,7 +1780,7 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
 
                     updateFut.get(60, SECONDS);
 
-                    IgniteCache<Integer, Integer> cache = ignite(1).cache(cacheName);
+                    IgniteCache<Integer, Integer> cache = srv.cache(cacheName);
 
                     for (int key = 0; key < KEYS; key++) {
                         Integer val = cache.get(key);
@@ -1474,7 +1800,7 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
             }
         }
         finally {
-            destroyCache(ignite(1), cacheName);
+            destroyCache(srv, cacheName);
         }
     }
 
@@ -1732,6 +2058,28 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
             else
                 entry.setValue(newVal);
 
+            return val;
+        }
+    }
+
+    /**
+     *
+     */
+    static class Account {
+        /** */
+        private final int val;
+
+        /**
+         * @param val Value.
+         */
+        public Account(int val) {
+            this.val = val;
+        }
+
+        /**
+         * @return Value.
+         */
+        public int value() {
             return val;
         }
     }

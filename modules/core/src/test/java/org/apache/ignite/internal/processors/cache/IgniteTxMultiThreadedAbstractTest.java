@@ -225,7 +225,7 @@ public abstract class IgniteTxMultiThreadedAbstractTest extends IgniteTxAbstract
 
         final int ITERATIONS = 100;
 
-        for (int key0 = 0; key0 < 20; key0++) {
+        for (int key0 = 100_000; key0 < 100_000 + 20; key0++) {
             final int key = key0;
 
             cache.put(key, 0L);
