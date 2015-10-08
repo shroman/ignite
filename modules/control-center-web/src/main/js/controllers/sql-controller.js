@@ -340,7 +340,16 @@ consoleModule.controller('sqlController',
             .success(function (caches) {
                 onSuccess();
 
+                var oldCaches = $scope.caches;
+
                 $scope.caches = _.sortBy(caches, 'name');
+
+                _.forEach(caches, function (cache) {
+                    var old = _.find(oldCaches, { name: cache.name });
+
+                    if (old && old.metadata)
+                        cache.metadata = old.metadata;
+                });
 
                 _setActiveCache();
             })
@@ -349,7 +358,7 @@ consoleModule.controller('sqlController',
             });
     }
 
-    $scope.awaitAgent(getTopology, '/');
+    $scope.checkNodeConnection(getTopology);
 
     var _columnFilter = function(paragraph) {
         return paragraph.disabledSystemColumns || paragraph.systemColumns ? _allColumn : _hideColumn;

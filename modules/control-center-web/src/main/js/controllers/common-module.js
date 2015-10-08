@@ -110,7 +110,7 @@ consoleModule.service('$common', [
             return 'Internal server error.';
         }
 
-        function showError(msg, placement, container) {
+        function showError(msg, placement, container, persistent) {
             if (msgModal)
                 msgModal.hide();
 
@@ -119,6 +119,9 @@ consoleModule.service('$common', [
                 placement: placement ? placement : 'top-right',
                 container: container ? container : 'body'
             });
+
+            if (persistent)
+                msgModal.$options.duration = false;
 
             return false;
         }
@@ -618,6 +621,10 @@ consoleModule.service('$common', [
             isEmptyArray: isEmptyArray,
             isEmptyString: isEmptyString,
             errorMessage: errorMessage,
+            hideAlert: function () {
+                if (msgModal)
+                    msgModal.hide();
+            },
             showError: showError,
             showInfo: function (msg) {
                 if (msgModal)
@@ -1878,21 +1885,25 @@ consoleModule.controller('auth', [
 
 // Download agent controller.
 consoleModule.controller('agent-download', [
-    '$common', '$scope', '$timeout', '$modal', '$window', function ($common, $scope, $timeout, $modal, $window) {
+    '$common', '$scope', '$interval', '$modal', '$window', function ($common, $scope, $interval, $modal, $window) {
         // Pre-fetch modal dialogs.
         var _agentDownloadModal = $modal({scope: $scope, templateUrl: '/agent/download', show: false});
 
         var _agentDownloadHide = _agentDownloadModal.hide;
 
         _agentDownloadModal.hide = function () {
-            $timeout.cancel(_agentDownloadModal.checker);
+            if (_agentDownloadModal.$isShown)
+                $common.hideAlert();
+
+            if (!$scope.checkConnection)
+                $interval.cancel(_agentDownloadModal.updatePromise);
 
             _agentDownloadHide();
         };
 
-        $scope.goBackAndHide = function () {
-            if ($scope.backLink)
-                $window.location = $scope.backLink;
+        $scope.goHome = function () {
+            if ($scope.checkConnection)
+                $window.location = '/';
 
             _agentDownloadModal.hide()
         };
@@ -1911,24 +1922,33 @@ consoleModule.controller('agent-download', [
         };
 
         var _handleException = function (errMsg, status) {
-            if (status == 503) {
-                if (!_agentDownloadModal.$isShown)
-                    _agentDownloadModal.$promise.then(_agentDownloadModal.show);
+            if (!_agentDownloadModal.$isShown)
+                _agentDownloadModal.$promise.then(_agentDownloadModal.show);
 
-                _agentDownloadModal.checker = $timeout(function () {
-                    _agentDownloadModal.checkFn(_agentDownloadModal.hide, _handleException);
-                }, 3000);
-            }
-            else
-                $common.showError(errMsg);
+            if (status != 503)
+                $common.showError(errMsg, 'top-right', 'body', true);
         };
 
-        $scope.awaitAgent = function (checkFn, backLink) {
+        $scope.awaitAgent = function (checkFn) {
             _agentDownloadModal.checkFn = checkFn;
 
-            $scope.backLink = backLink;
+            _agentDownloadModal.updatePromise = $interval(function () {
+                checkFn(_agentDownloadModal.hide, _handleException);
+            }, 5000, 0, false);
 
-            _agentDownloadModal.$options.backdrop = $common.isDefined(backLink) ? 'static' : true;
+            checkFn(_agentDownloadModal.hide, _handleException);
+        };
+
+        $scope.checkNodeConnection = function (checkFn) {
+            _agentDownloadModal.checkFn = checkFn;
+
+            $scope.checkConnection = true;
+
+            _agentDownloadModal.$options.backdrop = 'static';
+
+            _agentDownloadModal.updatePromise = $interval(function () {
+                checkFn(_agentDownloadModal.hide, _handleException);
+            }, 5000, 0, false);
 
             checkFn(_agentDownloadModal.hide, _handleException);
         }
