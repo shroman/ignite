@@ -72,6 +72,7 @@ consoleModule.controller('profileController',
                 }).success(function (user) {
                     $common.showInfo('Profile saved.');
 
+                    profile.changePassword = false;
                     profile.newPassword = null;
                     profile.confirmPassword = null;
 
