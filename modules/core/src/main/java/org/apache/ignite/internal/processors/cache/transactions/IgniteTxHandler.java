@@ -835,7 +835,8 @@ public class IgniteTxHandler {
             if (nearTx != null)
                 nearTx.rollback();
 
-            res = new GridDhtTxPrepareResponse(req.version(), req.futureId(), req.miniId(), e);
+            res = new GridDhtTxPrepareResponse(req.version(), req.futureId(), req.miniId(), e, req.deployInfo()
+                != null);
         }
 
         try {

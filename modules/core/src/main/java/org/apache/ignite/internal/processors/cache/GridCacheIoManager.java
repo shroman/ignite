@@ -555,9 +555,12 @@ public class GridCacheIoManager extends GridCacheSharedManagerAdapter {
                 else {
                     GridCacheContext ctx = cctx.cacheContext(msg.cacheId());
 
-                    if (ctx == null)
+                    if (ctx == null) {
+                        U.error(log, "Deployment related info is missing in message: [msg=" + msg + ']');
+
                         throw new IgniteCheckedException("Deployment related info is missing in message: [msg=" +
-                            msg +']');
+                            msg + ']');
+                    }
 
                     depEnabled0 = ctx.deploymentEnabled();
                 }
