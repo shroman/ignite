@@ -162,6 +162,18 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
                     }
 
                     checkValue(key, storeVal, cache.getName());
+
+                    cache.remove(key);
+
+                    try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                        Integer val = cache.get(key);
+
+                        assertNull(val);
+
+                        tx.commit();
+                    }
+
+                    checkValue(key, null, cache.getName());
                 }
             }
             finally {
@@ -1382,7 +1394,7 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
                 for (int i = 0; i < ITERS; i++) {
                     log.info("Iteration: " + i);
 
-                    final long stopTime = U.currentTimeMillis() + 10_000;
+                    final long stopTime = U.currentTimeMillis() + (FAST ? 1000 : 10_000);
 
                     final AtomicInteger idx = new AtomicInteger();
 
