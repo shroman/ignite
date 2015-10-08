@@ -276,7 +276,7 @@ public class AgentSqlTestDrive {
      * @param name Cache name.
      */
     private static void populateCacheEmployee(Ignite ignite, String name) {
-        log.log(Level.FINE, "TEST-DRIVE: Start population cache: '" + name + "' with data...");
+        log.log(Level.FINE, "TEST-DRIVE-SQL: Start population cache: '" + name + "' with data...");
 
         IgniteCache<CountryKey, Country> cacheCountry = ignite.cache(name);
 
@@ -311,7 +311,7 @@ public class AgentSqlTestDrive {
                     round(r * 5000, 2) , mgrId, rnd.nextInt(DEP_CNT)));
         }
 
-        log.log(Level.FINE, "TEST-DRIVE: Finished population cache: '" + name + "' with data.");
+        log.log(Level.FINE, "TEST-DRIVE-SQL: Finished population cache: '" + name + "' with data.");
     }
 
     /**
@@ -319,7 +319,7 @@ public class AgentSqlTestDrive {
      * @param name Cache name.
      */
     private static void populateCacheCar(Ignite ignite, String name) {
-        log.log(Level.FINE, "TEST-DRIVE: Start population cache: '" + name + "' with data...");
+        log.log(Level.FINE, "TEST-DRIVE-SQL: Start population cache: '" + name + "' with data...");
 
         IgniteCache<ParkingKey, Parking> cacheParking = ignite.cache(name);
 
@@ -332,7 +332,7 @@ public class AgentSqlTestDrive {
             cacheDepartment.put(new CarKey(i), new Car(i, rnd.nextInt(PARK_CNT), "Car " + (i + 1)));
 
 
-        log.log(Level.FINE, "TEST-DRIVE: Finished population cache: '" + name + "' with data.");
+        log.log(Level.FINE, "TEST-DRIVE-SQL: Finished population cache: '" + name + "' with data.");
     }
 
     /**
@@ -340,7 +340,7 @@ public class AgentSqlTestDrive {
      */
     public static void testDrive(AgentConfiguration acfg) {
         if (initLatch.compareAndSet(false, true)) {
-            log.log(Level.FINE, "TEST-DRIVE: Prepare node configuration...");
+            log.log(Level.INFO, "TEST-DRIVE-SQL: Starting embedded node for sql test-drive...");
 
             try {
                 IgniteConfiguration cfg = new IgniteConfiguration();
@@ -364,7 +364,7 @@ public class AgentSqlTestDrive {
 
                 cfg.setCacheConfiguration(cacheEmployee(EMPLOYEE_CACHE_NAME), cacheCar(CAR_CACHE_NAME));
 
-                log.log(Level.FINE, "TEST-DRIVE: Start embedded node with indexed enabled caches...");
+                log.log(Level.FINE, "TEST-DRIVE-SQL: Start embedded node with indexed enabled caches...");
 
                 IgniteEx ignite = (IgniteEx)Ignition.start(cfg);
 
@@ -374,21 +374,21 @@ public class AgentSqlTestDrive {
                 Integer port = ignite.localNode().attribute(IgniteNodeAttributes.ATTR_REST_JETTY_PORT);
 
                 if (F.isEmpty(host) || port == null) {
-                    log.log(Level.SEVERE, "TEST-DRIVE: Failed to start embedded node with rest!");
+                    log.log(Level.SEVERE, "TEST-DRIVE-SQL: Failed to start embedded node with rest!");
 
                     return;
                 }
 
                 acfg.nodeUri(String.format("http://%s:%d", "0.0.0.0".equals(host) ? "127.0.0.1" : host, port));
 
-                log.log(Level.INFO, "TEST-DRIVE: Embedded node started");
+                log.log(Level.INFO, "TEST-DRIVE-SQL: Embedded node for sql test-drive successfully started");
 
                 populateCacheEmployee(ignite, EMPLOYEE_CACHE_NAME);
 
                 populateCacheCar(ignite, CAR_CACHE_NAME);
             }
             catch (Exception e) {
-                log.log(Level.SEVERE, "TEST-DRIVE: Failed to start test drive for sql!", e);
+                log.log(Level.SEVERE, "TEST-DRIVE-SQL: Failed to start embedded node for sql test-drive!", e);
             }
         }
     }

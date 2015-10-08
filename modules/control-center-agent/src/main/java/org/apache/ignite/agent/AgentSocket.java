@@ -174,12 +174,6 @@ public class AgentSocket implements WebSocketSender {
         }
 
         log.info("Authentication success.");
-
-        if (cfg.testDriveMetadata())
-            AgentMetadataTestDrive.testDrive();
-
-        if (cfg.testDriveSql())
-            AgentSqlTestDrive.testDrive(cfg);
     }
 
     /**

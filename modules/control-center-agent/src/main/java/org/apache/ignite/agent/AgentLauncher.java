@@ -24,6 +24,8 @@ import java.net.URI;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.ignite.agent.handlers.RestExecutor;
+import org.apache.ignite.agent.testdrive.AgentMetadataTestDrive;
+import org.apache.ignite.agent.testdrive.AgentSqlTestDrive;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
 
@@ -90,6 +92,12 @@ public class AgentLauncher {
 
             cfg.token(new String(System.console().readPassword()));
         }
+
+        if (cfg.testDriveMetadata())
+            AgentMetadataTestDrive.testDrive();
+
+        if (cfg.testDriveSql())
+            AgentSqlTestDrive.testDrive(cfg);
 
         RestExecutor restExecutor = new RestExecutor(cfg);
 
