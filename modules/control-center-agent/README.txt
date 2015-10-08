@@ -11,7 +11,7 @@ Two main functions of Ignite Web Agent:
     You may need to copy JDBC driver into "./jdbc-drivers" subfolder or specify path via "-d" option.
 
 Usage example:
-    ignite-control-center-agent.sh -t 1a2b3c4d5f -s wss://console.example.com
+    ignite-web-agent.sh -t 1a2b3c4d5f -s wss://console.example.com
 
 Test drive of Ignite Web Agent:
     In order to simplify evaluation two test drive modes were implemented:
