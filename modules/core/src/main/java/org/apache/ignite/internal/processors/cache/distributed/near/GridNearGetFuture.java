@@ -463,7 +463,7 @@ public final class GridNearGetFuture<K, V> extends CacheDistributedGetFutureAdap
                             boolean isNew = dhtEntry.isNewLocked() || !dhtEntry.valid(topVer);
 
                             if (needVer) {
-                                T2<CacheObject, GridCacheVersion> res = entry.innerGetVersioned(
+                                T2<CacheObject, GridCacheVersion> res = dhtEntry.innerGetVersioned(
                                     null,
                                     /*swap*/true,
                                     /*unmarshal*/true,
