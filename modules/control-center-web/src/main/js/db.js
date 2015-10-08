@@ -300,10 +300,6 @@ var ClusterSchema = new Schema({
     peerClassLoadingMissedResourcesCacheSize: Number,
     peerClassLoadingThreadPoolSize: Number,
     publicThreadPoolSize: Number,
-    segmentCheckFrequency: Number,
-    segmentationPolicy: {type: String, enum: ['RESTART_JVM', 'STOP', 'NOOP']},
-    allSegmentationResolversPassRequired: Boolean,
-    segmentationResolveAttempts: Number,
     swapSpaceSpi: {
         kind: {type: String, enum: ['FileSwapSpaceSpi']},
         FileSwapSpaceSpi: {
@@ -326,7 +322,6 @@ var ClusterSchema = new Schema({
         txSerializableEnabled: Boolean,
         txManagerLookupClassName: String
     },
-    waitForSegmentOnStart: Boolean,
     sslEnabled: Boolean,
     sslContextFactory: {
         keyAlgorithm: String,

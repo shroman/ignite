@@ -355,7 +355,7 @@
   ],
   "advanced": [
     {
-      "label": "Atomics configuration",
+      "label": "Atomic configuration",
       "group": "atomics",
       "tip": [
         "Configuration for atomic data structures",
@@ -440,31 +440,6 @@
           "placeholder": 3,
           "tip": [
             "Message send retries count"
-          ]
-        },
-        {
-          "label": "Segment check frequency",
-          "id": "segmentCheckFrequency",
-          "type": "number",
-          "model": "segmentCheckFrequency",
-          "placeholder": 10000,
-          "tip": [
-            "Network segment check frequency in milliseconds",
-            "If 0, periodic segment check is disabled and segment is checked only on topology changes (if segmentation resolvers are configured)"
-          ]
-        },
-        {
-          "label": "Wait for segment on start",
-          "id": "waitForSegmentOnStart",
-          "type": "check",
-          "model": "waitForSegmentOnStart",
-          "tip": [
-            "Wait for segment on start flag",
-            "<ul>",
-            "  <li>If enabled, node should wait for correct segment on start</li>",
-            "  <li>If node detects that segment is incorrect on startup and enabled, node waits until segment becomes correct</li>",
-            "  <li>If segment is incorrect on startup and disabled, exception is thrown</li>",
-            "</ul>"
           ]
         },
         {
@@ -666,7 +641,7 @@
       ]
     },
     {
-      "label": "Peer Class Loading",
+      "label": "Peer class loading",
       "group": "p2p",
       "tip": [
         "Cluster peer class loading settings"
@@ -1093,6 +1068,7 @@
           "type": "check",
           "path": "transactionConfiguration",
           "model": "txSerializableEnabled",
+          "hide": "true",
           "tip": [
             "Flag to enable/disable isolation level for cache transactions",
             "Serializable level does carry certain overhead and if not used, should be disabled"
