@@ -20,7 +20,7 @@
             label.clickable(ng-if='node.type == "field"' ng-dblclick='dblclickMetadata(paragraph, node)') {{node.name}} [{{node.clazz}}]
             label(ng-if='node.type == "indexes"') {{node.name}}
             label(ng-if='node.type == "index"') {{node.name}}
-            label(ng-if='node.type == "index-field"') {{node.name}} [{{node.order ? 'ASC' : 'DESC'}}]
+            label.clickable(ng-if='node.type == "index-field"' ng-dblclick='dblclickMetadata(paragraph, node)') {{node.name}} [{{node.order ? 'ASC' : 'DESC'}}]
     .popover-content(ng-if='!cache.metadata || cache.metadata.length == 0')
         label.content-empty No types found
     h3.popover-footer Double click to paste into editor
