@@ -461,8 +461,10 @@ consoleModule.controller('sqlController',
             if (paragraph.queryArgs.type == "EXPLAIN" && res.rows) {
                 paragraph.rows = [];
 
-                res.rows.forEach(function (row) {
-                    (row[0]).replace(/\"/g, '').split('\n').forEach(function (line) {
+                res.rows.forEach(function (row, i) {
+                    var line = res.rows.length - 1 == i ? row[0] : row[0] + '\n';
+
+                    line.replace(/\"/g, '').split('\n').forEach(function (line) {
                         paragraph.rows.push([line]);
                     });
                 });
@@ -483,7 +485,7 @@ consoleModule.controller('sqlController',
 
             _showLoading(paragraph, false);
 
-            if (paragraph.result == 'none')
+            if (paragraph.result == 'none' || paragraph.queryArgs.type != "QUERY")
                 paragraph.result = 'table';
             else if (paragraph.chart())
                 _chartApplySettings(paragraph);
