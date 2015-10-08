@@ -130,6 +130,49 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If failed.
      */
+    public void testTxLoadFromStore() throws Exception {
+        Ignite ignite0 = ignite(0);
+
+        final IgniteTransactions txs = ignite0.transactions();
+
+        for (CacheConfiguration<Integer, Integer> ccfg : cacheConfigurations()) {
+            if (ccfg.getCacheStoreFactory() == null)
+                continue;
+
+            logCacheInfo(ccfg);
+
+            try {
+                IgniteCache<Integer, Integer> cache = ignite0.createCache(ccfg);
+
+                List<Integer> keys = testKeys(cache);
+
+                for (Integer key : keys) {
+                    log.info("Test key: " + key);
+
+                    Integer storeVal = -1;
+
+                    storeMap.put(key, storeVal);
+
+                    try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                        Integer val = cache.get(key);
+
+                        assertEquals(storeVal, val);
+
+                        tx.commit();
+                    }
+
+                    checkValue(key, storeVal, cache.getName());
+                }
+            }
+            finally {
+                destroyCache(ignite0, ccfg.getName());
+            }
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testTxCommitReadOnly1() throws Exception {
         Ignite ignite0 = ignite(0);
 

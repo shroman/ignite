@@ -442,7 +442,13 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
 
             for (KeyCacheObject key : keys) {
                 while (true) {
-                    GridCacheEntryEx entry = cacheCtx.cache().entryEx(key);
+                    IgniteTxEntry txEntry = entry(cacheCtx.txKey(key));
+
+                    GridCacheEntryEx entry = txEntry == null ? cacheCtx.cache().entryEx(key) :
+                        txEntry.cached();
+
+                    if (entry == null)
+                        continue;
 
                     try {
                         T2<CacheObject, GridCacheVersion> res = entry.innerGetVersioned(this,
@@ -469,6 +475,9 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                     catch (GridCacheEntryRemovedException ignore) {
                         if (log.isDebugEnabled())
                             log.debug("Got removed entry, will retry: " + key);
+
+                        if (txEntry != null)
+                            txEntry.cached(cacheCtx.cache().entryEx(key));
                     }
                 }
             }
@@ -484,36 +493,42 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
 
                         assert ver != null : key;
 
-                        c.apply(key, val, ver);
+                        if (val != null) {
+                            if (nextVer == null)
+                                nextVer = cacheCtx.versions().next();
 
-                        if (nextVer == null)
-                            nextVer = cacheCtx.versions().next();
+                            CacheObject cacheVal = cacheCtx.toCacheObject(val);
 
-                        CacheObject cacheVal = cacheCtx.toCacheObject(val);
+                            while (true) {
+                                GridCacheEntryEx entry = cacheCtx.cache().entryEx(key);
 
-                        while (true) {
-                            GridCacheEntryEx entry = cacheCtx.cache().entryEx(key);
+                                try {
+                                    boolean set = entry.versionedValue(cacheVal, ver, nextVer);
 
-                            try {
-                                boolean set = entry.versionedValue(cacheVal, ver, nextVer);
+                                    if (set)
+                                        ver = nextVer;
 
-                                if (log.isDebugEnabled())
-                                    log.debug("Set value loaded from store into entry [set=" + set +
-                                        ", curVer=" + ver + ", newVer=" + nextVer + ", " +
-                                        "entry=" + entry + ']');
+                                    if (log.isDebugEnabled())
+                                        log.debug("Set value loaded from store into entry [set=" + set +
+                                            ", curVer=" + ver + ", newVer=" + nextVer + ", " +
+                                            "entry=" + entry + ']');
 
-                                break;
-                            }
-                            catch (GridCacheEntryRemovedException ignore) {
-                                if (log.isDebugEnabled())
-                                    log.debug("Got removed entry, (will retry): " + entry);
-                            }
-                            catch (IgniteCheckedException e) {
-                                // Wrap errors (will be unwrapped).
-                                throw new GridClosureException(e);
+                                    break;
+                                }
+                                catch (GridCacheEntryRemovedException ignore) {
+                                    if (log.isDebugEnabled())
+                                        log.debug("Got removed entry, (will retry): " + entry);
+                                }
+                                catch (IgniteCheckedException e) {
+                                    // Wrap errors (will be unwrapped).
+                                    throw new GridClosureException(e);
+                                }
                             }
                         }
+                        else
+                            ver = IgniteTxEntry.READ_NEW_ENTRY_VER;
 
+                        c.apply(key, val, ver);
                     }
                 });
 
