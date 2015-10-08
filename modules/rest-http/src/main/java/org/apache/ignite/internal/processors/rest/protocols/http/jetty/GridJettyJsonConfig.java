@@ -81,7 +81,7 @@ public class GridJettyJsonConfig extends JsonConfig {
         @Override public synchronized Object processArrayValue(Object val, JsonConfig jsonCfg) {
             if (val == null)
                 return new JSONObject(true);
-            
+
             if (val instanceof Date)
                 return enUsFormat.format(val);
 

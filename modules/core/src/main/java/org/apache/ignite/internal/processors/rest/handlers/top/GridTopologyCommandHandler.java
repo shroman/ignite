@@ -27,13 +27,11 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.cluster.ClusterMetrics;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.internal.GridKernalContext;
 import org.apache.ignite.internal.IgniteInternalFuture;
-import org.apache.ignite.internal.processors.cache.GridCacheAttributes;
-import org.apache.ignite.internal.processors.cache.GridCacheProcessor;
-import org.apache.ignite.internal.processors.cache.IgniteInternalCache;
 import org.apache.ignite.internal.processors.port.GridPortRecord;
 import org.apache.ignite.internal.processors.rest.GridRestCommand;
 import org.apache.ignite.internal.processors.rest.GridRestProtocol;
@@ -46,6 +44,7 @@ import org.apache.ignite.internal.processors.rest.request.GridRestTopologyReques
 import org.apache.ignite.internal.util.future.GridFinishedFuture;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.P1;
+import org.apache.ignite.internal.util.typedef.internal.CU;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.spi.IgnitePortProtocol;
@@ -196,22 +195,20 @@ public class GridTopologyCommandHandler extends GridRestCommandHandlerAdapter {
         nodeBean.setTcpAddresses(nonEmptyList(node.<Collection<String>>attribute(ATTR_REST_TCP_ADDRS)));
         nodeBean.setTcpHostNames(nonEmptyList(node.<Collection<String>>attribute(ATTR_REST_TCP_HOST_NAMES)));
 
-        Collection<String> cacheNames = ctx.discovery().nodeCaches(node);
+        Map<String, CacheMode> nodeCaches = ctx.discovery().nodeCaches(node);
 
-        Map<String, String> cacheMap = U.newHashMap(cacheNames.size());
+        Map<String, String> cacheMap = U.newHashMap(nodeCaches.size());
 
-        GridCacheProcessor cacheProc = ctx.cache();
+        for (Map.Entry<String, CacheMode> cache : nodeCaches.entrySet()) {
+            String cacheName = cache.getKey();
 
-        for (String cacheName : cacheNames) {
-            IgniteInternalCache<?, ?> cache = cacheProc.cache(cacheName);
-
-            if (cacheProc.systemCache(cache.name()))
+            if (CU.isSystemCache(cacheName))
                 continue;
 
-            String mode = cache.configuration().getCacheMode().toString();
+            String mode = cache.getValue().toString();
 
-            if (cache.name() != null)
-                cacheMap.put(cache.name(), mode);
+            if (cacheName != null)
+                cacheMap.put(cacheName, mode);
             else
                 nodeBean.setDefaultCacheMode(mode);
         }
