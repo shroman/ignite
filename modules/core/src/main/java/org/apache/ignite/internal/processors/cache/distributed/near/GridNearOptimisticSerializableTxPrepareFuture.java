@@ -19,6 +19,7 @@ package org.apache.ignite.internal.processors.cache.distributed.near;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -139,7 +140,7 @@ public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearTxPre
 
                     e.retryReadyFuture(cctx.nextAffinityReadyFuture(tx.topologyVersion()));
 
-                    f.onResult(e);
+                    f.onNodeLeft(e);
 
                     found = true;
                 }
@@ -165,7 +166,7 @@ public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearTxPre
         }
 
         if (e instanceof IgniteTxOptimisticCheckedException && nodeId != null)
-            tx.onOptimisticException(nodeId);
+            tx.removeMapping(nodeId);
 
         err.compareAndSet(null, e);
     }
@@ -519,14 +520,27 @@ public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearTxPre
 
         Collection<MiniFuture> futs = (Collection)futures();
 
-        for (MiniFuture fut : futs) {
-            if (remap && fut.rcvRes.get())
+        Iterator<MiniFuture> it = futs.iterator();
+
+        while (it.hasNext()) {
+            MiniFuture fut = it.next();
+
+            if (skipFuture(remap, fut))
                 continue;
 
             IgniteCheckedException err = prepare(fut);
 
             if (err != null) {
-                onDone(err);
+                while (it.hasNext()) {
+                    fut = it.next();
+
+                    if (skipFuture(remap, fut))
+                        continue;
+
+                    tx.removeMapping(fut.mapping().node().id());
+
+                    fut.onResult(err);
+                }
 
                 break;
             }
@@ -536,10 +550,19 @@ public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearTxPre
     }
 
     /**
-     * @param fut Mini future.
-     * @return {@code False} if should stop mapping.
+     * @param remap Remap flag.
+     * @param fut Future.
+     * @return {@code True} if skip future during remap.
      */
-    private IgniteCheckedException prepare(final MiniFuture fut) {
+    private boolean skipFuture(boolean remap, MiniFuture fut) {
+        return remap && fut.rcvRes.get();
+    }
+
+    /**
+     * @param fut Mini future.
+     * @return Prepare error if any.
+     */
+    @Nullable private IgniteCheckedException prepare(final MiniFuture fut) {
         GridDistributedTxMapping m = fut.mapping();
 
         final ClusterNode n = m.node();
@@ -575,7 +598,7 @@ public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearTxPre
                 tx.userPrepare();
             }
             catch (IgniteCheckedException e) {
-                onError(m.node().id(), e);
+                fut.onResult(e);
 
                 return e;
             }
@@ -605,7 +628,7 @@ public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearTxPre
             catch (ClusterTopologyCheckedException e) {
                 e.retryReadyFuture(cctx.nextAffinityReadyFuture(tx.topologyVersion()));
 
-                fut.onResult(e);
+                fut.onNodeLeft(e);
 
                 return e;
             }
@@ -806,7 +829,7 @@ public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearTxPre
          */
         void onResult(Throwable e) {
             if (rcvRes.compareAndSet(false, true)) {
-                err.compareAndSet(null, e);
+                onError(m.node().id(), e);
 
                 if (log.isDebugEnabled())
                     log.debug("Failed to get future result [fut=" + this + ", err=" + e + ']');
@@ -822,7 +845,7 @@ public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearTxPre
         /**
          * @param e Node failure.
          */
-        void onResult(ClusterTopologyCheckedException e) {
+        void onNodeLeft(ClusterTopologyCheckedException e) {
             if (isDone())
                 return;
 
@@ -856,7 +879,7 @@ public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearTxPre
                         assert cctx.kernalContext().clientNode();
                         assert m.clientFirst();
 
-                        tx.onClientRemap(m.node().id());
+                        tx.removeMapping(m.node().id());
 
                         ClientRemapFuture remapFut = new ClientRemapFuture();
 

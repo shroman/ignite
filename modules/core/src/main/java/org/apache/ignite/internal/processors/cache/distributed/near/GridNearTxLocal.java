@@ -597,20 +597,6 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
     }
 
     /**
-     * @param nodeId Primary node id.
-     */
-    void onOptimisticException(UUID nodeId) {
-        mappings.remove(nodeId);
-    }
-
-    /**
-     * @param nodeId Primary node id.
-     */
-    void onClientRemap(UUID nodeId) {
-        mappings.remove(nodeId);
-    }
-
-    /**
      * @param nodeId Node ID to mark with explicit lock.
      * @return {@code True} if mapping was found.
      */
