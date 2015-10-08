@@ -54,6 +54,8 @@ consoleModule.controller('sqlController',
 
     var chartHistory = [];
 
+    var HISTORY_LENGTH = 100;
+
     $scope.chartRemoveKeyColumn = function (paragraph, index) {
         paragraph.chartKeyCols.splice(index, 1);
 
@@ -365,7 +367,7 @@ consoleModule.controller('sqlController',
 
                 columnDefs.push({
                     headerName: meta.fieldName,
-                    valueGetter: meta.fieldTypeName == 'java.lang.String' ? colValue : 'JSON.stringify(' + colValue + ')'
+                    valueGetter: $common.isJavaBuildInClass(meta.fieldTypeName) ? colValue : 'JSON.stringify(' + colValue + ')'
                 });
             }
         });
@@ -416,7 +418,7 @@ consoleModule.controller('sqlController',
         return retainedCols;
     }
 
-    var _processQueryResult = function (paragraph, columnsToFit) {
+    var _processQueryResult = function (paragraph, refreshMode) {
         return function (res) {
             paragraph.meta = [];
             paragraph.chartColumns = [];
@@ -427,15 +429,15 @@ consoleModule.controller('sqlController',
             if (!$common.isDefined(paragraph.chartValCols ))
                 paragraph.chartValCols = [];
 
-            if (res.meta && columnsToFit) {
+            if (res.meta && !refreshMode) {
                 paragraph.disabledSystemColumns = res.meta.length == 2 &&
-                    res.meta[0].fieldName === '_KEY' && res.meta[1].fieldName === '_VAL';
+                    _.find(res.meta, {fieldName: '_KEY'}) && _.find(res.meta, {fieldName: '_VAL'});
 
                 paragraph.columnFilter = _columnFilter(paragraph);
 
                 paragraph.meta = res.meta;
 
-                _rebuildColumns(paragraph)
+                _rebuildColumns(paragraph);
             }
 
             paragraph.page = 1;
@@ -446,6 +448,7 @@ consoleModule.controller('sqlController',
 
             delete paragraph.errMsg;
 
+            // Prepare explain results for display in table.
             if (paragraph.queryArgs.type == "EXPLAIN" && res.rows) {
                 paragraph.rows = [];
 
@@ -458,18 +461,16 @@ consoleModule.controller('sqlController',
             else
                 paragraph.rows = res.rows;
 
+            paragraph.gridOptions.api.setRowData(paragraph.rows);
+
+            if (!refreshMode)
+                setTimeout(function () { paragraph.gridOptions.api.sizeColumnsToFit(); });
+
             // Add results to history.
             chartHistory.push({tm: new Date(), rows: paragraph.rows});
 
-            if (chartHistory.length > 100)
+            if (chartHistory.length > HISTORY_LENGTH)
                 chartHistory.shift();
-
-            paragraph.gridOptions.api.setRowData(paragraph.rows);
-
-            if (columnsToFit)
-                setTimeout(function () {
-                    paragraph.gridOptions.api.sizeColumnsToFit();
-                });
 
             _showLoading(paragraph, false);
 
@@ -482,17 +483,17 @@ consoleModule.controller('sqlController',
 
     var _executeRefresh = function (paragraph) {
         $http.post('/agent/query', paragraph.queryArgs)
-            .success(_processQueryResult(paragraph))
+            .success(_processQueryResult(paragraph, true))
             .error(function (errMsg) {
                 paragraph.errMsg = errMsg;
             });
     };
 
     var _showLoading = function (paragraph, enable) {
-        //if (paragraph.table())
-        //    paragraph.gridOptions.api.showLoading(enable);
+        if (paragraph.table())
+            paragraph.gridOptions.api.showLoading(enable);
 
-        //paragraph.loading = enable;
+        paragraph.loading = enable;
     };
 
     $scope.execute = function (paragraph) {
@@ -504,7 +505,7 @@ consoleModule.controller('sqlController',
 
         $http.post('/agent/query', paragraph.queryArgs)
             .success(function (res) {
-                _processQueryResult(paragraph, true)(res);
+                _processQueryResult(paragraph)(res);
 
                 _tryStartRefresh(paragraph);
             })
@@ -529,7 +530,7 @@ consoleModule.controller('sqlController',
         _showLoading(paragraph, true);
 
         $http.post('/agent/query', paragraph.queryArgs)
-            .success(_processQueryResult(paragraph, true))
+            .success(_processQueryResult(paragraph))
             .error(function (errMsg) {
                 paragraph.errMsg = errMsg;
 
@@ -549,7 +550,7 @@ consoleModule.controller('sqlController',
         _showLoading(paragraph, true);
 
         $http.post('/agent/scan', paragraph.queryArgs)
-            .success(_processQueryResult(paragraph, true))
+            .success(_processQueryResult(paragraph))
             .error(function (errMsg) {
                 paragraph.errMsg = errMsg;
 
@@ -589,7 +590,16 @@ consoleModule.controller('sqlController',
 
         if (meta) {
             csvContent += meta.map(function (col) {
-                return $scope.columnToolTip(col);
+                var res = [];
+
+                if (col.schemaName)
+                    res.push(col.schemaName);
+                if (col.typeName)
+                    res.push(col.typeName);
+
+                res.push(col.fieldName);
+
+                return res.join('.');
             }).join(',') + '\n';
         }
 
@@ -632,23 +642,6 @@ consoleModule.controller('sqlController',
             .error(function (errMsg) {
                 $common.showError(errMsg);
             });
-    };
-
-    $scope.columnToolTip = function (col) {
-        var res = [];
-
-        if (col.schemaName)
-            res.push(col.schemaName);
-        if (col.typeName)
-            res.push(col.typeName);
-
-        res.push(col.fieldName);
-
-        return res.join('.');
-    };
-
-    $scope.resultMode = function (paragraph, type) {
-        return (paragraph.result === type);
     };
 
     $scope.rateAsString = function (paragraph) {
@@ -714,10 +707,6 @@ consoleModule.controller('sqlController',
         _tryStopRefresh(paragraph);
     };
 
-    $scope.getter = function (value) {
-        return value;
-    };
-
     function _chartNumber(arr, idx, dflt) {
         if (arr && arr.length > idx && _.isNumber(arr[idx])) {
             return arr[idx];
@@ -731,6 +720,59 @@ consoleModule.controller('sqlController',
             return arr[idx];
 
         return dflt;
+    }
+
+    function _chartDatum(paragraph) {
+        var datum = [];
+
+        if (paragraph.chartColumnsConfigured()) {
+            paragraph.chartValCols.forEach(function (valCol) {
+                var index = 0;
+                var values = [];
+
+                if (paragraph.chartTimeLineEnabled()) {
+                    if (paragraph.charts && paragraph.charts.length == 1)
+                        datum = paragraph.charts[0].data;
+
+                    var chartData = _.find(datum, {key: valCol.label});
+
+                    if (chartData) {
+                        var history = _.last(chartHistory);
+
+                        chartData.values.push({
+                            x: history.tm,
+                            y: _chartNumber(history.rows[0], valCol.value, index++)
+                        });
+
+                        if (chartData.length > HISTORY_LENGTH)
+                            chartData.shift();
+                    }
+                    else {
+                        values = _.map(chartHistory, function (history) {
+                            return {
+                                x: history.tm,
+                                y: _chartNumber(history.rows[0], valCol.value, index++)
+                            }
+                        });
+
+                        datum.push({key: valCol.label, values: values});
+                    }
+                }
+                else {
+                    values = _.map(paragraph.rows, function (row) {
+                        return {
+                            x: _chartNumber(row, paragraph.chartKeyCols[0].value, index),
+                            xLbl: _chartLabel(row, paragraph.chartKeyCols[0].value, undefined),
+                            y: _chartNumber(row, valCol.value, index++)
+                        }
+                    });
+
+                    datum.push({key: valCol.label, values: values});
+                }
+            });
+        }
+
+        return datum;
     }
 
     function _chartDatumLblNum(paragraph) {
@@ -752,56 +794,6 @@ consoleModule.controller('sqlController',
         }
 
         return datum;
-    }
-
-    function _chartDatumNumNum(paragraph) {
-        var datum = [];
-
-        if (paragraph.chartColumnsConfigured()) {
-             paragraph.chartValCols.forEach(function (valCol) {
-                 var index = 0;
-                 var values = [];
-
-                 if (paragraph.chartTimeLineEnabled()) {
-                     if (paragraph.charts[0]) {
-                         var chartData = _.find(paragraph.charts[0].data, {key: valCol.label});
-
-                         if (chartData) {
-                             var history = _.last(chartHistory);
-
-                             chartData.values.push({
-                                 x: history.tm,
-                                 y: _chartNumber(history.rows[0], valCol.value, 0)
-                             });
-                         }
-                     }
-                     else {
-                         values = _.map(chartHistory, function (history) {
-                             return {
-                                 x: history.tm,
-                                 y: _chartNumber(history.rows[0], valCol.value, 0)
-                             }
-                         });
-                     }
-                 }
-                 else
-                     values = _.map(paragraph.rows, function (row) {
-                         return {
-                             x: _chartNumber(row, paragraph.chartKeyCols[0].value, index++),
-                             xLbl: _chartLabel(row, paragraph.chartKeyCols[0].value, undefined),
-                             y: _chartNumber(row, valCol.value, 0)
-                         }
-                     });
-
-                 datum.push({key: valCol.label, values: values});
-             });
-         }
-
-        return datum;
-    }
-
-    function _colLabel(col) {
-        return col.label;
     }
 
     function _chartApplySettings(paragraph, resetCharts) {
@@ -829,6 +821,14 @@ consoleModule.controller('sqlController',
         }
     }
 
+    function _colLabel(col) {
+        return col.label;
+    }
+
+    function _chartAxisLabel(cols, dflt) {
+        return $common.isEmptyArray(cols) ? dflt : _.map(cols, _colLabel).join(', ');
+    }
+
     function _xLbl(d) {
         return d.lbl;
     }
@@ -837,12 +837,33 @@ consoleModule.controller('sqlController',
         return d.val;
     }
 
-    function _chartAxisLabel(cols, dflt) {
-        return $common.isEmptyArray(cols) ? dflt : _.map(cols, _colLabel).join(', ');
+    function _xX(d) {
+        return d.x;
     }
 
+    function _yY(d) {
+        return d.y;
+    }
+
+    function _xAxisTimeFormat(d) {
+        return d3.time.format('%X')(new Date(d));
+    }
+
+    var _xAxisWithLabelFormat = function(values) {
+        return function (d) {
+            var dx = values[d];
+
+            if (!dx)
+                return d3.format(',.2f')(d);
+
+            var lbl = values[d]['xLbl'];
+
+            return lbl ? lbl : d3.format(',.2f')(d);
+        }
+    };
+
     function _barChart(paragraph) {
-        var data = _chartDatumLblNum(paragraph);
+        var datum = _chartDatum(paragraph);
 
         if ($common.isEmptyArray(paragraph.charts)) {
             var options = {
@@ -851,10 +872,12 @@ consoleModule.controller('sqlController',
                     height: 400,
                     margin: {left: 70},
                     duration: 0,
-                    x: _xLbl,
-                    y: _yVal,
+                    x: _xX,
+                    y: _yY,
                     xAxis: {
-                        axisLabel:  _chartAxisLabel(paragraph.chartKeyCols, 'X')
+                        axisLabel: _chartAxisLabel(paragraph.chartKeyCols, 'X'),
+                        tickFormat: paragraph.chartTimeLineEnabled() ? _xAxisTimeFormat : _xAxisWithLabelFormat(datum[0].values),
+                        showMaxMin: false
                     },
                     yAxis: {
                         axisLabel:  _chartAxisLabel(paragraph.chartValCols, 'Y'),
@@ -864,14 +887,19 @@ consoleModule.controller('sqlController',
                 }
             };
 
-            paragraph.charts = [{options: options, data: data}];
+            paragraph.charts = [{options: options, data: datum}];
 
             $timeout(function () {
                 paragraph.charts[0].api.update();
-            })
+            }, 100);
         }
         else
-            paragraph.charts[0].api.updateWithData(data);
+            $timeout(function () {
+                if (paragraph.chartTimeLineEnabled())
+                    paragraph.charts[0].api.update();
+                else
+                    paragraph.charts[0].api.updateWithData(datum);
+            });
     }
 
     function _pieChart(paragraph) {
@@ -906,44 +934,24 @@ consoleModule.controller('sqlController',
 
         $timeout(function () {
             paragraph.charts[0].api.update();
-        })
+        }, 100);
     }
-
-    function _xX(d) {
-        return d.x;
-    }
-
-    function _yY(d) {
-        return d.y;
-    }
-
-    function _chartTimeTickFormat(d) {
-        return d3.time.format('%X')(new Date(d));
-    }
-
-    var _chartWithLabelFormat = function(values) {
-        return function (d) {
-            var lbl = values[d].xLbl;
-
-            return lbl ? lbl : d3.format(',.2f')(d);
-        }
-    };
 
     function _lineChart(paragraph) {
-        var data = _chartDatumNumNum(paragraph);
+        var datum = _chartDatum(paragraph);
 
         if ($common.isEmptyArray(paragraph.charts)) {
             var options = {
                 chart: {
                     type: 'lineChart',
                     height: 400,
-                    margin: {left: 70},
+                    margin: { left: 70 },
                     duration: 0,
                     x: _xX,
                     y: _yY,
                     xAxis: {
                         axisLabel: _chartAxisLabel(paragraph.chartKeyCols, 'X'),
-                        tickFormat: paragraph.chartTimeLineEnabled() ? _chartTimeTickFormat : _chartWithLabelFormat(data[0].values),
+                        tickFormat: paragraph.chartTimeLineEnabled() ? _xAxisTimeFormat : _xAxisWithLabelFormat(datum[0].values),
                         showMaxMin: false
                     },
                     yAxis: {
@@ -954,20 +962,23 @@ consoleModule.controller('sqlController',
                 }
             };
 
-            paragraph.charts = [{options: options, data: data}];
+            paragraph.charts = [{options: options, data: datum}];
 
             $timeout(function () {
                 paragraph.charts[0].api.update();
-            })
+            }, 100);
         }
-        else if (paragraph.chartTimeLineEnabled() && paragraph.charts[0])
-            paragraph.charts[0].api.update();
         else
-            paragraph.charts[0].api.updateWithData(data);
+            $timeout(function () {
+                if (paragraph.chartTimeLineEnabled())
+                    paragraph.charts[0].api.update();
+                else
+                    paragraph.charts[0].api.updateWithData(datum);
+            });
     }
 
     function _areaChart(paragraph) {
-        var data = _chartDatumNumNum(paragraph);
+        var datum = _chartDatum(paragraph);
 
         if ($common.isEmptyArray(paragraph.charts)) {
             var options = {
@@ -980,7 +991,8 @@ consoleModule.controller('sqlController',
                     y: _yY,
                     xAxis: {
                         axisLabel:  _chartAxisLabel(paragraph.chartKeyCols, 'X'),
-                        tickFormat: paragraph.chartTimeLineEnabled() ? _chartTimeTickFormat : _chartWithLabelFormat(data[0].values)
+                        tickFormat: paragraph.chartTimeLineEnabled() ? _xAxisTimeFormat : _xAxisWithLabelFormat(datum[0].values),
+                        showMaxMin: false
                     },
                     yAxis: {
                         axisLabel:  _chartAxisLabel(paragraph.chartValCols, 'Y'),
@@ -989,14 +1001,19 @@ consoleModule.controller('sqlController',
                 }
             };
 
-            paragraph.charts = [{options: options, data: data}];
+            paragraph.charts = [{options: options, data: datum}];
 
             $timeout(function () {
                 paragraph.charts[0].api.update();
-            })
+            }, 100);
         }
         else
-            paragraph.charts[0].api.updateWithData(data);
+            $timeout(function () {
+                if (paragraph.chartTimeLineEnabled())
+                    paragraph.charts[0].api.update();
+                else
+                    paragraph.charts[0].api.updateWithData(datum);
+            });
     }
 
     $scope.actionAvailable = function (paragraph, needQuery) {
