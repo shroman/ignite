@@ -50,7 +50,7 @@ consoleModule.controller('sqlController',
         }
     };
 
-    var TIME_LINE = 'TIME_LINE';
+    var TIME_LINE = {value: -1, type: 'java.sql.Date', label: 'TIME_LINE'};
 
     var chartHistory = [];
 
@@ -68,14 +68,8 @@ consoleModule.controller('sqlController',
         _chartApplySettings(paragraph, true);
     };
 
-    function _chartAcceptableColumn(cols, newCol) {
-        return _.findIndex(cols, function (col) {
-                return col.label == newCol.label;
-            }) < 0;
-    }
-
     $scope.chartAcceptKeyColumn = function(paragraph, item) {
-        var accepted = _chartAcceptableColumn(paragraph.chartKeyCols, item);
+        var accepted = !_.includes(paragraph.chartKeyCols, item);
 
         if (accepted) {
             paragraph.chartKeyCols = [item];
@@ -87,7 +81,7 @@ consoleModule.controller('sqlController',
     };
 
     $scope.chartAcceptValColumn = function(paragraph, item) {
-        var accepted = _chartAcceptableColumn(paragraph.chartValCols, item) && item.label != TIME_LINE;
+        var accepted = !_.includes(paragraph.chartValCols, item) && item != TIME_LINE && _numberType(item.type);
 
         if (accepted) {
             paragraph.chartValCols.push(item);
@@ -130,7 +124,7 @@ consoleModule.controller('sqlController',
         };
 
         paragraph.chartTimeLineEnabled = function () {
-            return !$common.isEmptyArray(this.chartKeyCols) && this.chartKeyCols[0].label == TIME_LINE;
+            return !$common.isEmptyArray(this.chartKeyCols) && this.chartKeyCols[0] == TIME_LINE;
         };
 
         paragraph.timeLineSupported = function () {
@@ -364,12 +358,24 @@ consoleModule.controller('sqlController',
         return paragraph.disabledSystemColumns || paragraph.systemColumns ? _allColumn : _hideColumn;
     };
 
+    var _notObjectType = function(cls) {
+        return $common.isJavaBuildInClass(cls);
+    };
+
+    var _numberClasses = ['java.math.BigDecimal', 'java.lang.Byte', 'java.lang.Double',
+        'java.lang.Float', 'java.lang.Integer', 'java.lang.Long', 'java.lang.Short'];
+
+    var _numberType = function(cls) {
+        return _.contains(_numberClasses, cls);
+    };
+
     var _rebuildColumns = function (paragraph) {
         var columnDefs = [];
 
         _.forEach(paragraph.meta, function (meta, idx) {
             if (paragraph.columnFilter(meta)) {
-                paragraph.chartColumns.push({value: idx, label: meta.fieldName});
+                if (_notObjectType(meta.fieldTypeName))
+                    paragraph.chartColumns.push({value: idx, type: meta.fieldTypeName, label: meta.fieldName});
 
                 // Index for explain, execute and fieldName for scan.
                 var colValue = 'data[' +  (paragraph.queryArgs.query ? idx : '"' + meta.fieldName + '"') + ']';
@@ -383,11 +389,14 @@ consoleModule.controller('sqlController',
 
         paragraph.gridOptions.api.setColumnDefs(columnDefs);
 
-        paragraph.chartKeyCols = _retainColumns(paragraph.chartColumns, paragraph.chartKeyCols, 0);
-        paragraph.chartValCols = _retainColumns(paragraph.chartColumns, paragraph.chartValCols, 1);
+        // Not object.
+        paragraph.chartKeyCols = _retainColumns(paragraph.chartColumns, paragraph.chartKeyCols, _notObjectType);
+
+        // Numeric.
+        paragraph.chartValCols = _retainColumns(paragraph.chartColumns, paragraph.chartValCols, _numberType, paragraph.chartKeyCols[0]);
 
         if (paragraph.chartColumns.length > 0)
-            paragraph.chartColumns.push({value: -1, label: TIME_LINE});
+            paragraph.chartColumns.push(TIME_LINE);
     };
 
     $scope.toggleSystemColumns = function (paragraph) {
@@ -407,23 +416,32 @@ consoleModule.controller('sqlController',
         });
     };
 
-    function _retainColumns(allCols, curCols, dfltIdx) {
+    function _retainColumns(allCols, curCols, acceptableType, dfltCol) {
         var retainedCols = [];
 
         var allColsLen = allCols.length;
 
         if (allColsLen > 0) {
             curCols.forEach(function (curCol) {
-                var idx = _.findIndex(allCols, function (allCol) {
-                    return allCol.label == curCol.label;
-                });
+                var col = _.find(allCols, {label: curCol.label});
 
-                if (idx >= 0)
-                    retainedCols.push(allCols[idx]);
+                if (col && acceptableType(col.type))
+                    retainedCols.push(col);
             });
 
             if ($common.isEmptyArray(retainedCols))
-                retainedCols.push(allCols[dfltIdx < allColsLen ? dfltIdx : 0]);
+                for (idx = 0; idx < allColsLen; idx++) {
+                    var col = allCols[idx];
+
+                    if (acceptableType(col.type) && col != dfltCol) {
+                        retainedCols.push(col);
+
+                        break;
+                    }
+                }
+
+            if ($common.isEmptyArray(retainedCols) && dfltCol && acceptableType(dfltCol.type))
+                retainedCols.push(dfltCol);
         }
 
         return retainedCols;
