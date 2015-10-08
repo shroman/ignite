@@ -551,7 +551,7 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
                         gridStartTime = getSpi().getGridStartTime();
 
                     updateTopologyVersionIfGreater(new AffinityTopologyVersion(locNode.order()),
-                        new DiscoCache(localNode(), getSpi().getRemoteNodes()));
+                        new DiscoCache(localNode(), F.view(topSnapshot, F.remoteNodes(locNode.id()))));
 
                     startLatch.countDown();
 
@@ -2457,7 +2457,7 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
 
             Map<String, Collection<ClusterNode>> cacheMap = new HashMap<>(allNodes.size(), 1.0f);
             Map<String, Collection<ClusterNode>> rmtCacheMap = new HashMap<>(allNodes.size(), 1.0f);
-            Map<String, Collection<ClusterNode>> dhtNodesMap =new HashMap<>(allNodes.size(), 1.0f);
+            Map<String, Collection<ClusterNode>> dhtNodesMap = new HashMap<>(allNodes.size(), 1.0f);
             Collection<ClusterNode> nodesWithCaches = new HashSet<>(allNodes.size());
             Collection<ClusterNode> rmtNodesWithCaches = new HashSet<>(allNodes.size());
 

@@ -95,6 +95,13 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
     protected abstract int restPort();
 
     /**
+     * @return Security enabled flag. Should be the same with {@code ctx.security().enabled()}.
+     */
+    protected boolean securityEnabled() {
+        return false;
+    }
+
+    /**
      * @param params Command parameters.
      * @return Returned content.
      * @throws Exception If failed.
@@ -144,7 +151,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         return "\\{\\\"affinityNodeId\\\":\\\"\\w{8}-\\w{4}-\\w{4}-\\w{4}-\\w{12}\\\"\\," +
             "\\\"error\\\":\\\"\\\"\\," +
             "\\\"response\\\":\\\"" + res + "\\\"\\," +
-            "\\\"sessionToken\\\":\\\"\\\"," +
+            "\\\"sessionToken\\\":\\\"" + (securityEnabled() && success ? ".+" : "") + "\\\"," +
             "\\\"successStatus\\\":" + (success ? 0 : 1) + "\\}";
     }
 
@@ -168,7 +175,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
     private String integerPattern(int res, boolean success) {
         return "\\{\\\"error\\\":\\\"\\\"\\," +
             "\\\"response\\\":" + res + "\\," +
-            "\\\"sessionToken\\\":\\\"\\\"," +
+            "\\\"sessionToken\\\":\\\"" + (securityEnabled() && success ? ".+" : "") + "\\\"," +
             "\\\"successStatus\\\":" + (success ? 0 : 1) + "\\}";
     }
 
@@ -181,7 +188,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         return "\\{\\\"affinityNodeId\\\":\\\"\\\"\\," +
             "\\\"error\\\":\\\"\\\"\\," +
             "\\\"response\\\":" + res + "\\," +
-            "\\\"sessionToken\\\":\\\"\\\"," +
+            "\\\"sessionToken\\\":\\\"" + (securityEnabled() && success ? ".+" : "") + "\\\"," +
             "\\\"successStatus\\\":" + (success ? 0 : 1) + "\\}";
     }
 
@@ -194,7 +201,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         return "\\{\\\"affinityNodeId\\\":\\\"\\\"\\," +
             "\\\"error\\\":\\\"\\\"\\," +
             "\\\"response\\\":" + res + "\\," +
-            "\\\"sessionToken\\\":\\\"\\\"," +
+            "\\\"sessionToken\\\":\\\"" + (securityEnabled() && success ? ".+" : "") + "\\\"," +
             "\\\"successStatus\\\":" + (success ? 0 : 1) + "\\}";
     }
 
@@ -207,7 +214,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         return "\\{\\\"affinityNodeId\\\":\\\"\\w{8}-\\w{4}-\\w{4}-\\w{4}-\\w{12}\\\"\\," +
             "\\\"error\\\":\\\"\\\"\\," +
             "\\\"response\\\":" + res + "\\," +
-            "\\\"sessionToken\\\":\\\"\\\"," +
+            "\\\"sessionToken\\\":\\\"" + (securityEnabled() && success ? ".+" : "") + "\\\"," +
             "\\\"successStatus\\\":" + (success ? 0 : 1) + "\\}";
     }
 
@@ -220,7 +227,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         return "\\{\\\"affinityNodeId\\\":\\\"\\\"\\," +
             "\\\"error\\\":\\\"\\\"\\," +
             "\\\"response\\\":" + res + "\\," +
-            "\\\"sessionToken\\\":\\\"\\\"," +
+            "\\\"sessionToken\\\":\\\"" + (securityEnabled() && success ? ".+" : "") + "\\\"," +
             "\\\"successStatus\\\":" + (success ? 0 : 1) + "\\}";
     }
 
@@ -233,7 +240,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
         return "\\{\\\"affinityNodeId\\\":\\\"(\\w{8}-\\w{4}-\\w{4}-\\w{4}-\\w{12})?\\\"\\," +
             "\\\"error\\\":\\\"\\\"\\," +
             "\\\"response\\\":" + res + "\\," +
-            "\\\"sessionToken\\\":\\\"\\\"," +
+            "\\\"sessionToken\\\":\\\"" + (securityEnabled() && success ? ".+" : "") + "\\\"," +
             "\\\"successStatus\\\":" + (success ? 0 : 1) + "\\}";
     }
 
@@ -245,7 +252,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
     private String pattern(String res, boolean success) {
         return "\\{\\\"error\\\":\\\"" + (!success ? ".+" : "") + "\\\"\\," +
             "\\\"response\\\":" + res + "\\," +
-            "\\\"sessionToken\\\":\\\"\\\"," +
+            "\\\"sessionToken\\\":\\\"" + (securityEnabled() && success ? ".+" : "") + "\\\"," +
             "\\\"successStatus\\\":" + (success ? 0 : 1) + "\\}";
     }
 
@@ -257,7 +264,7 @@ public abstract class JettyRestProcessorAbstractSelfTest extends AbstractRestPro
     private String stringPattern(String res, boolean success) {
         return "\\{\\\"error\\\":\\\"" + (!success ? ".+" : "") + "\\\"\\," +
             "\\\"response\\\":\\\"" + res + "\\\"\\," +
-            "\\\"sessionToken\\\":\\\"\\\"," +
+            "\\\"sessionToken\\\":\\\"" + (securityEnabled() && success ? ".+" : "") + "\\\"," +
             "\\\"successStatus\\\":" + (success ? 0 : 1) + "\\}";
     }
 
