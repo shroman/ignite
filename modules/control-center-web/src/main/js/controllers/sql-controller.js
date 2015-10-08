@@ -442,8 +442,13 @@ consoleModule.controller('sqlController',
                 if (!$common.isDefined(paragraph.chartValCols ))
                     paragraph.chartValCols = [];
 
-                paragraph.disabledSystemColumns = res.meta.length == 2 &&
-                    _.find(res.meta, {fieldName: '_KEY'}) && _.find(res.meta, {fieldName: '_VAL'});
+                if (res.meta.length <= 2) {
+                    var _key = _.find(res.meta, {fieldName: '_KEY'});
+                    var _val = _.find(res.meta, {fieldName: '_VAL'});
+
+                    paragraph.disabledSystemColumns = (res.meta.length == 2 && _key && _val) ||
+                        (res.meta.length == 1 && (_key || _val));
+                }
 
                 paragraph.columnFilter = _columnFilter(paragraph);
 
