@@ -53,6 +53,9 @@ public class GridCachePartitionedTxMultiThreadedSelfTest extends IgniteTxMultiTh
 
         CacheConfiguration cc = defaultCacheConfiguration();
 
+        // TODO IGNITE-1607 add test with near cache.
+        cc.setNearConfiguration(null);
+
         cc.setCacheMode(PARTITIONED);
         cc.setBackups(1);
 

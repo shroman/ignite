@@ -343,7 +343,7 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
     }
 
     /** {@inheritDoc} */
-    @Override public IgniteInternalFuture<Boolean> loadMissing(
+    @Override public IgniteInternalFuture<Void> loadMissing(
         final GridCacheContext cacheCtx,
         boolean readThrough,
         boolean async,
@@ -361,8 +361,8 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
                 accessPolicy(cacheCtx, keys),
                 skipVals,
                 needVer,
-                c).chain(new C1<IgniteInternalFuture<Map<Object, Object>>, Boolean>() {
-                @Override public Boolean apply(IgniteInternalFuture<Map<Object, Object>> f) {
+                c).chain(new C1<IgniteInternalFuture<Map<Object, Object>>, Void>() {
+                @Override public Void apply(IgniteInternalFuture<Map<Object, Object>> f) {
                     try {
                         Map<Object, Object> map = f.get();
 
@@ -373,7 +373,7 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
                             }
                         }
 
-                        return true;
+                        return null;
                     }
                     catch (Exception e) {
                         setRollbackOnly();
@@ -398,8 +398,8 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
                 /*can remap*/true,
                 needVer,
                 c
-            ).chain(new C1<IgniteInternalFuture<Map<Object, Object>>, Boolean>() {
-                @Override public Boolean apply(IgniteInternalFuture<Map<Object, Object>> f) {
+            ).chain(new C1<IgniteInternalFuture<Map<Object, Object>>, Void>() {
+                @Override public Void apply(IgniteInternalFuture<Map<Object, Object>> f) {
                     try {
                         Map<Object, Object> map = f.get();
 
@@ -410,7 +410,7 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
                             }
                         }
 
-                        return true;
+                        return null;
                     }
                     catch (Exception e) {
                         setRollbackOnly();
@@ -1223,12 +1223,8 @@ public class GridNearTxLocal extends GridDhtTxLocalAdapter {
         return plc;
     }
 
-    /**
-     * @param cacheCtx Cache context.
-     * @param keys Keys.
-     * @return Expiry policy.
-     */
-    private IgniteCacheExpiryPolicy accessPolicy(GridCacheContext cacheCtx, Collection<KeyCacheObject> keys) {
+    /** {@inheritDoc} */
+    @Override protected IgniteCacheExpiryPolicy accessPolicy(GridCacheContext cacheCtx, Collection<KeyCacheObject> keys) {
         if (accessMap != null) {
             for (Map.Entry<IgniteTxKey, IgniteCacheExpiryPolicy> e : accessMap.entrySet()) {
                 if (e.getKey().cacheId() == cacheCtx.cacheId() && keys.contains(e.getKey().key()))

@@ -165,9 +165,11 @@ public interface IgniteTxLocalEx extends IgniteInternalTx {
      * @param c Closure.
      * @param deserializePortable Deserialize portable flag.
      * @param skipVals Skip values flag.
+     * @param needVer If {@code true} version is required for loaded values.
+     * @param c Closure to be applied for loaded values.
      * @return Future with {@code True} value if loading took place.
      */
-    public IgniteInternalFuture<Boolean> loadMissing(
+    public IgniteInternalFuture<Void> loadMissing(
         GridCacheContext cacheCtx,
         boolean readThrough,
         boolean async,
