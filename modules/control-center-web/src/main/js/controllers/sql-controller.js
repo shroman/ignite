@@ -794,7 +794,7 @@ consoleModule.controller('sqlController',
         return datum;
     }
 
-    function _chartDatumLblNum(paragraph) {
+    function _pieChartDatum(paragraph) {
         var datum = [];
 
         if (paragraph.chartColumnsConfigured() && !paragraph.chartTimeLineEnabled()) {
@@ -803,8 +803,8 @@ consoleModule.controller('sqlController',
 
                 var values = _.map(paragraph.rows, function (row) {
                     return {
-                        lbl: _chartLabel(row, paragraph.chartKeyCols[0].value, index++),
-                        val: _chartNumber(row, valCol.value, 0)
+                        x: row[paragraph.chartKeyCols[0].value],
+                        y: _chartNumber(row, valCol.value, index++)
                     }
                 });
 
@@ -846,14 +846,6 @@ consoleModule.controller('sqlController',
 
     function _chartAxisLabel(cols, dflt) {
         return $common.isEmptyArray(cols) ? dflt : _.map(cols, _colLabel).join(', ');
-    }
-
-    function _xLbl(d) {
-        return d.lbl;
-    }
-
-    function _yVal(d) {
-        return d.val;
     }
 
     function _xX(d) {
@@ -922,7 +914,7 @@ consoleModule.controller('sqlController',
     }
 
     function _pieChart(paragraph) {
-        var datum = _chartDatumLblNum(paragraph);
+        var datum = _pieChartDatum(paragraph);
 
         if (datum.length == 0)
             datum = [{values: []}];
@@ -934,8 +926,8 @@ consoleModule.controller('sqlController',
                         type: 'pieChart',
                         height: 400,
                         duration: 0,
-                        x: _xLbl,
-                        y: _yVal,
+                        x: _xX,
+                        y: _yY,
                         showLabels: true,
                         labelThreshold: 0.05,
                         labelType: 'percent',
