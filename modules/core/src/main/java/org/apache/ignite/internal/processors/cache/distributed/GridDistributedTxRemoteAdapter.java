@@ -193,8 +193,8 @@ public class GridDistributedTxRemoteAdapter extends IgniteTxAdapter
     }
 
     /** {@inheritDoc} */
-    @Nullable @Override public Boolean activeCachesDeploymentEnabled() {
-        return null;
+    @Override public boolean activeCachesDeploymentEnabled() {
+        return false;
     }
 
     /**

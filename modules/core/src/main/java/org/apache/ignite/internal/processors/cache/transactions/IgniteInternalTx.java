@@ -281,9 +281,9 @@ public interface IgniteInternalTx extends AutoCloseable, GridTimeoutObject {
 
     /**
      * @return {@code true} or {@code false} if the deployment is enabled or disabled for all active caches involved
-     * in this transaction. Returns {@code null} if there are no any active caches in the transaction yet.
+     * in this transaction.
      */
-    @Nullable public Boolean activeCachesDeploymentEnabled();
+    public boolean activeCachesDeploymentEnabled();
 
     /**
      * Attempts to set topology version and returns the current value.

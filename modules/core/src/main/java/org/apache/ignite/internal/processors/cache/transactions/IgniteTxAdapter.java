@@ -1757,8 +1757,8 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
         }
 
         /** {@inheritDoc} */
-        @Nullable @Override public Boolean activeCachesDeploymentEnabled() {
-            return null;
+        @Override public boolean activeCachesDeploymentEnabled() {
+            return false;
         }
 
         /** {@inheritDoc} */
