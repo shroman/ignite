@@ -1071,6 +1071,8 @@ consoleModule.controller('sqlController',
 
         setTimeout(function () {
             paragraph.ace.selection.moveCursorToPosition(position);
+
+            paragraph.ace.focus();
         }, 1);
     };
 
