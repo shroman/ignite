@@ -47,6 +47,7 @@ import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.configuration.NearCacheConfiguration;
 import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteClosure;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
@@ -302,6 +303,73 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
                     }
 
                     checkValue(key, null, cache.getName());
+                }
+            }
+            finally {
+                destroyCache(ignite0, ccfg.getName());
+            }
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testTxCommit() throws Exception {
+        Ignite ignite0 = ignite(0);
+        Ignite ignite1 = ignite(1);
+
+        final IgniteTransactions txs0 = ignite0.transactions();
+        final IgniteTransactions txs1 = ignite1.transactions();
+
+        for (CacheConfiguration<Integer, Integer> ccfg : cacheConfigurations()) {
+            logCacheInfo(ccfg);
+
+            try {
+                IgniteCache<Integer, Integer> cache0 = ignite0.createCache(ccfg);
+                IgniteCache<Integer, Integer> cache1 = ignite1.cache(ccfg.getName());
+
+                List<Integer> keys = testKeys(cache0);
+
+                for (Integer key : keys) {
+                    log.info("Test key: " + key);
+
+                    Integer expVal = null;
+
+                    for (int i = 0; i < 100; i++) {
+                        try (Transaction tx = txs0.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                            Integer val = cache0.get(key);
+
+                            assertEquals(expVal, val);
+
+                            cache0.put(key, i);
+
+                            tx.commit();
+
+                            expVal = i;
+                        }
+
+                        try (Transaction tx = txs1.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                            Integer val = cache1.get(key);
+
+                            assertEquals(expVal, val);
+
+                            cache1.put(key, val);
+
+                            tx.commit();
+                        }
+
+                        try (Transaction tx = txs0.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                            Integer val = cache0.get(key);
+
+                            assertEquals(expVal, val);
+
+                            cache0.put(key, val);
+
+                            tx.commit();
+                        }
+                    }
+
+                    checkValue(key, expVal, cache0.getName());
                 }
             }
             finally {
@@ -1307,6 +1375,54 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If failed.
      */
+    public void testNearCacheReaderUpdate() throws Exception {
+        Ignite ignite0 = ignite(0);
+
+        IgniteCache<Integer, Integer> cache0 =
+            ignite0.createCache(cacheConfiguration(PARTITIONED, FULL_SYNC, 1, false, false));
+
+        final String cacheName = cache0.getName();
+
+        try {
+            Ignite client1 = ignite(SRVS);
+            Ignite client2 = ignite(SRVS + 1);
+
+            IgniteCache<Integer, Integer> cache1 = client1.createNearCache(cacheName,
+                new NearCacheConfiguration<Integer, Integer>());
+            IgniteCache<Integer, Integer> cache2 = client2.createNearCache(cacheName,
+                new NearCacheConfiguration<Integer, Integer>());
+
+            Integer key = primaryKey(ignite(0).cache(cacheName));
+
+            try (Transaction tx = client1.transactions().txStart(OPTIMISTIC, SERIALIZABLE)) {
+                assertNull(cache1.get(key));
+                cache1.put(key, 1);
+
+                tx.commit();
+            }
+
+            try (Transaction tx = client2.transactions().txStart(OPTIMISTIC, SERIALIZABLE)) {
+                assertEquals(1, (Object) cache2.get(key));
+                cache2.put(key, 2);
+
+                tx.commit();
+            }
+
+            try (Transaction tx = client1.transactions().txStart(OPTIMISTIC, SERIALIZABLE)) {
+                assertEquals(2, (Object)cache1.get(key));
+                cache1.put(key, 3);
+
+                tx.commit();
+            }
+        }
+        finally {
+            ignite0.destroyCache(cacheName);
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testRollbackNearCache1() throws Exception {
         rollbackNearCacheWrite(true);
     }
@@ -1525,6 +1641,8 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
 
                     Ignite node = clients.get(nodeIdx);
 
+                    Thread.currentThread().setName("update-" + node.name());
+
                     log.info("Tx thread: " + node.name());
 
                     final IgniteTransactions txs = node.transactions();
@@ -1590,9 +1708,6 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
                                     break;
                                 }
                                 catch (TransactionOptimisticException ignore) {
-                                    if (System.currentTimeMillis() > stopTime)
-                                        break;
-
                                     // Retry.
                                 }
                             }
@@ -2125,6 +2240,11 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
          */
         public int value() {
             return val;
+        }
+
+        /** {@inheritDoc} */
+        @Override public String toString() {
+            return S.toString(Account.class, this);
         }
     }
 }

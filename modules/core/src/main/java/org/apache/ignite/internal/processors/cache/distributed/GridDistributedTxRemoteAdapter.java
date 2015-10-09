@@ -583,6 +583,9 @@ public class GridDistributedTxRemoteAdapter extends IgniteTxAdapter
                                                 near() ? null : explicitVer, CU.subjectId(this, cctx),
                                                 resolveTaskName());
 
+                                            if (cached.isNear())
+                                                ((GridNearCacheEntry)cached).recordDhtVersion(cached.version());
+
                                             // Keep near entry up to date.
                                             if (nearCached != null) {
                                                 CacheObject val0 = cached.valueBytes();
