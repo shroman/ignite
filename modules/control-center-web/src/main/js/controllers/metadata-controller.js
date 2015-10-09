@@ -17,8 +17,8 @@
 
 // Controller for Metadata screen.
 consoleModule.controller('metadataController', [
-    '$scope', '$controller', '$http', '$modal', '$common', '$timeout', '$focus', '$confirm', '$confirmBatch', '$message', '$clone', '$table', '$preview', '$loading', '$unsavedChangesGuard',
-    function ($scope, $controller, $http, $modal, $common, $timeout, $focus, $confirm, $confirmBatch, $message, $clone, $table, $preview, $loading, $unsavedChangesGuard) {
+    '$scope', '$controller', '$filter', '$http', '$modal', '$common', '$timeout', '$focus', '$confirm', '$confirmBatch', '$message', '$clone', '$table', '$preview', '$loading', '$unsavedChangesGuard',
+    function ($scope, $controller, $filter, $http, $modal, $common, $timeout, $focus, $confirm, $confirmBatch, $message, $clone, $table, $preview, $loading, $unsavedChangesGuard) {
             $unsavedChangesGuard.install($scope);
 
             // Initialize the super class and extend it.
@@ -626,6 +626,15 @@ consoleModule.controller('metadataController', [
                     $scope.loadMeta.action = 'connect';
                     $scope.loadMeta.info = INFO_CONNECT_TO_DB;
                 }
+            };
+
+            $scope.metadataTitle = function () {
+                var validFilter = $filter('metadatasValidation');
+
+                if ($scope.ui.showValid || validFilter($scope.displayedRows, false, true).length == 0)
+                    return 'Types metadata:';
+
+                return 'Type metadata without key fields:';
             };
 
             function selectFirstItem() {

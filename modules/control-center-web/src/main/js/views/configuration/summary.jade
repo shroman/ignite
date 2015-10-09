@@ -31,6 +31,25 @@ mixin btn-download(side)
     .panel-tip-container(style='float: right;' data-placement='bottom' bs-tooltip='"Download #{side} configuration"')
         button.btn.btn-primary.pull-right(type='submit' ng-click='$event.stopPropagation()') Download
 
+mixin pojos(side)
+    div(bs-pane title='POJO' ng-show='pojoAvailable()')
+        .details-row
+            .col-xs-2.col-sm-2.col-md-2
+                label POJO class:
+            .col-xs-10.col-sm-10.col-md-10
+                button.select-toggle.form-control(ng-model='config#{side}.pojoClass' bs-select bs-options='item for item in pojoClasses()')
+            .col-xs-2.col-sm-2.col-md-2
+                label
+            .col-xs-10.col-sm-10.col-md-10
+                input(type='checkbox' ng-model='configServer.useConstructor')
+                | Generate constructors
+            .col-xs-2.col-sm-2.col-md-2
+                label
+            .col-xs-10.col-sm-10.col-md-10
+                input(type='checkbox' ng-model='configServer.includeKeyFields')
+                | Include key fields
+        div(ui-ace='{ onLoad: aceInit, mode: "java" }' ng-model='config#{side}.pojoClassBody')
+
 block content
     .docs-header
         h1 Configurations Summary
@@ -52,7 +71,7 @@ block content
                         input(type='hidden' name='includeKeyFields' value='{{configServer.includeKeyFields}}')
                         +btn-download('server')
                     .panel-collapse(role='tabpanel' bs-collapse-target)
-                        .summary-tabs(bs-tabs data-bs-active-pane="tabs.activeTab" ng-show='selectedItem' template='summary/summary-tabs')
+                        .summary-tabs(bs-tabs data-bs-active-pane="tabsServer.activeTab" ng-show='selectedItem' template='summary/summary-tabs')
                             div(bs-pane title='XML')
                                 div(ui-ace='{ onLoad: aceInit, mode: "xml" }' ng-model='xmlServer')
                             div(bs-pane title='Java')
@@ -62,23 +81,7 @@ block content
                                     .col-xs-4.col-sm-3.col-md-3
                                         button.select-toggle.form-control(ng-model='configServer.javaClassServer' bs-select bs-options='item.value as item.label for item in javaClassItems' data-sort='false')
                                 div(ui-ace='{ onLoad: aceInit, mode: "java" }' ng-model='javaServer')
-                            div(bs-pane title='POJO' ng-show='pojoAvailable()')
-                                .details-row
-                                    .col-xs-2.col-sm-2.col-md-2
-                                        label POJO class:
-                                    .col-xs-10.col-sm-10.col-md-10
-                                        button.select-toggle.form-control(ng-model='configServer.pojoClass' bs-select bs-options='item for item in pojoClasses()')
-                                    .col-xs-2.col-sm-2.col-md-2
-                                        label
-                                    .col-xs-10.col-sm-10.col-md-10
-                                        input(type='checkbox' ng-model='configServer.useConstructor')
-                                        | Generate constructors
-                                    .col-xs-2.col-sm-2.col-md-2
-                                        label
-                                    .col-xs-10.col-sm-10.col-md-10
-                                        input(type='checkbox' ng-model='configServer.includeKeyFields')
-                                        | Include key fields
-                                div(ui-ace='{ onLoad: aceInit, mode: "java" }' ng-model='pojoClass')
+                            +pojos('Server')
                             div(bs-pane title='Dockerfile')
                                 .details-row
                                     p
@@ -108,7 +111,7 @@ block content
                         div(ng-show='selectedItem')
                             .details-row(ng-repeat='field in clientFields')
                                 +form-row-custom(['col-xs-4 col-sm-4 col-md-3'], ['col-xs-4 col-sm-4 col-md-3'], 'backupItem')
-                            .summary-tabs(bs-tabs template='summary/summary-tabs')
+                            .summary-tabs(bs-tabs data-bs-active-pane="tabsClient.activeTab" template='summary/summary-tabs')
                                 div(bs-pane title='XML')
                                     div(ui-ace='{ onLoad: aceInit, mode: "xml" }' ng-model='xmlClient')
                                 div(bs-pane title='Java')
@@ -118,3 +121,4 @@ block content
                                         .col-xs-4.col-sm-3.col-md-3
                                             button.select-toggle.form-control(ng-model='backupItem.javaClassClient' bs-select bs-options='item.value as item.label for item in javaClassItems' data-sort='false')
                                     div(ui-ace='{ onLoad: aceInit, mode: "java" }' ng-model='javaClient')
+                                +pojos('Client')

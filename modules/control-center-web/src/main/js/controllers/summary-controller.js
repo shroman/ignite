@@ -37,7 +37,8 @@ consoleModule.controller('summaryController', [
         {value: undefined, label: 'Not set'}
     ];
 
-    $scope.tabs = { activeTab: 0 };
+    $scope.tabsServer = { activeTab: 0 };
+    $scope.tabsClient = { activeTab: 0 };
 
     $scope.pojoClasses = function() {
         var classes = [];
@@ -53,6 +54,7 @@ consoleModule.controller('summaryController', [
     $scope.oss = ['debian:8', 'ubuntu:14.10'];
 
     $scope.configServer = {javaClassServer: 1, os: undefined};
+    $scope.configClient = {};
 
     $scope.backupItem = {javaClassClient: 1};
 
@@ -89,47 +91,61 @@ consoleModule.controller('summaryController', [
         $scope.javaServer = $generatorJava.cluster($scope.selectedItem, $scope.configServer.javaClassServer === 2);
     };
 
-    function selectPojoClass() {
-        _.forEach($generatorJava.metadatas, function(meta) {
-            if (meta.keyType == $scope.configServer.pojoClass)
-                $scope.pojoClass = meta.keyClass;
-            else if (meta.valueType == $scope.configServer.pojoClass)
-                $scope.pojoClass = meta.valueClass;
+    function selectPojoClass(config) {
+        $generatorJava.metadatas.forEach(function(meta) {
+            if (meta.keyType == config.pojoClass)
+                return config.pojoClassBody = meta.keyClass;
+
+            if (meta.valueType == config.pojoClass)
+                return config.pojoClassBody = meta.valueClass;
         });
+    }
+
+    function pojoClsListener(config) {
+        return function () {
+            selectPojoClass(config);
+        };
     }
 
     $scope.updatePojos = function() {
         if ($common.isDefined($scope.selectedItem)) {
-            var curCls = $scope.configServer.pojoClass;
+            var curServCls = $scope.configServer.pojoClass;
+            var curCliCls = $scope.configClient.pojoClass;
 
             $generatorJava.pojos($scope.selectedItem.caches, $scope.configServer.useConstructor, $scope.configServer.includeKeyFields);
 
-            if (!$common.isDefined(curCls) || _.findIndex($generatorJava.metadatas, function (meta) {
-                    return meta.keyType == curCls || meta.valueType == curCls;
-                }) < 0) {
-                if ($generatorJava.metadatas.length > 0) {
-                    if ($common.isDefined($generatorJava.metadatas[0].keyType))
-                        $scope.configServer.pojoClass = $generatorJava.metadatas[0].keyType;
-                    else
-                        $scope.configServer.pojoClass = $generatorJava.metadatas[0].valueType;
-                }
-                else {
-                    $scope.configServer.pojoClass = undefined;
+            function restoreSelected(selected, config, tabs) {
+                if (!$common.isDefined(selected) || _.findIndex($generatorJava.metadatas, function (meta) {
+                        return meta.keyType == selected || meta.valueType == selected;
+                    }) < 0) {
+                    if ($generatorJava.metadatas.length > 0) {
+                        if ($common.isDefined($generatorJava.metadatas[0].keyType))
+                            config.pojoClass = $generatorJava.metadatas[0].keyType;
+                        else
+                            config.pojoClass = $generatorJava.metadatas[0].valueType;
+                    }
+                    else {
+                        config.pojoClass = undefined;
 
-                    if ($scope.tabs.activeTab == 2)
-                        $scope.tabs.activeTab = 0;
+                        if (tabs.activeTab == 2)
+                            tabs.activeTab = 0;
+                    }
                 }
+                else
+                    config.pojoClass = selected;
+
+                selectPojoClass(config);
             }
-            else
-                $scope.configServer.pojoClass = curCls;
 
-            selectPojoClass();
+            restoreSelected(curServCls, $scope.configServer, $scope.tabsServer);
+            restoreSelected(curCliCls, $scope.configClient, $scope.tabsClient);
         }
     };
 
     $scope.$watch('configServer.javaClassServer', $scope.generateJavaServer, true);
 
-    $scope.$watch('configServer.pojoClass', selectPojoClass, true);
+    $scope.$watch('configServer.pojoClass', pojoClsListener($scope.configServer), true);
+    $scope.$watch('configClient.pojoClass', pojoClsListener($scope.configClient), true);
 
     $scope.$watch('configServer.useConstructor', $scope.updatePojos, true);
 
