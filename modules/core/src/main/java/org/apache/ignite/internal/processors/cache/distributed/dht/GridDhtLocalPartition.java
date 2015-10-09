@@ -526,36 +526,29 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
      * @param updateSeq Update sequence.
      * @return {@code True} if entry has been transitioned to state EVICTED.
      */
-    boolean tryEvict(boolean updateSeq) {
-        if ((state.getReference() != RENTING && state.getReference() != EVICTING) ||
-            state.getStamp() != 0 || groupReserved())
-            return false;
-
-        if (!state.compareAndSet(RENTING, EVICTING, 0, 0))
-            return false;
-
+    private boolean evict(boolean updateSeq) {
         // Attempt to evict partition entries from cache.
         if (!clearAll(EVICTION_CLEAR_LIMIT)){ //Resend to pool to stop another threads blocking.
             cctx.closures().callLocalSafe(new GPC<Boolean>() {
                 @Override public Boolean call() {
-                    return tryEvict(true);
+                    return evict(true);
                 }
             }, /*system pool*/ true);
 
             return false;
         }
 
-        while (!map.isEmpty()) {
+        if (!map.isEmpty()) {
             cctx.closures().callLocalSafe(new GPC<Boolean>() {
                 @Override public Boolean call() {
-                    return tryEvict(true);
+                    return evict(true);
                 }
             }, /*system pool*/ true);
 
             return false;
         }
 
-        if (map.isEmpty() && state.compareAndSet(EVICTING, EVICTED, 0, 0)) {
+        if (state.compareAndSet(EVICTING, EVICTED, 0, 0)) {
             if (log.isDebugEnabled())
                 log.debug("Evicted partition: " + this);
 
@@ -575,8 +568,22 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
 
             return true;
         }
+        else {
+            assert false : "expected EVICTING state";
+        }
 
         return false;
+    }
+
+    /**
+     * @param updateSeq Update sequence.
+     * @return {@code True} if entry has been transitioned to state EVICTED.
+     */
+    boolean tryEvict(boolean updateSeq) {
+        if (!state.compareAndSet(RENTING, EVICTING, 0, 0) || state.getStamp() != 0 || groupReserved())
+            return false;
+
+        return evict(updateSeq);
     }
 
     /**
