@@ -546,7 +546,13 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
         }
 
         while (!map.isEmpty()) {
-            clearAll(0);
+            cctx.closures().callLocalSafe(new GPC<Boolean>() {
+                @Override public Boolean call() {
+                    return tryEvict(true);
+                }
+            }, /*system pool*/ true);
+
+            return false;
         }
 
         if (map.isEmpty() && state.compareAndSet(EVICTING, EVICTED, 0, 0)) {
