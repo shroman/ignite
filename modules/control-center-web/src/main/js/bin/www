@@ -7,7 +7,6 @@ var http = require('http');
 var https = require('https');
 var config = require('../helpers/configuration-loader.js');
 var app = require('../app');
-var forceSSL = require('express-force-ssl');
 var agentManager = require('../agents/agent-manager');
 
 var fs = require('fs');
@@ -17,7 +16,7 @@ var debug = require('debug')('ignite-web-console:server');
 /**
  * Get port from environment and store in Express.
  */
-var port = normalizePort(process.env.PORT || config.get('server:port'));
+var port = config.normalizePort(config.get('server:port') || process.env.PORT || 80);
 
 // Create HTTP server.
 var server = http.createServer(app);
@@ -38,15 +37,7 @@ if (config.get('server:ssl')) {
         passphrase: config.get('server:keyPassphrase')
     }, app);
 
-    var httpsPort = normalizePort(process.env.PORT || config.get('server:https-port'));
-
-    app.set('forceSSLOptions', {
-        enable301Redirects: true,
-        trustXFPHeader: true,
-        httpsPort: httpsPort
-    });
-
-    app.use(forceSSL);
+    var httpsPort = config.normalizePort(config.get('server:https-port') || 443);
 
     /**
      * Listen on provided port, on all network interfaces.
@@ -75,25 +66,6 @@ else {
 agentServer.listen(config.get('agent-server:port'));
 
 agentManager.createManager(agentServer);
-
-/**
- * Normalize a port into a number, string, or false.
- */
-function normalizePort(val) {
-  var port = parseInt(val, 10);
-
-  if (isNaN(port)) {
-    // named pipe
-    return val;
-  }
-
-  if (port >= 0) {
-    // port number
-    return port;
-  }
-
-  return false;
-}
 
 /**
  * Event listener for HTTP server "error" event.

@@ -24,6 +24,8 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var session = require('express-session');
 var mongoStore = require('connect-mongo')(session);
+var forceSSL = require('express-force-ssl');
+var config = require('./helpers/configuration-loader.js');
 
 var publicRoutes = require('./routes/public');
 var notebooksRoutes = require('./routes/notebooks');
@@ -91,6 +93,18 @@ passport.serializeUser(db.Account.serializeUser());
 passport.deserializeUser(db.Account.deserializeUser());
 
 passport.use(db.Account.createStrategy());
+
+if (config.get('server:ssl')) {
+    var httpsPort = config.normalizePort(config.get('server:https-port') || 443);
+
+    app.set('forceSSLOptions', {
+        enable301Redirects: true,
+        trustXFPHeader: true,
+        httpsPort: httpsPort
+    });
+
+    app.use(forceSSL);
+}
 
 var mustAuthenticated = function (req, res, next) {
     req.isAuthenticated() ? next() : res.redirect('/');
@@ -170,24 +184,5 @@ app.use(function (err, req, res) {
         error: {}
     });
 });
-
-/**
- * Normalize a port into a number, string, or false.
- */
-function normalizePort(val) {
-    var port = parseInt(val, 10);
-
-    if (isNaN(port)) {
-        // named pipe
-        return val;
-    }
-
-    if (port >= 0) {
-        // port number
-        return port;
-    }
-
-    return false;
-}
 
 module.exports = app;

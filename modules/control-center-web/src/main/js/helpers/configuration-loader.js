@@ -19,4 +19,23 @@ var config = require('nconf');
 
 config.file({'file': 'config/default.json'});
 
+/**
+ * Normalize a port into a number, string, or false.
+ */
+config.normalizePort = function (val) {
+    var port = parseInt(val, 10);
+
+    if (isNaN(port)) {
+        // named pipe
+        return val;
+    }
+
+    if (port >= 0) {
+        // port number
+        return port;
+    }
+
+    return false;
+};
+
 module.exports = config;
