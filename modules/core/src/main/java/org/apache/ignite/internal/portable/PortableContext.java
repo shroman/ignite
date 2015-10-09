@@ -962,8 +962,6 @@ public class PortableContext implements Externalizable {
      * @param ldr Class loader being undeployed.
      */
     public void onUndeploy(ClassLoader ldr) {
-        userTypes.remove(ldr);
-
         for (Class<?> cls : descByCls.keySet()) {
             if (ldr.equals(cls.getClassLoader()))
                 descByCls.remove(cls);
