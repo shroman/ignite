@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Callable;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -71,7 +72,6 @@ import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgnitePredicate;
 import org.apache.ignite.lang.IgniteUuid;
-import org.apache.ignite.thread.IgniteThread;
 import org.jetbrains.annotations.Nullable;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -294,8 +294,8 @@ public class GridDhtPartitionDemander {
                 return;
             }
 
-            IgniteThread thread = new IgniteThread(cctx.gridName(), "demand-thread-" + cctx.cache().name(), new Runnable() {
-                @Override public void run() {
+            cctx.closures().callLocalSafe(new Callable<Boolean>() {
+                @Override public Boolean call() {
                     if (!CU.isMarshallerCache(cctx.name())) {
                         waitForCacheRebalancing(GridCacheUtils.MARSH_CACHE_NAME, fut);
 
@@ -320,7 +320,7 @@ public class GridDhtPartitionDemander {
                                 else {
                                     fut.cancel();
 
-                                    return;
+                                    return false;
                                 }
                             }
                         }
@@ -330,7 +330,7 @@ public class GridDhtPartitionDemander {
                                     "[cacheName=" + cctx.name() + ", rebalanceOrder=" + rebalanceOrder + ']');
                                 fut.cancel();
 
-                                return;
+                                return false;
                             }
                         }
                         catch (IgniteCheckedException e) {
@@ -341,10 +341,10 @@ public class GridDhtPartitionDemander {
                     }
 
                     requestPartitions(fut, assigns);
+
+                    return true;
                 }
             });
-
-            thread.start();
         }
         else if (delay > 0) {
             GridTimeoutObject obj = lastTimeoutObj.get();
@@ -444,7 +444,7 @@ public class GridDhtPartitionDemander {
                 }
             }
             else {
-                U.log(log, "Starting rebalancing [cache=" + cctx.name() + ", mode=" + cfg.getRebalanceMode() +
+                U.log(log, "Starting rebalancing (old api) [cache=" + cctx.name() + ", mode=" + cfg.getRebalanceMode() +
                     ", fromNode=" + node.id() + ", partitionsCount=" + d.partitions().size() +
                     ", topology=" + d.topologyVersion() + ", updateSeq=" + d.updateSequence() + "]");
 

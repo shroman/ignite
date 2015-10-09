@@ -17,6 +17,17 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.dht;
 
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicStampedReference;
+import java.util.concurrent.locks.ReentrantLock;
+import javax.cache.CacheException;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteLogger;
 import org.apache.ignite.internal.IgniteInternalFuture;
@@ -46,21 +57,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jsr166.ConcurrentHashMap8;
 import org.jsr166.LongAdder8;
 
-import javax.cache.CacheException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.atomic.AtomicStampedReference;
-import java.util.concurrent.locks.ReentrantLock;
-
 import static org.apache.ignite.IgniteSystemProperties.IGNITE_ATOMIC_CACHE_DELETE_HISTORY_SIZE;
 import static org.apache.ignite.events.EventType.EVT_CACHE_REBALANCE_OBJECT_UNLOADED;
 import static org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionState.EVICTED;
+import static org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionState.EVICTING;
 import static org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionState.MOVING;
 import static org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionState.OWNING;
 import static org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionState.RENTING;
@@ -69,6 +69,9 @@ import static org.apache.ignite.internal.processors.cache.distributed.dht.GridDh
  * Key partition.
  */
 public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>, GridReservable {
+    /** Maximum entries to be cleared at eviction attempt at once. */
+    private final static long EVICTION_CLEAR_LIMIT = 1000;
+
     /** Maximum size for delete queue. */
     public static final int MAX_DELETE_QUEUE_SIZE = Integer.getInteger(IGNITE_ATOMIC_CACHE_DELETE_HISTORY_SIZE,
         200_000);
@@ -426,7 +429,7 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
 
             GridDhtPartitionState s = state.getReference();
 
-            if (s == RENTING || s == EVICTED)
+            if (s == RENTING || s == EVICTING || s == EVICTED)
                 return false;
 
             if (s == OWNING)
@@ -456,7 +459,7 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
 
             GridDhtPartitionState s = state.getReference();
 
-            if (s == RENTING || s == EVICTED)
+            if (s == RENTING || s == EVICTING || s == EVICTED)
                 return rent;
 
             if (state.compareAndSet(s, RENTING, reservations, reservations)) {
@@ -524,13 +527,25 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
      * @return {@code True} if entry has been transitioned to state EVICTED.
      */
     boolean tryEvict(boolean updateSeq) {
-        if (state.getReference() != RENTING || state.getStamp() != 0 || groupReserved())
+        if ((state.getReference() != RENTING && state.getReference() != EVICTING) ||
+            state.getStamp() != 0 || groupReserved())
+            return false;
+
+        if (!state.compareAndSet(RENTING, EVICTING, 0, 0))
             return false;
 
         // Attempt to evict partition entries from cache.
-        clearAll();
+        if (!clearAll(EVICTION_CLEAR_LIMIT)){ //Resend to pool to stop another threads blocking.
+            cctx.closures().callLocalSafe(new GPC<Boolean>() {
+                @Override public Boolean call() {
+                    return tryEvict(true);
+                }
+            }, /*system pool*/ true);
 
-        if (map.isEmpty() && state.compareAndSet(RENTING, EVICTED, 0, 0)) {
+            return false;
+        }
+
+        if (map.isEmpty() && state.compareAndSet(EVICTING, EVICTED, 0, 0)) {
             if (log.isDebugEnabled())
                 log.debug("Evicted partition: " + this);
 
@@ -604,8 +619,10 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
 
     /**
      * Clears values for this partition.
+     * @param limit Clear limit.
+     * @return
      */
-    private void clearAll() {
+    private boolean clearAll(long limit) {
         GridCacheVersion clearVer = cctx.versions().next();
 
         boolean swap = cctx.isSwapOrOffheapEnabled();
@@ -631,8 +648,13 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
                 it = F.concat(it, unswapIt);
         }
 
+        long cnt = 0;
+
         try {
             while (it.hasNext()) {
+                if (limit > 0 && cnt++ > limit)
+                    return false;
+
                 GridDhtCacheEntry cached = null;
 
                 try {
@@ -676,6 +698,8 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
         finally {
             U.close(swapIt, log);
         }
+
+        return true;
     }
 
     /**

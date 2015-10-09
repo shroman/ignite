@@ -224,6 +224,13 @@ class GridDhtPartitionSupplier {
 
                 maxBatchesCnt = 1;
             }
+            else {
+                if (log.isDebugEnabled())
+                    log.debug("Starting supplying rebalancing [cache=" + cctx.name() +
+                        ", fromNode=" + node.id() + ", partitionsCount=" + d.partitions().size() +
+                        ", topology=" + d.topologyVersion() + ", updateSeq=" + d.updateSequence() +
+                        ", idx=" + idx + "]");
+            }
 
             Iterator<Integer> partIt = sctx != null ? sctx.partIt : d.partitions().iterator();
 
@@ -556,6 +563,12 @@ class GridDhtPartitionSupplier {
             scMap.remove(scId);
 
             reply(node, d, s, scId);
+
+            if (log.isDebugEnabled())
+                log.debug("Finished supplying rebalancing [cache=" + cctx.name() +
+                    ", fromNode=" + node.id() +
+                    ", topology=" + d.topologyVersion() + ", updateSeq=" + d.updateSequence() +
+                    ", idx=" + idx + "]");
         }
         catch (IgniteCheckedException e) {
             U.error(log, "Failed to send partition supply message to node: " + id, e);
@@ -578,13 +591,6 @@ class GridDhtPartitionSupplier {
         try {
             if (log.isDebugEnabled())
                 log.debug("Replying to partition demand [node=" + n.id() + ", demand=" + d + ", supply=" + s + ']');
-
-            if (!cctx.affinity().affinityTopologyVersion().equals(d.topologyVersion()) || // Topology already changed.
-                cctx.shared().exchange().hasPendingExchange()) { // New topology pending.
-                clearContext(scMap.remove(scId), log);
-
-                return false;
-            }
 
             cctx.io().sendOrderedMessage(n, d.topic(), s, cctx.ioPolicy(), d.timeout());
 

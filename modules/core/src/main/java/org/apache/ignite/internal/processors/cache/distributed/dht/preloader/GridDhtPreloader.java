@@ -313,7 +313,7 @@ public class GridDhtPreloader extends GridCachePreloaderAdapter {
                         log.debug("Owning partition as there are no other owners: " + part);
                 }
                 else {
-                    ClusterNode n = F.first(picked);
+                    ClusterNode n = F.rand(picked);
 
                     GridDhtPartitionDemandMessage msg = assigns.get(n);
 
@@ -396,15 +396,9 @@ public class GridDhtPreloader extends GridCachePreloaderAdapter {
     }
 
     /** {@inheritDoc} */
-    @Override public void addAssignments(GridDhtPreloaderAssignments assignments, boolean forcePreload) throws IgniteCheckedException {
-        demandLock.writeLock().lock();
-
-        try {
-            demander.addAssignments(assignments, forcePreload);
-        }
-        finally {
-            demandLock.writeLock().unlock();
-        }
+    @Override public void addAssignments(GridDhtPreloaderAssignments assignments,
+        boolean forcePreload) throws IgniteCheckedException {
+        demander.addAssignments(assignments, forcePreload);
     }
 
     /**

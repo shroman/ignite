@@ -22,10 +22,7 @@
 -->
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xmlns:util="http://www.springframework.org/schema/util"
-       xsi:schemaLocation="
-        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
-        http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
     <bean id="grid.cfg" class="org.apache.ignite.configuration.IgniteConfiguration">
         <property name="gridLogger">
             <bean class="org.apache.ignite.logger.log4j.Log4JLogger">
@@ -47,115 +44,68 @@
                         </property>
                     </bean>
                 </property>
+
+                <!--<property name="forceServerMode" value="true"/>-->
             </bean>
         </property>
 
         <property name="cacheConfiguration">
             <list>
-                <bean class="org.apache.ignite.configuration.CacheConfiguration">
-                    <property name="name" value="rebalance1"/>
+                <!--<bean parent="cacheParent">-->
+                    <!--<property name="name" value="rebalance1"/>-->
 
-                    <property name="cacheMode" value="PARTITIONED"/>
+                    <!--<property name="rebalanceBatchesCount" value="1"/>-->
+                <!--</bean>-->
 
-                    <property name="atomicityMode" value="ATOMIC"/>
-
-                    <property name="swapEnabled" value="false"/>
-
-                    <property name="backups" value="1"/>
-
-                    <property name="rebalanceBatchesCount" value="1"/>
-                </bean>
-
-                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                <bean parent="cacheParent">
                     <property name="name" value="rebalance2"/>
-
-                    <property name="cacheMode" value="PARTITIONED"/>
-
-                    <property name="atomicityMode" value="ATOMIC"/>
-
-                    <property name="swapEnabled" value="false"/>
-
-                    <property name="backups" value="1"/>
 
                     <property name="rebalanceBatchesCount" value="2"/>
                 </bean>
 
-                <bean class="org.apache.ignite.configuration.CacheConfiguration">
-                    <property name="name" value="rebalance3"/>
+                <!--<bean parent="cacheParent">-->
+                    <!--<property name="name" value="rebalance2-d"/>-->
 
-                    <property name="cacheMode" value="PARTITIONED"/>
+                    <!--<property name="rebalanceBatchesCount" value="2"/>-->
 
-                    <property name="atomicityMode" value="ATOMIC"/>
+                    <!--<property name="rebalanceDelay" value="20000"/>-->
+                <!--</bean>-->
 
-                    <property name="swapEnabled" value="false"/>
+                <!--<bean parent="cacheParent">-->
+                    <!--<property name="name" value="rebalance3"/>-->
 
-                    <property name="backups" value="1"/>
+                    <!--<property name="rebalanceBatchesCount" value="3"/>-->
+                <!--</bean>-->
 
-                    <property name="rebalanceBatchesCount" value="3"/>
-                </bean>
+                <!--<bean parent="cacheParent">-->
+                    <!--<property name="name" value="rebalance5"/>-->
 
-                <bean class="org.apache.ignite.configuration.CacheConfiguration">
-                    <property name="name" value="rebalance5"/>
+                    <!--<property name="rebalanceBatchesCount" value="5"/>-->
+                <!--</bean>-->
 
-                    <property name="cacheMode" value="PARTITIONED"/>
+                <!--<bean parent="cacheParent">-->
+                    <!--<property name="name" value="rebalance3-1024"/>-->
 
-                    <property name="atomicityMode" value="ATOMIC"/>
+                    <!--<property name="rebalanceBatchesCount" value="3"/>-->
 
-                    <property name="swapEnabled" value="false"/>
+                    <!--<property name="rebalanceBatchSize" value="1024"/>-->
+                <!--</bean>-->
 
-                    <property name="backups" value="1"/>
+                <!--<bean parent="cacheParent">-->
+                    <!--<property name="name" value="rebalance3-10024"/>-->
 
-                    <property name="rebalanceBatchesCount" value="5"/>
-                </bean>
+                    <!--<property name="rebalanceBatchesCount" value="3"/>-->
 
-                <bean class="org.apache.ignite.configuration.CacheConfiguration">
-                    <property name="name" value="rebalance3-1024"/>
+                    <!--<property name="rebalanceBatchSize" value="10024"/>-->
+                <!--</bean>-->
 
-                    <property name="cacheMode" value="PARTITIONED"/>
+                <!--<bean parent="cacheParent">-->
+                    <!--<property name="name" value="rebalance3-100024"/>-->
 
-                    <property name="atomicityMode" value="ATOMIC"/>
+                    <!--<property name="rebalanceBatchesCount" value="3"/>-->
 
-                    <property name="swapEnabled" value="false"/>
-
-                    <property name="backups" value="1"/>
-
-                    <property name="rebalanceBatchesCount" value="3"/>
-
-                    <property name="rebalanceBatchSize" value="1024"/>
-                </bean>
-
-                <bean class="org.apache.ignite.configuration.CacheConfiguration">
-                    <property name="name" value="rebalance3-10024"/>
-
-                    <property name="cacheMode" value="PARTITIONED"/>
-
-                    <property name="atomicityMode" value="ATOMIC"/>
-
-                    <property name="swapEnabled" value="false"/>
-
-                    <property name="backups" value="1"/>
-
-                    <property name="rebalanceBatchesCount" value="3"/>
-
-                    <property name="rebalanceBatchSize" value="10024"/>
-                </bean>
-
-                <bean class="org.apache.ignite.configuration.CacheConfiguration">
-                    <property name="name" value="rebalance3-100024"/>
-
-                    <property name="cacheMode" value="PARTITIONED"/>
-
-                    <property name="atomicityMode" value="ATOMIC"/>
-
-                    <property name="swapEnabled" value="false"/>
-
-                    <property name="backups" value="1"/>
-
-                    <property name="rebalanceBatchesCount" value="3"/>
-
-                    <property name="rebalanceBatchSize" value="100024"/>
-                </bean>
-
+                    <!--<property name="rebalanceBatchSize" value="100024"/>-->
+                <!--</bean>-->
             </list>
         </property>
 
@@ -165,10 +115,20 @@
 
         <property name="warmupClosure" ref="warmupClosure"/>
 
-        <property name="rebalanceThreadPoolSize" value="8"/>
+        <property name="rebalanceThreadPoolSize" value="2"/>
     </bean>
 
     <bean id="warmupClosure" class="org.apache.ignite.startup.BasicWarmupClosure">
 
+    </bean>
+
+    <bean id="cacheParent" class="org.apache.ignite.configuration.CacheConfiguration">
+        <property name="cacheMode" value="PARTITIONED"/>
+
+        <property name="atomicityMode" value="ATOMIC"/>
+
+        <property name="swapEnabled" value="false"/>
+
+        <property name="backups" value="1"/>
     </bean>
 </beans>

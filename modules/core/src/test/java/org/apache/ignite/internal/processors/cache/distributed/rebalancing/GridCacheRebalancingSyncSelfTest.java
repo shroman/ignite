@@ -103,6 +103,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         cacheRCfg.setRebalanceMode(CacheRebalanceMode.SYNC);
         cacheRCfg.setRebalanceBatchSize(1);
         cacheRCfg.setRebalanceBatchesCount(Integer.MAX_VALUE);
+        cacheRCfg.setRebalanceDelay(5000);
 
         CacheConfiguration<Integer, Integer> cacheRCfg2 = new CacheConfiguration<>();
 
@@ -202,6 +203,66 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         long spend = (System.currentTimeMillis() - start) / 1000;
 
         checkData(grid(1), 0, 0);
+
+        log.info("Spend " + spend + " seconds to rebalance entries.");
+
+        stopAllGrids();
+    }
+
+    /**
+     * @throws Exception Exception
+     */
+    public void testLoadRebalancing() throws Exception {
+        final Ignite ignite = startGrid(0);
+
+        startGrid(1);
+
+        generateData(ignite, CACHE_NAME_DHT_PARTITIONED, 0, 0);
+
+        log.info("Preloading started.");
+
+        long start = System.currentTimeMillis();
+
+        concurrentStartFinished = false;
+
+        Thread t1 = new Thread() {
+            @Override public void run() {
+                while (!concurrentStartFinished) {
+                    for (int i = 0; i < 0 + TEST_SIZE; i++) {
+                        if (i % (TEST_SIZE / 10) == 0)
+                            log.info("Prepared " + i * 100 / (TEST_SIZE) + "% entries (" + TEST_SIZE + ").");
+
+                        ignite.cache(CACHE_NAME_DHT_PARTITIONED).put(i, i + CACHE_NAME_DHT_PARTITIONED.hashCode() + 0);
+                    }
+                }
+            }
+        };
+        Thread t2 = new Thread() {
+            @Override public void run() {
+                while (!concurrentStartFinished) {
+                    try {
+                        checkData(ignite, CACHE_NAME_DHT_PARTITIONED, 0, 0);
+                    }
+                    catch (IgniteCheckedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        };
+
+        t1.start();
+        t2.start();
+
+        startGrid(2);
+
+        waitForRebalancing(2, 3);
+
+        concurrentStartFinished = true;
+
+        t1.join();
+        t2.join();
+
+        long spend = (System.currentTimeMillis() - start) / 1000;
 
         log.info("Spend " + spend + " seconds to rebalance entries.");
 
