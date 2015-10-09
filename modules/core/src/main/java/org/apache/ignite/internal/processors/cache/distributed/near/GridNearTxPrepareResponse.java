@@ -140,7 +140,7 @@ public class GridNearTxPrepareResponse extends GridDistributedTxPrepareResponse 
         this.writeVer = writeVer;
         this.retVal = retVal;
         this.clientRemapVer = clientRemapVer;
-        this.depEnabled = depEnabled;
+        this.addDepInfo = depEnabled;
     }
 
     /**

@@ -74,7 +74,7 @@ public class GridNearTxFinishResponse extends GridDistributedTxFinishResponse {
         this.miniId = miniId;
         this.err = err;
 
-        this.depEnabled = false;
+        this.addDepInfo = false;
     }
 
     /** {@inheritDoc} */

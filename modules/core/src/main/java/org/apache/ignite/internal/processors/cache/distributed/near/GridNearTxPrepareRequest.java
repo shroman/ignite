@@ -142,7 +142,7 @@ public class GridNearTxPrepareRequest extends GridDistributedTxPrepareRequest {
         this.subjId = subjId;
         this.taskNameHash = taskNameHash;
         this.firstClientReq = firstClientReq;
-        this.depEnabled = tx.activeCachesDeploymentEnabled();
+        this.addDepInfo = tx.activeCachesDeploymentEnabled();
     }
 
     /**

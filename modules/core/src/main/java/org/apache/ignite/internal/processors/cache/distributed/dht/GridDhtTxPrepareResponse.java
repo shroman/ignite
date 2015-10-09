@@ -94,7 +94,7 @@ public class GridDhtTxPrepareResponse extends GridDistributedTxPrepareResponse {
 
         this.futId = futId;
         this.miniId = miniId;
-        this.depEnabled = depEnabled;
+        this.addDepInfo = depEnabled;
     }
 
     /**
@@ -113,7 +113,7 @@ public class GridDhtTxPrepareResponse extends GridDistributedTxPrepareResponse {
 
         this.futId = futId;
         this.miniId = miniId;
-        this.depEnabled = depEnabled;
+        this.addDepInfo = depEnabled;
     }
 
     /**

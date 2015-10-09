@@ -69,7 +69,7 @@ public class GridDhtTxFinishResponse extends GridDistributedTxFinishResponse {
         assert miniId != null;
 
         this.miniId = miniId;
-        this.depEnabled = depEnabled;
+        this.addDepInfo = depEnabled;
     }
 
     /**

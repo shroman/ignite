@@ -121,7 +121,7 @@ public class GridNearTxFinishRequest extends GridDistributedTxFinishRequest {
         this.topVer = topVer;
         this.subjId = subjId;
         this.taskNameHash = taskNameHash;
-        this.depEnabled = depEnabled;
+        this.addDepInfo = depEnabled;
     }
 
     /**

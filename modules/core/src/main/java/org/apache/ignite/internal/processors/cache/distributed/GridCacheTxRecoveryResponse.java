@@ -65,7 +65,7 @@ public class GridCacheTxRecoveryResponse extends GridDistributedBaseMessage {
         this.miniId = miniId;
         this.success = success;
 
-        this.depEnabled = false;
+        this.addDepInfo = false;
     }
 
     /**

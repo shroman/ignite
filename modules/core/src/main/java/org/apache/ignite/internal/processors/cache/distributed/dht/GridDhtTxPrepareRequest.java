@@ -146,7 +146,7 @@ public class GridDhtTxPrepareRequest extends GridDistributedTxPrepareRequest {
         this.last = last;
         this.subjId = subjId;
         this.taskNameHash = taskNameHash;
-        this.depEnabled = depEnabled;
+        this.addDepInfo = depEnabled;
 
         invalidateNearEntries = new BitSet(dhtWrites == null ? 0 : dhtWrites.size());
 

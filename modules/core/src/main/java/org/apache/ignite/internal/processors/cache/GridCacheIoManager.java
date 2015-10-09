@@ -56,8 +56,6 @@ import org.apache.ignite.internal.processors.cache.distributed.near.GridNearTxPr
 import org.apache.ignite.internal.util.F0;
 import org.apache.ignite.internal.util.GridLeanSet;
 import org.apache.ignite.internal.util.GridSpinReadWriteLock;
-import org.apache.ignite.internal.util.future.GridFinishedFuture;
-import org.apache.ignite.internal.util.lang.GridPlainRunnable;
 import org.apache.ignite.internal.util.typedef.CI1;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.P1;
@@ -550,8 +548,8 @@ public class GridCacheIoManager extends GridCacheSharedManagerAdapter {
             if (depEnabled) {
                 boolean depEnabled0;
 
-                if (msg.deploymentEnabled() != null)
-                    depEnabled0 = msg.deploymentEnabled();
+                if (msg.addDeploymentInfo() != null)
+                    depEnabled0 = msg.addDeploymentInfo();
                 else {
                     GridCacheContext ctx = cctx.cacheContext(msg.cacheId());
 

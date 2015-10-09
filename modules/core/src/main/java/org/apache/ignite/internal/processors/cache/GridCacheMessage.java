@@ -81,7 +81,7 @@ public abstract class GridCacheMessage implements Message {
      *  If the flag is not set use {@link GridCacheMessage#cacheId} to find out this information.
      */
     @GridDirectTransient
-    protected Boolean depEnabled;
+    protected Boolean addDepInfo;
 
     /**
      * @return Error, if any.
@@ -188,8 +188,8 @@ public abstract class GridCacheMessage implements Message {
      * in this message. Returns {@code null} if the flag hasn't been explicitly specified and {@link #cacheId()} has
      * to be use to find out whether deployment is enabled for a cache or not.
      */
-    public Boolean deploymentEnabled() {
-        return depEnabled;
+    public Boolean addDeploymentInfo() {
+        return addDepInfo;
     }
 
     /**

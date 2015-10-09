@@ -159,7 +159,7 @@ public class GridDhtTxFinishRequest extends GridDistributedTxFinishRequest {
         this.sysInvalidate = sysInvalidate;
         this.subjId = subjId;
         this.taskNameHash = taskNameHash;
-        this.depEnabled = depEnabled;
+        this.addDepInfo = depEnabled;
     }
 
     /**
