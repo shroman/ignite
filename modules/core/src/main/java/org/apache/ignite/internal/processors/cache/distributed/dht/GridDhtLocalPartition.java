@@ -545,6 +545,10 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
             return false;
         }
 
+        while (!map.isEmpty()) {
+            clearAll(0);
+        }
+
         if (map.isEmpty() && state.compareAndSet(EVICTING, EVICTED, 0, 0)) {
             if (log.isDebugEnabled())
                 log.debug("Evicted partition: " + this);
