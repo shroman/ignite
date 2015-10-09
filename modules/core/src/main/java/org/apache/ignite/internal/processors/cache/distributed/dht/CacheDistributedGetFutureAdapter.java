@@ -159,6 +159,8 @@ public abstract class CacheDistributedGetFutureAdapter<K, V> extends GridCompoun
     @SuppressWarnings("unchecked")
     protected final void resultClosureValue(KeyCacheObject key, Object val, GridCacheVersion ver) {
         assert resC != null;
+        assert val != null;
+        assert !needVer || ver != null;
 
         ResultClosureReducer<K, V> rdc = (ResultClosureReducer)reducer();
 

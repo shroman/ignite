@@ -1647,9 +1647,6 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
         if (log.isDebugEnabled())
             log.debug("Loading missed values for missed map: " + missedMap);
 
-        final Collection<KeyCacheObject> loaded =
-            readCommitted() ? U.<KeyCacheObject>newHashSet(missedMap.size()) : null;
-
         final boolean needReadVer = optimistic() && serializable();
 
         return new GridEmbeddedFuture<>(
@@ -1706,13 +1703,15 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                             cacheCtx.evicts().touch(e, topologyVersion());
 
                             if (visibleVal != null) {
-                                cacheCtx.addResult(map,
-                                    key,
-                                    visibleVal,
-                                    skipVals,
-                                    keepCacheObjects,
-                                    deserializePortable,
-                                    false);
+                                synchronized (map) {
+                                    cacheCtx.addResult(map,
+                                        key,
+                                        visibleVal,
+                                        skipVals,
+                                        keepCacheObjects,
+                                        deserializePortable,
+                                        false);
+                                }
                             }
                         }
                         else {
@@ -1727,18 +1726,17 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                             }
 
                             if (visibleVal != null) {
-                                cacheCtx.addResult(map,
-                                    key,
-                                    visibleVal,
-                                    skipVals,
-                                    keepCacheObjects,
-                                    deserializePortable,
-                                    false);
+                                synchronized (map) {
+                                    cacheCtx.addResult(map,
+                                        key,
+                                        visibleVal,
+                                        skipVals,
+                                        keepCacheObjects,
+                                        deserializePortable,
+                                        false);
+                                }
                             }
                         }
-
-                        if (readCommitted())
-                            loaded.add(key);
                     }
                 })
         );
