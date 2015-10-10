@@ -53,7 +53,6 @@ import org.apache.ignite.internal.processors.cache.GridCacheEntryEx;
 import org.apache.ignite.internal.processors.cache.GridCacheEntryInfo;
 import org.apache.ignite.internal.processors.cache.GridCacheEntryRemovedException;
 import org.apache.ignite.internal.processors.cache.GridCachePartitionExchangeManager;
-import org.apache.ignite.internal.processors.cache.GridCacheUtils;
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtInvalidPartitionException;
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtLocalPartition;
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionTopology;
@@ -66,7 +65,6 @@ import org.apache.ignite.internal.util.tostring.GridToStringInclude;
 import org.apache.ignite.internal.util.typedef.CI1;
 import org.apache.ignite.internal.util.typedef.CI2;
 import org.apache.ignite.internal.util.typedef.T2;
-import org.apache.ignite.internal.util.typedef.internal.CU;
 import org.apache.ignite.internal.util.typedef.internal.LT;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
@@ -224,8 +222,10 @@ public class GridDhtPartitionDemander {
         try {
             SyncFuture wFut = (SyncFuture)cctx.kernalContext().cache().internalCache(name).preloader().syncFuture();
 
-            if (!topologyChanged(fut))
-                wFut.get();
+            if (!topologyChanged(fut)) {
+                if (!wFut.get())
+                    fut.cancel();
+            }
             else {
                 fut.cancel();
             }
@@ -247,10 +247,11 @@ public class GridDhtPartitionDemander {
     /**
      * @param assigns Assignments.
      * @param force {@code True} if dummy reassign.
+     * @param caches Rebalancing of these caches will be finished before this started.
      * @throws IgniteCheckedException Exception
      */
-
-    void addAssignments(final GridDhtPreloaderAssignments assigns, boolean force) throws IgniteCheckedException {
+    Callable addAssignments(final GridDhtPreloaderAssignments assigns, boolean force, final Collection<String> caches)
+        throws IgniteCheckedException {
         if (log.isDebugEnabled())
             log.debug("Adding partition assignments: " + assigns);
 
@@ -261,9 +262,9 @@ public class GridDhtPartitionDemander {
 
             final SyncFuture oldFut = syncFut;
 
-            final SyncFuture fut = new SyncFuture(assigns, cctx, log, oldFut.isDummy(), ++updateSeq);
+            final SyncFuture fut = new SyncFuture(assigns, cctx, log, oldFut.isInitial(), ++updateSeq);
 
-            if (!oldFut.isDummy())
+            if (!oldFut.isInitial())
                 oldFut.cancel();
             else
                 fut.listen(new CI1<IgniteInternalFuture<Boolean>>() {
@@ -279,72 +280,36 @@ public class GridDhtPartitionDemander {
 
                 fut.cancel();
 
-                return;
+                return null;
             }
 
             if (assigns.isEmpty()) {
                 fut.doneIfEmpty();
 
-                return;
+                return null;
             }
 
             if (topologyChanged(fut)) {
                 fut.cancel();
 
-                return;
+                return null;
             }
 
-            cctx.closures().callLocalSafe(new Callable<Boolean>() {
-                @Override public Boolean call() {
-                    if (!CU.isMarshallerCache(cctx.name())) {
-                        waitForCacheRebalancing(GridCacheUtils.MARSH_CACHE_NAME, fut);
+            return new Callable<Boolean>() {
+                @Override
+                public Boolean call() {
+                    for (String c : caches) {
+                        waitForCacheRebalancing(c, fut);
 
-                        if (!CU.isUtilityCache(cctx.name())) {
-                            waitForCacheRebalancing(GridCacheUtils.UTILITY_CACHE_NAME, fut);
-                        }
-                    }
-
-                    int rebalanceOrder = cctx.config().getRebalanceOrder();
-
-                    if (rebalanceOrder > 0) {
-                        IgniteInternalFuture<?> oFut = cctx.kernalContext().cache().orderedPreloadFuture(rebalanceOrder);
-
-                        try {
-                            if (oFut != null) {
-                                if (log.isDebugEnabled())
-                                    log.debug("Waiting for dependant caches rebalance [cacheName=" + cctx.name() +
-                                        ", rebalanceOrder=" + rebalanceOrder + ']');
-
-                                if (!topologyChanged(fut))
-                                    oFut.get();
-                                else {
-                                    fut.cancel();
-
-                                    return false;
-                                }
-                            }
-                        }
-                        catch (IgniteInterruptedCheckedException ignored) {
-                            if (log.isDebugEnabled()) {
-                                log.debug("Failed to wait for ordered rebalance future (grid is stopping): " +
-                                    "[cacheName=" + cctx.name() + ", rebalanceOrder=" + rebalanceOrder + ']');
-                                fut.cancel();
-
-                                return false;
-                            }
-                        }
-                        catch (IgniteCheckedException e) {
-                            fut.cancel();
-
-                            throw new Error("Ordered rebalance future should never fail: " + e.getMessage(), e);
-                        }
+                        if (fut.isDone())
+                            return false;
                     }
 
                     requestPartitions(fut, assigns);
 
                     return true;
                 }
-            });
+            };
         }
         else if (delay > 0) {
             GridTimeoutObject obj = lastTimeoutObj.get();
@@ -370,6 +335,8 @@ public class GridDhtPartitionDemander {
 
             cctx.time().addTimeoutObject(obj);
         }
+
+        return null;
     }
 
     /**
@@ -843,9 +810,9 @@ public class GridDhtPartitionDemander {
         }
 
         /**
-         * @return Is dummy (created at demander creation).
+         * @return Is initial (created at demander creation).
          */
-        private boolean isDummy() {
+        private boolean isInitial() {
             return topVer == null;
         }
 

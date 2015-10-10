@@ -21,11 +21,17 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -74,6 +80,7 @@ import org.apache.ignite.internal.util.worker.GridWorker;
 import org.apache.ignite.lang.IgniteBiInClosure;
 import org.apache.ignite.lang.IgniteUuid;
 import org.apache.ignite.thread.IgniteThread;
+import org.apache.ignite.thread.IgniteThreadFactory;
 import org.jetbrains.annotations.Nullable;
 import org.jsr166.ConcurrentHashMap8;
 
@@ -133,6 +140,9 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
 
     /** */
     private GridFutureAdapter<?> reconnectExchangeFut;
+
+    /** */
+    private ExecutorService rebalancingOrderedExecutorService;
 
     /**
      * Partition map futures.
@@ -248,6 +258,9 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
     /** {@inheritDoc} */
     @Override protected void start0() throws IgniteCheckedException {
         super.start0();
+
+        rebalancingOrderedExecutorService = Executors.newSingleThreadExecutor(
+                new IgniteThreadFactory(cctx.gridName(), "rebalancing-assigns"));
 
         exchWorker = new ExchangeWorker();
 
@@ -452,6 +465,8 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
     @SuppressWarnings("LockAcquiredButNotSafelyReleased")
     @Override protected void stop0(boolean cancel) {
         super.stop0(cancel);
+
+        rebalancingOrderedExecutorService.shutdownNow();
 
         // Do not allow any activity in exchange manager after stop.
         busyLock.writeLock().lock();
@@ -1263,27 +1278,21 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
                     }
 
                     if (assignsMap != null) {
+                        NavigableMap<Integer, List<Integer>> orderMap = new TreeMap<>();
+
                         //Marshaller cache first.
                         int mId = CU.cacheId(GridCacheUtils.MARSH_CACHE_NAME);
 
-                        GridDhtPreloaderAssignments mA = assignsMap.get(mId);
+                        orderMap.put(-2, new ArrayList<Integer>(1));
 
-                        assert mA != null;
-
-                        GridCacheContext<K, V> mCacheCtx = cctx.cacheContext(mId);
-
-                        mCacheCtx.preloader().addAssignments(mA, forcePreload);
+                        orderMap.get(-2).add(mId);
 
                         //Utility cache second.
                         int uId = CU.cacheId(GridCacheUtils.UTILITY_CACHE_NAME);
 
-                        GridDhtPreloaderAssignments uA = assignsMap.get(uId);
+                        orderMap.put(-1, new ArrayList<Integer>(1));
 
-                        assert uA != null;
-
-                        GridCacheContext<K, V> uCacheCtx = cctx.cacheContext(uId);
-
-                        uCacheCtx.preloader().addAssignments(uA, forcePreload);
+                        orderMap.get(-1).add(uId);
 
                         //Others.
                         for (Map.Entry<Integer, GridDhtPreloaderAssignments> e : assignsMap.entrySet()) {
@@ -1292,7 +1301,37 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
                             if (cacheId != uId && cacheId != mId) {
                                 GridCacheContext<K, V> cacheCtx = cctx.cacheContext(cacheId);
 
-                                cacheCtx.preloader().addAssignments(e.getValue(), forcePreload);
+                                int order = cacheCtx.config().getRebalanceOrder();
+
+                                if (orderMap.get(order) == null)
+                                    orderMap.put(order, new LinkedList<Integer>());
+
+                                orderMap.get(order).add(cacheId);
+                            }
+                        }
+
+                        //Ordered rebalance scheduling.
+                        for (Integer order : orderMap.keySet()) {
+                            for (Integer cacheId : orderMap.get(order)) {
+                                GridCacheContext<K, V> cacheCtx = cctx.cacheContext(cacheId);
+
+                                List<String> waitList = new LinkedList<>();
+
+                                for (List<Integer> cIds : orderMap.headMap(order).values()) {
+                                    for (Integer cId : cIds) {
+                                        waitList.add(cctx.cacheContext(cId).name());
+                                    }
+                                }
+
+                                Callable c = cacheCtx.preloader().addAssignments(
+                                        assignsMap.get(cacheId), forcePreload, waitList);
+
+                                if (c != null) {
+                                    U.log(log, "Rebalancing scheduled: [cache=" + cacheCtx.name() +
+                                            " , waitList=" + waitList.toString() + "]");
+
+                                    rebalancingOrderedExecutorService.submit(c);
+                                }
                             }
                         }
                     }

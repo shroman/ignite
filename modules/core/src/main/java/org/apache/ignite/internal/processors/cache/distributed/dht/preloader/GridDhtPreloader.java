@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -396,9 +397,9 @@ public class GridDhtPreloader extends GridCachePreloaderAdapter {
     }
 
     /** {@inheritDoc} */
-    @Override public void addAssignments(GridDhtPreloaderAssignments assignments,
-        boolean forcePreload) throws IgniteCheckedException {
-        demander.addAssignments(assignments, forcePreload);
+    @Override public Callable addAssignments(GridDhtPreloaderAssignments assignments,
+        boolean forcePreload, Collection<String> caches) throws IgniteCheckedException {
+        return demander.addAssignments(assignments, forcePreload, caches);
     }
 
     /**

@@ -53,6 +53,6 @@ public enum GridDhtPartitionState {
      * @return {@code True} if state is active or owning.
      */
     public boolean active() {
-        return this != EVICTED;
+        return this != EVICTED && this != EVICTING;
     }
 }

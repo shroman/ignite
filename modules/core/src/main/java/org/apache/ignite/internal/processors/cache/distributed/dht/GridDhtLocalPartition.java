@@ -154,7 +154,8 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
      * @return {@code false} If such reservation already added.
      */
     public boolean addReservation(GridDhtPartitionsReservation r) {
-        assert state.getReference() != EVICTED : "we can reserve only active partitions";
+        assert state.getReference() != EVICTED && state.getReference() != EVICTING :
+            "we can reserve only active partitions";
         assert state.getStamp() != 0 : "partition must be already reserved before adding group reservation";
 
         return reservations.addIfAbsent(r);
@@ -260,7 +261,7 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
     void onAdded(GridDhtCacheEntry entry) {
         GridDhtPartitionState state = state();
 
-        if (state == EVICTED)
+        if (state == EVICTED || state == EVICTING)
             throw new GridDhtInvalidPartitionException(id, "Adding entry to invalid partition [part=" + id + ']');
 
         map.put(entry.key(), entry);
@@ -389,7 +390,7 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
 
             GridDhtPartitionState s = state.getReference();
 
-            if (s == EVICTED)
+            if (s == EVICTED || s == EVICTING)
                 return false;
 
             if (state.compareAndSet(s, s, reservations, reservations + 1))
@@ -568,9 +569,8 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
 
             return true;
         }
-        else {
-            assert false : "expected EVICTING state";
-        }
+
+        assert false : "expected EVICTING state";
 
         return false;
     }

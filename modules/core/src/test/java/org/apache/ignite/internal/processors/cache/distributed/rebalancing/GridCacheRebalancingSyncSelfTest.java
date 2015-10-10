@@ -88,6 +88,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         cachePCfg.setBackups(1);
         cachePCfg.setRebalanceBatchSize(1);
         cachePCfg.setRebalanceBatchesCount(1);
+        cachePCfg.setRebalanceOrder(2);
 
         CacheConfiguration<Integer, Integer> cachePCfg2 = new CacheConfiguration<>();
 
@@ -95,6 +96,8 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         cachePCfg2.setCacheMode(CacheMode.PARTITIONED);
         cachePCfg2.setRebalanceMode(CacheRebalanceMode.SYNC);
         cachePCfg2.setBackups(1);
+        cachePCfg2.setRebalanceOrder(2);
+      //  cachePCfg2.setRebalanceDelay(5000);
 
         CacheConfiguration<Integer, Integer> cacheRCfg = new CacheConfiguration<>();
 
@@ -103,13 +106,13 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         cacheRCfg.setRebalanceMode(CacheRebalanceMode.SYNC);
         cacheRCfg.setRebalanceBatchSize(1);
         cacheRCfg.setRebalanceBatchesCount(Integer.MAX_VALUE);
-        cacheRCfg.setRebalanceDelay(5000);
 
         CacheConfiguration<Integer, Integer> cacheRCfg2 = new CacheConfiguration<>();
 
         cacheRCfg2.setName(CACHE_NAME_DHT_REPLICATED_2);
         cacheRCfg2.setCacheMode(CacheMode.REPLICATED);
         cacheRCfg2.setRebalanceMode(CacheRebalanceMode.SYNC);
+        cacheRCfg2.setRebalanceOrder(4);
 
         iCfg.setCacheConfiguration(cachePCfg, cachePCfg2, cacheRCfg, cacheRCfg2);
 
@@ -356,6 +359,12 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
                         U.sleep(10);
                     }
 
+                    waitForRebalancing(0, 5, 0);
+                    waitForRebalancing(1, 5, 0);
+                    waitForRebalancing(2, 5, 0);
+                    waitForRebalancing(3, 5, 0);
+                    waitForRebalancing(4, 5, 0);
+
                     awaitPartitionMapExchange();
 
                     //New cache should start rebalancing.
@@ -409,6 +418,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         t2.join();
         t3.join();
 
+        waitForRebalancing(0, 5, 1);
         waitForRebalancing(1, 5, 1);
         waitForRebalancing(2, 5, 1);
         waitForRebalancing(3, 5, 1);
