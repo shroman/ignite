@@ -32,9 +32,6 @@ public enum GridDhtPartitionState {
     /** This node is neither primary or back up owner. */
     RENTING,
 
-    /** Partition eviction from cache in progress. */
-    EVICTING,
-
     /** Partition has been evicted from cache. */
     EVICTED;
 
@@ -53,6 +50,6 @@ public enum GridDhtPartitionState {
      * @return {@code True} if state is active or owning.
      */
     public boolean active() {
-        return this != EVICTED && this != EVICTING;
+        return this != EVICTED;
     }
 }
