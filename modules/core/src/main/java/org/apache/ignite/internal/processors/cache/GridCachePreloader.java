@@ -95,9 +95,10 @@ public interface GridCachePreloader {
      * @param assignments Assignments to add.
      * @param forcePreload Force preload flag.
      * @param caches Rebalancing of these caches will be finished before this started.
+     * @param cnt Counter.
      */
-    public Callable addAssignments(GridDhtPreloaderAssignments assignments, boolean forcePreload, Collection<String> caches)
-            throws IgniteCheckedException;
+    public Callable addAssignments(GridDhtPreloaderAssignments assignments, boolean forcePreload,
+        Collection<String> caches, int cnt) throws IgniteCheckedException;
 
     /**
      * @param p Preload predicate.

@@ -398,8 +398,8 @@ public class GridDhtPreloader extends GridCachePreloaderAdapter {
 
     /** {@inheritDoc} */
     @Override public Callable addAssignments(GridDhtPreloaderAssignments assignments,
-        boolean forcePreload, Collection<String> caches) throws IgniteCheckedException {
-        return demander.addAssignments(assignments, forcePreload, caches);
+        boolean forcePreload, Collection<String> caches, int cnt) throws IgniteCheckedException {
+        return demander.addAssignments(assignments, forcePreload, caches, cnt);
     }
 
     /**

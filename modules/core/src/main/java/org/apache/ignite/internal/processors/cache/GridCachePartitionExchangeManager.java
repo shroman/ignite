@@ -1161,8 +1161,12 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
 
             boolean startEvtFired = false;
 
+            int cnt = 0;
+
             while (!isCancelled()) {
                 GridDhtPartitionsExchangeFuture exchFut = null;
+
+                cnt++;
 
                 try {
                     boolean preloadFinished = true;
@@ -1324,7 +1328,7 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
                                 }
 
                                 Callable c = cacheCtx.preloader().addAssignments(
-                                        assignsMap.get(cacheId), forcePreload, waitList);
+                                        assignsMap.get(cacheId), forcePreload, waitList, cnt);
 
                                 if (c != null) {
                                     U.log(log, "Rebalancing scheduled: [cache=" + cacheCtx.name() +

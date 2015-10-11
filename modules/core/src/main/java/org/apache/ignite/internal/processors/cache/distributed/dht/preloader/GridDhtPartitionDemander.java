@@ -108,9 +108,6 @@ public class GridDhtPartitionDemander {
     /** Demand lock. */
     private final ReadWriteLock demandLock;
 
-    /** Rebalancing iteration counter. */
-    private long updateSeq = 0;
-
     /**
      * @param cctx Cctx.
      * @param demandLock Demand lock.
@@ -222,7 +219,7 @@ public class GridDhtPartitionDemander {
         try {
             SyncFuture wFut = (SyncFuture)cctx.kernalContext().cache().internalCache(name).preloader().syncFuture();
 
-            if (!topologyChanged(fut)) {
+            if (!topologyChanged(fut) && wFut.updateSeq == fut.updateSeq) {
                 if (!wFut.get())
                     fut.cancel();
             }
@@ -232,7 +229,7 @@ public class GridDhtPartitionDemander {
         }
         catch (IgniteInterruptedCheckedException ignored) {
             if (log.isDebugEnabled()) {
-                log.debug("Failed to wait for " + name + " cache rebalancing future (grid is stopping): " +
+                log.debug("Failed to wait for " + name +
                     "[cacheName=" + cctx.name() + ']');
                 fut.cancel();
             }
@@ -248,10 +245,11 @@ public class GridDhtPartitionDemander {
      * @param assigns Assignments.
      * @param force {@code True} if dummy reassign.
      * @param caches Rebalancing of these caches will be finished before this started.
+     * @param cnt Counter.
      * @throws IgniteCheckedException Exception
      */
-    Callable addAssignments(final GridDhtPreloaderAssignments assigns, boolean force, final Collection<String> caches)
-        throws IgniteCheckedException {
+    Callable addAssignments(final GridDhtPreloaderAssignments assigns, boolean force, final Collection<String> caches,
+        int cnt) throws IgniteCheckedException {
         if (log.isDebugEnabled())
             log.debug("Adding partition assignments: " + assigns);
 
@@ -262,7 +260,7 @@ public class GridDhtPartitionDemander {
 
             final SyncFuture oldFut = syncFut;
 
-            final SyncFuture fut = new SyncFuture(assigns, cctx, log, oldFut.isInitial(), ++updateSeq);
+            final SyncFuture fut = new SyncFuture(assigns, cctx, log, oldFut.isInitial(), cnt);
 
             if (!oldFut.isInitial())
                 oldFut.cancel();
