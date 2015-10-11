@@ -73,8 +73,6 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
     @Override protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
         IgniteConfiguration iCfg = super.getConfiguration(gridName);
 
-        iCfg.setRebalanceThreadPoolSize(2);
-
         ((TcpDiscoverySpi)iCfg.getDiscoverySpi()).setIpFinder(ipFinder);
         ((TcpDiscoverySpi)iCfg.getDiscoverySpi()).setForceServerMode(true);
 
@@ -116,6 +114,9 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         cacheRCfg2.setRebalanceOrder(4);
 
         iCfg.setCacheConfiguration(cachePCfg, cachePCfg2, cacheRCfg, cacheRCfg2);
+
+        iCfg.setRebalanceThreadPoolSize(2);
+        iCfg.setSystemThreadPoolSize(128); // Shmem fix.
 
         return iCfg;
     }
