@@ -696,13 +696,18 @@ class GridDhtPartitionSupplier {
 
     @Deprecated//Backward compatibility. To be removed in future.
     public void startOldListeners() {
-        if (!cctx.kernalContext().clientNode() && cctx.rebalanceEnabled()) {
+        try {
+            if (!cctx.kernalContext().clientNode() && cctx.rebalanceEnabled()) {
 
-            cctx.io().addHandler(cctx.cacheId(), GridDhtPartitionDemandMessage.class, new CI2<UUID, GridDhtPartitionDemandMessage>() {
-                @Override public void apply(UUID id, GridDhtPartitionDemandMessage m) {
-                    processOldDemandMessage(m, id);
-                }
-            });
+                cctx.io().addHandler(cctx.cacheId(), GridDhtPartitionDemandMessage.class, new CI2<UUID, GridDhtPartitionDemandMessage>() {
+                    @Override public void apply(UUID id, GridDhtPartitionDemandMessage m) {
+                        processOldDemandMessage(m, id);
+                    }
+                });
+            }
+        }
+        catch (Exception ex) {
+            U.error(log, "Unable to start backward compatibility rebalancing lixteners", ex);
         }
     }
 
