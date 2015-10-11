@@ -313,18 +313,19 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         }
     }
 
-    public void _test() throws Exception {
-        testTimeout = Integer.MAX_VALUE;
-
-        while (true) {
-            testComplexRebalancing();
-
-            U.sleep(5000);
-
-            System.gc();
-
-        }
-    }
+//    static{
+//        testTimeout = Integer.MAX_VALUE;
+//    }
+//    public void test() throws Exception {
+//        while (true) {
+//            testComplexRebalancing();
+//
+//            U.sleep(5000);
+//
+//            System.gc();
+//
+//        }
+//    }
 
     @Override protected long getTestTimeout() {
         return testTimeout;

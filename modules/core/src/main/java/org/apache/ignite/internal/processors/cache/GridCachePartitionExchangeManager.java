@@ -1291,18 +1291,20 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
 
                         orderMap.get(-2).add(mId);
 
-                        //Utility cache second.
+                        //Utility & atomic cache second.
                         int uId = CU.cacheId(GridCacheUtils.UTILITY_CACHE_NAME);
+                        int aId = CU.cacheId(GridCacheUtils.ATOMICS_CACHE_NAME);
 
-                        orderMap.put(-1, new ArrayList<Integer>(1));
+                        orderMap.put(-1, new ArrayList<Integer>(2));
 
                         orderMap.get(-1).add(uId);
+                        orderMap.get(-1).add(aId);
 
                         //Others.
                         for (Map.Entry<Integer, GridDhtPreloaderAssignments> e : assignsMap.entrySet()) {
                             int cacheId = e.getKey();
 
-                            if (cacheId != uId && cacheId != mId) {
+                            if (cacheId != uId && cacheId != mId && cacheId != aId) {
                                 GridCacheContext<K, V> cacheCtx = cctx.cacheContext(cacheId);
 
                                 int order = cacheCtx.config().getRebalanceOrder();
