@@ -97,7 +97,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         cachePCfg2.setRebalanceMode(CacheRebalanceMode.SYNC);
         cachePCfg2.setBackups(1);
         cachePCfg2.setRebalanceOrder(2);
-      //  cachePCfg2.setRebalanceDelay(5000);
+      //cachePCfg2.setRebalanceDelay(5000);//Known issue, deadlock in case of low priority rebalancing delay.
 
         CacheConfiguration<Integer, Integer> cacheRCfg = new CacheConfiguration<>();
 
