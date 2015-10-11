@@ -74,7 +74,7 @@ public class CacheConfiguration<K, V> extends MutableConfiguration<K, V> {
     public static final long DFLT_REBALANCE_TIMEOUT = 10000;
 
     /** Default rebalance batches count. */
-    public static final long DFLT_REBALANCE_BATCHES_COUNT = 3;
+    public static final long DFLT_REBALANCE_BATCHES_COUNT = 2;
 
     /** Time in milliseconds to wait between rebalance messages to avoid overloading CPU. */
     public static final long DFLT_REBALANCE_THROTTLE = 0;
