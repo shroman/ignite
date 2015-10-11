@@ -67,6 +67,8 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
     /** */
     private volatile boolean concurrentStartFinished3;
 
+    private static long testTimeout = 5 * 60_000;
+
     /** {@inheritDoc} */
     @Override protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
         IgniteConfiguration iCfg = super.getConfiguration(gridName);
@@ -312,6 +314,8 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
     }
 
     public void _test() throws Exception {
+        testTimeout = Integer.MAX_VALUE;
+
         while (true) {
             testComplexRebalancing();
 
@@ -323,7 +327,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
     }
 
     @Override protected long getTestTimeout() {
-        return Long.MAX_VALUE;
+        return testTimeout;
     }
 
     /**
