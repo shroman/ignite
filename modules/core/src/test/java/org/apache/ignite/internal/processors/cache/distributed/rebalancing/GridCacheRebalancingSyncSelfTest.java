@@ -113,7 +113,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         cacheRCfg2.setName(CACHE_NAME_DHT_REPLICATED_2);
         cacheRCfg2.setCacheMode(CacheMode.REPLICATED);
         cacheRCfg2.setRebalanceMode(CacheRebalanceMode.SYNC);
-        cacheRCfg2.setRebalanceOrder(4);
+        cacheRCfg2.setRebalanceOrder(2);
 
         iCfg.setCacheConfiguration(cachePCfg, cachePCfg2, cacheRCfg, cacheRCfg2);
         iCfg.setSystemThreadPoolSize(128); // Shmem blocking fix.
