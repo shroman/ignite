@@ -314,7 +314,7 @@ public class GridDhtPreloader extends GridCachePreloaderAdapter {
                         log.debug("Owning partition as there are no other owners: " + part);
                 }
                 else {
-                    ClusterNode n = F.first(picked);
+                    ClusterNode n = F.rand(picked);
 
                     GridDhtPartitionDemandMessage msg = assigns.get(n);
 
