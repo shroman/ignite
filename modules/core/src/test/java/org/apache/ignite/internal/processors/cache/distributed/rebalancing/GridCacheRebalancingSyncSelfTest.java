@@ -21,7 +21,6 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCheckedException;
-import org.apache.ignite.IgniteDataStreamer;
 import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.cache.CacheRebalanceMode;
 import org.apache.ignite.configuration.CacheConfiguration;
@@ -97,7 +96,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         cachePCfg2.setRebalanceMode(CacheRebalanceMode.SYNC);
         cachePCfg2.setBackups(1);
         cachePCfg2.setRebalanceOrder(2);
-      //cachePCfg2.setRebalanceDelay(5000);//Known issue, deadlock in case of low priority rebalancing delay.
+        //cachePCfg2.setRebalanceDelay(5000);//Known issue, deadlock in case of low priority rebalancing delay.
 
         CacheConfiguration<Integer, Integer> cacheRCfg = new CacheConfiguration<>();
 
@@ -133,17 +132,11 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
      * @param ignite Ignite.
      */
     protected void generateData(Ignite ignite, String name, int from, int iter) {
-        try (IgniteDataStreamer<Integer, Integer> stmr = ignite.dataStreamer(name)) {
-            stmr.allowOverwrite(true);
+        for (int i = from; i < from + TEST_SIZE; i++) {
+            if (i % (TEST_SIZE / 10) == 0)
+                log.info("Prepared " + i * 100 / (TEST_SIZE) + "% entries (" + TEST_SIZE + ").");
 
-            for (int i = from; i < from + TEST_SIZE; i++) {
-                if (i % (TEST_SIZE / 10) == 0)
-                    log.info("Prepared " + i * 100 / (TEST_SIZE) + "% entries (" + TEST_SIZE + ").");
-
-                stmr.addData(i, i + name.hashCode() + iter);
-            }
-
-            stmr.flush();
+            ignite.cache(name).put(i, i + name.hashCode() + iter);
         }
     }
 
