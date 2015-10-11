@@ -115,7 +115,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
 
         iCfg.setCacheConfiguration(cachePCfg, cachePCfg2, cacheRCfg, cacheRCfg2);
 
-        iCfg.setRebalanceThreadPoolSize(2);
+        iCfg.setRebalanceThreadPoolSize(1);
         iCfg.setSystemThreadPoolSize(128); // Shmem fix.
 
         return iCfg;
