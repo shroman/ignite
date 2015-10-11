@@ -487,8 +487,7 @@ public class GridDhtPartitionDemander {
 
         assert node != null;
 
-        if (//!fut.topologyVersion().equals(topVer) || // Current future based on another topology.
-            !fut.isActual(supply.updateSequence())) // Current future have same topology, but another update sequence.
+        if (!fut.isActual(supply.updateSequence())) // Current future have another update sequence.
             return; // Supple message based on another future.
 
         if (topologyChanged(fut)) { // Topology already changed (for the future that supply message based on).
