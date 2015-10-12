@@ -90,7 +90,7 @@ namespace Apache.Ignite.Core.Impl.Portable
             ReadHandlers[PortableUtils.TypeDecimal] = new PortableSystemReader<decimal?>(PortableUtils.ReadDecimal);
 
             // 2. Date.
-            ReadHandlers[PortableUtils.TypeDate] = new PortableSystemReader<DateTime?>(s => PortableUtils.ReadDate(s, false));
+            ReadHandlers[PortableUtils.TypeTimestamp] = new PortableSystemReader<DateTime?>(s => PortableUtils.ReadDate(s, false));
 
             // 3. String.
             ReadHandlers[PortableUtils.TypeString] = new PortableSystemReader<string>(PortableUtils.ReadString);
@@ -128,7 +128,7 @@ namespace Apache.Ignite.Core.Impl.Portable
                 new PortableSystemReader<decimal?[]>(PortableUtils.ReadDecimalArray);
 
             // 6. Date array.
-            ReadHandlers[PortableUtils.TypeArrayDate] =
+            ReadHandlers[PortableUtils.TypeArrayTimestamp] =
                 new PortableSystemReader<DateTime?[]>(s => PortableUtils.ReadDateArray(s, false));
 
             // 7. String array.
@@ -332,7 +332,7 @@ namespace Apache.Ignite.Core.Impl.Portable
         /// <param name="obj">Value.</param>
         private static void WriteDate(PortableWriterImpl ctx, object obj)
         {
-            ctx.Stream.WriteByte(PortableUtils.TypeDate);
+            ctx.Stream.WriteByte(PortableUtils.TypeTimestamp);
 
             PortableUtils.WriteDate((DateTime)obj, ctx.Stream);
         }
@@ -524,7 +524,7 @@ namespace Apache.Ignite.Core.Impl.Portable
         /// <param name="obj">Value.</param>
         private static void WriteDateArray(PortableWriterImpl ctx, object obj)
         {
-            ctx.Stream.WriteByte(PortableUtils.TypeArrayDate);
+            ctx.Stream.WriteByte(PortableUtils.TypeArrayTimestamp);
 
             PortableUtils.WriteDateArray((DateTime[])obj, ctx.Stream);
         }
@@ -536,7 +536,7 @@ namespace Apache.Ignite.Core.Impl.Portable
         /// <param name="obj">Value.</param>
         private static void WriteNullableDateArray(PortableWriterImpl ctx, object obj)
         {
-            ctx.Stream.WriteByte(PortableUtils.TypeArrayDate);
+            ctx.Stream.WriteByte(PortableUtils.TypeArrayTimestamp);
 
             PortableUtils.WriteDateArray((DateTime?[])obj, ctx.Stream);
         }

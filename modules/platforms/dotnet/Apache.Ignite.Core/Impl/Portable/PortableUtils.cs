@@ -89,7 +89,7 @@ namespace Apache.Ignite.Core.Impl.Portable
         public const byte TypeGuid = 10;
 
         /** Type: date. */
-        public const byte TypeDate = 11;
+        public const byte TypeTimestamp = 33;
 
         /** Type: unsigned byte array. */
         public const byte TypeArrayByte = 12;
@@ -125,7 +125,7 @@ namespace Apache.Ignite.Core.Impl.Portable
         public const byte TypeArrayGuid = 21;
 
         /** Type: date array. */
-        public const byte TypeArrayDate = 22;
+        public const byte TypeArrayTimestamp = 34;
 
         /** Type: object array. */
         public const byte TypeArray = 23;
@@ -675,7 +675,7 @@ namespace Apache.Ignite.Core.Impl.Portable
 
             foreach (DateTime val in vals)
             {
-                stream.WriteByte(TypeDate);
+                stream.WriteByte(TypeTimestamp);
 
                 WriteDate(val, stream);
             }
@@ -694,7 +694,7 @@ namespace Apache.Ignite.Core.Impl.Portable
             {
                 if (val.HasValue)
                 {
-                    stream.WriteByte(TypeDate);
+                    stream.WriteByte(TypeTimestamp);
 
                     WriteDate(val.Value, stream);
                 }
@@ -1586,7 +1586,7 @@ namespace Apache.Ignite.Core.Impl.Portable
                 case TypeDecimal:
                 case TypeString:
                 case TypeGuid:
-                case TypeDate:
+                case TypeTimestamp:
                 case TypeEnum:
                 case TypeArrayByte:
                 case TypeArrayShort:
@@ -1599,7 +1599,7 @@ namespace Apache.Ignite.Core.Impl.Portable
                 case TypeArrayDecimal:
                 case TypeArrayString:
                 case TypeArrayGuid:
-                case TypeArrayDate:
+                case TypeArrayTimestamp:
                 case TypeArrayEnum:
                 case TypeArray:
                 case TypeCollection:

@@ -621,7 +621,7 @@ namespace Apache.Ignite.Core.Impl.Portable
         /// <param name="val">Date value.</param>
         public void WriteDate(string fieldName, DateTime? val)
         {
-            WriteFieldId(fieldName, PU.TypeDate);
+            WriteFieldId(fieldName, PU.TypeTimestamp);
 
             if (val == null)
                 WriteNullField();
@@ -629,7 +629,7 @@ namespace Apache.Ignite.Core.Impl.Portable
             {
                 _stream.WriteInt(PU.LengthTypeId + 12);
 
-                _stream.WriteByte(PortableUtils.TypeDate);
+                _stream.WriteByte(PortableUtils.TypeTimestamp);
                 PortableUtils.WriteDate(val.Value, _stream);
             }
         }
@@ -644,7 +644,7 @@ namespace Apache.Ignite.Core.Impl.Portable
                 WriteNullRawField();
             else
             {
-                _stream.WriteByte(PortableUtils.TypeDate);
+                _stream.WriteByte(PortableUtils.TypeTimestamp);
                 PortableUtils.WriteDate(val.Value, _stream);
             }
         }
@@ -656,7 +656,7 @@ namespace Apache.Ignite.Core.Impl.Portable
         /// <param name="val">Date array.</param>
         public void WriteDateArray(string fieldName, DateTime?[] val)
         {
-            WriteFieldId(fieldName, PU.TypeDate);
+            WriteFieldId(fieldName, PU.TypeTimestamp);
 
             if (val == null)
                 WriteNullField();
@@ -664,7 +664,7 @@ namespace Apache.Ignite.Core.Impl.Portable
             {
                 int pos = SkipFieldLength();
 
-                _stream.WriteByte(PortableUtils.TypeArrayDate);
+                _stream.WriteByte(PortableUtils.TypeArrayTimestamp);
                 PortableUtils.WriteDateArray(val, _stream);
 
                 WriteFieldLength(_stream, pos);
@@ -681,7 +681,7 @@ namespace Apache.Ignite.Core.Impl.Portable
                 WriteNullRawField();
             else
             {
-                _stream.WriteByte(PortableUtils.TypeArrayDate);
+                _stream.WriteByte(PortableUtils.TypeArrayTimestamp);
                 PortableUtils.WriteDateArray(val, _stream);
             }
         }
