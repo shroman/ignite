@@ -25,13 +25,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.Queue;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -74,15 +72,16 @@ import org.apache.ignite.internal.util.typedef.CI1;
 import org.apache.ignite.internal.util.typedef.CI2;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.CU;
+import org.apache.ignite.internal.util.typedef.internal.GPC;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.internal.util.worker.GridWorker;
 import org.apache.ignite.lang.IgniteBiInClosure;
 import org.apache.ignite.lang.IgniteUuid;
 import org.apache.ignite.thread.IgniteThread;
-import org.apache.ignite.thread.IgniteThreadFactory;
 import org.jetbrains.annotations.Nullable;
 import org.jsr166.ConcurrentHashMap8;
+import org.jsr166.ConcurrentLinkedDeque8;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.apache.ignite.IgniteSystemProperties.IGNITE_AFFINITY_HISTORY_SIZE;
@@ -142,7 +141,10 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
     private GridFutureAdapter<?> reconnectExchangeFut;
 
     /** */
-    private ExecutorService rebalancingOrderedExecutorService;
+    private final Queue<Runnable> rebalancingQueue = new ConcurrentLinkedDeque8<>();
+
+    /** */
+    private final AtomicReference<Integer> rebalancingQueueOwning = new AtomicReference<>(0);
 
     /**
      * Partition map futures.
@@ -258,9 +260,6 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
     /** {@inheritDoc} */
     @Override protected void start0() throws IgniteCheckedException {
         super.start0();
-
-        rebalancingOrderedExecutorService = Executors.newSingleThreadExecutor(
-                new IgniteThreadFactory(cctx.gridName(), "rebalancing-assigns"));
 
         exchWorker = new ExchangeWorker();
 
@@ -465,8 +464,6 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
     @SuppressWarnings("LockAcquiredButNotSafelyReleased")
     @Override protected void stop0(boolean cancel) {
         super.stop0(cancel);
-
-        rebalancingOrderedExecutorService.shutdownNow();
 
         // Do not allow any activity in exchange manager after stop.
         busyLock.writeLock().lock();
@@ -1329,14 +1326,39 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
                                     }
                                 }
 
-                                Callable c = cacheCtx.preloader().addAssignments(
-                                        assignsMap.get(cacheId), forcePreload, waitList, cnt);
+                                Runnable r = cacheCtx.preloader().addAssignments(
+                                    assignsMap.get(cacheId), forcePreload, waitList, cnt);
 
-                                if (c != null) {
+                                if (r != null) {
                                     U.log(log, "Rebalancing scheduled: [cache=" + cacheCtx.name() +
-                                            " , waitList=" + waitList.toString() + "]");
+                                        " , waitList=" + waitList.toString() + "]");
 
-                                    rebalancingOrderedExecutorService.submit(c);
+                                    rebalancingQueue.add(r);
+
+                                    if (rebalancingQueueOwning.get() == 0) {
+                                        cacheCtx.closures().callLocalSafe(new GPC<Boolean>() {
+                                            @Override public Boolean call() {
+                                                while (true) {
+                                                    if (!rebalancingQueueOwning.compareAndSet(0, 1))
+                                                        return false;
+
+                                                    try {
+                                                        Runnable rn = rebalancingQueue.poll();
+
+                                                        if (rn == null)
+                                                            return false;
+
+                                                        rn.run();
+                                                    }
+                                                    finally {
+                                                        boolean res = rebalancingQueueOwning.compareAndSet(1, 0);
+
+                                                        assert res;
+                                                    }
+                                                }
+                                            }
+                                        }, /*system pool*/ true);
+                                    }
                                 }
                             }
                         }

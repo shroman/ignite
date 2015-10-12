@@ -248,7 +248,7 @@ public class GridDhtPartitionDemander {
      * @param cnt Counter.
      * @throws IgniteCheckedException Exception
      */
-    Callable addAssignments(final GridDhtPreloaderAssignments assigns, boolean force, final Collection<String> caches,
+    Runnable addAssignments(final GridDhtPreloaderAssignments assigns, boolean force, final Collection<String> caches,
         int cnt) throws IgniteCheckedException {
         if (log.isDebugEnabled())
             log.debug("Adding partition assignments: " + assigns);
@@ -293,19 +293,17 @@ public class GridDhtPartitionDemander {
                 return null;
             }
 
-            return new Callable<Boolean>() {
+            return new Runnable() {
                 @Override
-                public Boolean call() {
+                public void run() {
                     for (String c : caches) {
                         waitForCacheRebalancing(c, fut);
 
                         if (fut.isDone())
-                            return false;
+                            return;
                     }
 
                     requestPartitions(fut, assigns);
-
-                    return true;
                 }
             };
         }

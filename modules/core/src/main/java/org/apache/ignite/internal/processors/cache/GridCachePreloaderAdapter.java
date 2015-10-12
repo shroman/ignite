@@ -158,7 +158,7 @@ public class GridCachePreloaderAdapter implements GridCachePreloader {
     }
 
     /** {@inheritDoc} */
-    @Override public Callable addAssignments(GridDhtPreloaderAssignments assignments, boolean forcePreload,
+    @Override public Runnable addAssignments(GridDhtPreloaderAssignments assignments, boolean forcePreload,
         Collection<String> caches, int cnt) throws IgniteCheckedException {
         return null;
     }
