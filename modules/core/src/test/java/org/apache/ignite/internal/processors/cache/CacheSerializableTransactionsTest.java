@@ -47,12 +47,14 @@ import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.configuration.NearCacheConfiguration;
 import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.G;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteClosure;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.TcpDiscoveryIpFinder;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+import org.apache.ignite.spi.swapspace.inmemory.GridTestSwapSpaceSpi;
 import org.apache.ignite.testframework.GridTestUtils;
 import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 import org.apache.ignite.transactions.Transaction;
@@ -66,6 +68,8 @@ import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
 import static org.apache.ignite.cache.CacheMode.PARTITIONED;
 import static org.apache.ignite.cache.CacheMode.REPLICATED;
 import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
+import static org.apache.ignite.testframework.GridTestUtils.TestMemoryMode;
+import static org.apache.ignite.testframework.GridTestUtils.runMultiThreadedAsync;
 import static org.apache.ignite.transactions.TransactionConcurrency.OPTIMISTIC;
 import static org.apache.ignite.transactions.TransactionConcurrency.PESSIMISTIC;
 import static org.apache.ignite.transactions.TransactionIsolation.REPEATABLE_READ;
@@ -102,6 +106,8 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
         ((TcpDiscoverySpi)cfg.getDiscoverySpi()).setIpFinder(IP_FINDER);
 
         cfg.setClientMode(client);
+
+        cfg.setSwapSpaceSpi(new GridTestSwapSpaceSpi());
 
         return cfg;
     }
@@ -370,6 +376,20 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
                     }
 
                     checkValue(key, expVal, cache0.getName());
+
+                    cache0.remove(key);
+
+                    try (Transaction tx = txs0.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                        Integer val = cache0.get(key);
+
+                        assertNull(val);
+
+                        cache0.put(key, expVal + 1);
+
+                        tx.commit();
+                    }
+
+                    checkValue(key, expVal + 1, cache0.getName());
                 }
             }
             finally {
@@ -1230,36 +1250,51 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
      * @throws Exception If failed.
      */
     public void testTxNoConflictPut1() throws Exception {
-        txNoConflictUpdate(true, false);
+        txNoConflictUpdate(true, false, false);
     }
 
     /**
      * @throws Exception If failed.
      */
     public void testTxNoConflictPut2() throws Exception {
-        txNoConflictUpdate(false, false);
+        txNoConflictUpdate(false, false, false);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testTxNoConflictPut3() throws Exception {
+        txNoConflictUpdate(false, false, true);
     }
 
     /**
      * @throws Exception If failed.
      */
     public void testTxNoConflictRemove1() throws Exception {
-        txNoConflictUpdate(true, true);
+        txNoConflictUpdate(true, true, false);
     }
 
     /**
      * @throws Exception If failed.
      */
     public void testTxNoConflictRemove2() throws Exception {
-        txNoConflictUpdate(false, true);
+        txNoConflictUpdate(false, true, false);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testTxNoConflictRemove3() throws Exception {
+        txNoConflictUpdate(false, true, true);
     }
 
     /**
      * @throws Exception If failed.
      * @param noVal If {@code true} there is no cache value when do update in tx.
      * @param rmv If {@code true} tests remove, otherwise put.
+     * @param getAfterUpdate If {@code true} tries to get value in tx after update.
      */
-    private void txNoConflictUpdate(boolean noVal, boolean rmv) throws Exception {
+    private void txNoConflictUpdate(boolean noVal, boolean rmv, boolean getAfterUpdate) throws Exception {
         Ignite ignite0 = ignite(0);
 
         final IgniteTransactions txs = ignite0.transactions();
@@ -1283,6 +1318,15 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
                             cache.remove(key);
                         else
                             cache.put(key, 2);
+
+                        if (getAfterUpdate) {
+                            Object val = cache.get(key);
+
+                            if (rmv)
+                                assertNull(val);
+                            else
+                                assertEquals(2, val);
+                        }
 
                         updateKey(cache, key, 1);
 
@@ -1310,6 +1354,19 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
                         cache.removeAll(map.keySet());
                     else
                         cache.putAll(map);
+
+                    if (getAfterUpdate) {
+                        Map<Integer, Integer> res = cache.getAll(map.keySet());
+
+                        if (rmv) {
+                            for (Integer key : map.keySet())
+                                assertNull(res.get(key));
+                        }
+                        else {
+                            for (Integer key : map.keySet())
+                                assertEquals(map.get(key), res.get(key));
+                        }
+                    }
 
                     txAsync(cache, PESSIMISTIC, REPEATABLE_READ,
                         new IgniteClosure<IgniteCache<Integer, Integer>, Void>() {
@@ -1688,33 +1745,46 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
      * @throws Exception If failed.
      */
     public void testAccountTx1() throws Exception {
-        accountTx(false, false);
+        accountTx(false, false, TestMemoryMode.HEAP);
     }
 
     /**
      * @throws Exception If failed.
      */
     public void testAccountTxNearCache() throws Exception {
-        accountTx(false, true);
+        accountTx(false, true, TestMemoryMode.HEAP);
     }
 
     /**
      * @throws Exception If failed.
      */
     public void testAccountTx2() throws Exception {
-        accountTx(true, false);
+        accountTx(true, false, TestMemoryMode.HEAP);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testAccountTxOffheapTiered() throws Exception {
+        accountTx(false, false, TestMemoryMode.OFFHEAP_TIERED);
     }
 
     /**
      * @param getAll If {@code true} uses getAll/putAll in transaction.
      * @param nearCache If {@code true} near cache is enabled.
+     * @param memMode Test memory mode.
      * @throws Exception If failed.
      */
-    private void accountTx(final boolean getAll, final boolean nearCache) throws Exception {
+    private void accountTx(final boolean getAll,
+        final boolean nearCache,
+        TestMemoryMode memMode) throws Exception {
         final Ignite ignite0 = ignite(0);
 
-        final String cacheName =
-            ignite0.createCache(cacheConfiguration(PARTITIONED, FULL_SYNC, 1, false, false)).getName();
+        CacheConfiguration<Integer, Integer> ccfg = cacheConfiguration(PARTITIONED, FULL_SYNC, 1, false, false);
+
+        GridTestUtils.setMemoryMode(null, ccfg, memMode, 1, 64);
+
+        final String cacheName = ignite0.createCache(ccfg).getName();
 
         try {
             final List<Ignite> clients = clients();
@@ -1733,7 +1803,7 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
 
             final long stopTime = System.currentTimeMillis() + 10_000;
 
-            IgniteInternalFuture<?> fut = GridTestUtils.runMultiThreadedAsync(new Callable<Void>() {
+            IgniteInternalFuture<?> fut = runMultiThreadedAsync(new Callable<Void>() {
                 @Override public Void call() throws Exception {
                     int nodeIdx = idx.getAndIncrement() % clients.size();
 
@@ -2089,6 +2159,15 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
         ccfgs.add(cacheConfiguration(PARTITIONED, FULL_SYNC, 1, true, true));
         ccfgs.add(cacheConfiguration(PARTITIONED, FULL_SYNC, 2, true, true));
 
+        // Swap and offheap enabled.
+        for (GridTestUtils.TestMemoryMode memMode : GridTestUtils.TestMemoryMode.values()) {
+            CacheConfiguration<Integer, Integer> ccfg = cacheConfiguration(PARTITIONED, FULL_SYNC, 1, false, false);
+
+            GridTestUtils.setMemoryMode(null, ccfg, memMode, 1, 64);
+
+            ccfgs.add(ccfg);
+        }
+
         return ccfgs;
     }
 
@@ -2099,8 +2178,13 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
         log.info("Test cache [mode=" + ccfg.getCacheMode() +
             ", sync=" + ccfg.getWriteSynchronizationMode() +
             ", backups=" + ccfg.getBackups() +
+            ", memMode=" + ccfg.getMemoryMode() +
             ", near=" + (ccfg.getNearConfiguration() != null) +
-            ", store=" + ccfg.isWriteThrough() + ']');
+            ", store=" + ccfg.isWriteThrough() +
+            ", evictPlc=" + (ccfg.getEvictionPolicy() != null) +
+            ", swap=" + ccfg.isSwapEnabled()  +
+            ", maxOffheap=" + ccfg.getOffHeapMaxMemory()  +
+            ']');
     }
 
     /**
@@ -2233,6 +2317,12 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
         storeMap.clear();
 
         ignite.destroyCache(cacheName);
+
+        for (Ignite ignite0 : G.allGrids()) {
+            GridTestSwapSpaceSpi spi = (GridTestSwapSpaceSpi)ignite0.configuration().getSwapSpaceSpi();
+
+            spi.clearAll();
+        }
     }
 
     /**

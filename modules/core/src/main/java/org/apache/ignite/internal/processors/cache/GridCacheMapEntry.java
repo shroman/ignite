@@ -875,7 +875,7 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
                 updateTtl(expiryPlc);
 
             if (retVer) {
-                resVer = isNear() ? ((GridNearCacheEntry)this).dhtVersion() : startVer;
+                resVer = isNear() ? ((GridNearCacheEntry)this).dhtVersion() : this.ver;
 
                 if (resVer == null)
                     ret = null;

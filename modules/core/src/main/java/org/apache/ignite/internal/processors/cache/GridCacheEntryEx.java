@@ -541,9 +541,10 @@ public interface GridCacheEntryEx {
      * @return {@code True} if lock was acquired, {@code false} otherwise.
      * @throws GridCacheEntryRemovedException If this entry is obsolete.
      * @throws GridDistributedLockCancelledException If lock has been cancelled.
+     * @throws IgniteCheckedException If failed.
      */
     public boolean tmLock(IgniteInternalTx tx, long timeout, @Nullable GridCacheVersion serReadVer)
-        throws GridCacheEntryRemovedException, GridDistributedLockCancelledException;
+        throws GridCacheEntryRemovedException, GridDistributedLockCancelledException, IgniteCheckedException;
 
     /**
      * Unlocks acquired lock.

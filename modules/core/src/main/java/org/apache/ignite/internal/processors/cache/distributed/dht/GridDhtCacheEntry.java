@@ -172,6 +172,7 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
      * @return New candidate.
      * @throws GridCacheEntryRemovedException If entry has been removed.
      * @throws GridDistributedLockCancelledException If lock was cancelled.
+     * @throws IgniteCheckedException If failed.
      */
     @Nullable public GridCacheMvccCandidate addDhtLocal(
         UUID nearNodeId,
@@ -183,7 +184,9 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
         long timeout,
         boolean reenter,
         boolean tx,
-        boolean implicitSingle) throws GridCacheEntryRemovedException, GridDistributedLockCancelledException {
+        boolean implicitSingle)
+        throws GridCacheEntryRemovedException, GridDistributedLockCancelledException, IgniteCheckedException
+    {
         GridCacheMvccCandidate cand;
         GridCacheMvccCandidate prev;
         GridCacheMvccCandidate owner;
@@ -198,6 +201,8 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
             checkObsolete();
 
             if (serReadVer != null) {
+                unswap(false);
+
                 if (!serReadVer.equals(this.ver)) {
                     if (!((isNew() || deleted()) && serReadVer.equals(IgniteTxEntry.READ_NEW_ENTRY_VER)))
                         return null;
@@ -261,7 +266,7 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
 
     /** {@inheritDoc} */
     @Override public boolean tmLock(IgniteInternalTx tx, long timeout, GridCacheVersion serReadVer)
-        throws GridCacheEntryRemovedException, GridDistributedLockCancelledException {
+        throws GridCacheEntryRemovedException, GridDistributedLockCancelledException, IgniteCheckedException {
         if (tx.local()) {
             GridDhtTxLocalAdapter dhtTx = (GridDhtTxLocalAdapter)tx;
 

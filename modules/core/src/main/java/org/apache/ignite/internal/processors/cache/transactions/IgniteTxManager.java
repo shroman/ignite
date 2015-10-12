@@ -1442,6 +1442,11 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
                         break;
                     }
                 }
+                catch (IgniteCheckedException e) {
+                    tx.setRollbackOnly();
+
+                    throw e;
+                }
                 catch (GridDistributedLockCancelledException ignore) {
                     tx.setRollbackOnly();
 

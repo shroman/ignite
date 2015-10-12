@@ -266,18 +266,11 @@ public final class GridNearTxFinishFuture<K, V> extends GridCompoundIdentityFutu
             }
 
             if (tx.onePhaseCommit()) {
-                try {
-                    boolean commit = this.commit && err == null;
+                boolean commit = this.commit && err == null;
 
-                    tx.finish(commit);
+                finishOnePhase(commit);
 
-                    finishOnePhase(commit);
-
-                    tx.tmFinish(commit);
-                }
-                catch (IgniteCheckedException e) {
-                    U.error(log, "Failed to finish transaction: " + tx, e);
-                }
+                tx.tmFinish(commit);
             }
 
             Throwable th = this.err.get();

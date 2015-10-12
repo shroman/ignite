@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.CacheObject;
 import org.apache.ignite.internal.processors.cache.GridCacheContext;
@@ -743,7 +744,7 @@ public class GridDistributedCacheEntry extends GridCacheMapEntry {
 
     /** {@inheritDoc} */
     @Override public boolean tmLock(IgniteInternalTx tx, long timeout, GridCacheVersion serReadVer)
-        throws GridCacheEntryRemovedException, GridDistributedLockCancelledException {
+        throws GridCacheEntryRemovedException, GridDistributedLockCancelledException, IgniteCheckedException {
         if (tx.local())
             // Null is returned if timeout is negative and there is other lock owner.
             return addLocal(
