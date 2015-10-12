@@ -1004,6 +1004,9 @@ public class PortableContext implements Externalizable {
         }
     }
 
+    /**
+     * Basic class ID mapper.
+     */
     private static class BasicClassIdMapper implements PortableIdMapper {
         /** {@inheritDoc} */
         @Override public int typeId(String clsName) {
@@ -1158,6 +1161,10 @@ public class PortableContext implements Externalizable {
         /** Whether the following type is registered in a cache or not */
         private final boolean registered;
 
+        /**
+         * @param id Id.
+         * @param registered Registered.
+         */
         public Type(int id, boolean registered) {
             this.id = id;
             this.registered = registered;
