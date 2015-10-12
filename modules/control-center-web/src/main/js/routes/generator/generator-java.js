@@ -1383,8 +1383,6 @@ $generatorJava.pojos = function (caches, useConstructor, includeKeyFields) {
         for (var metaIx = 0; metaIx < cache.metadatas.length; metaIx ++) {
             var meta = cache.metadatas[metaIx];
 
-            var pkg = meta.valueType.substring(0, meta.valueType.lastIndexOf('.'));
-
             // Skip already generated classes.
             if (metadataNames.indexOf(meta.valueType) < 0) {
                 // Skip metadata without value fields.
@@ -1394,11 +1392,13 @@ $generatorJava.pojos = function (caches, useConstructor, includeKeyFields) {
                     // Key class generation only if key is not build in java class.
                     if ($commonUtils.isDefined(meta.keyFields) && meta.keyFields.length > 0) {
                         metadata.keyType = meta.keyType;
-                        metadata.keyClass = $generatorJava.javaClassCode(meta, true, pkg, useConstructor, includeKeyFields);
+                        metadata.keyClass = $generatorJava.javaClassCode(meta, true,
+                            meta.keyType.substring(0, meta.keyType.lastIndexOf('.')), useConstructor, includeKeyFields);
                     }
 
                     metadata.valueType = meta.valueType;
-                    metadata.valueClass = $generatorJava.javaClassCode(meta, false, pkg, useConstructor, includeKeyFields);
+                    metadata.valueClass = $generatorJava.javaClassCode(meta, false,
+                        meta.valueType.substring(0, meta.valueType.lastIndexOf('.')), useConstructor, includeKeyFields);
 
                     $generatorJava.metadatas.push(metadata);
                 }
