@@ -51,6 +51,8 @@ public class GridCachePartitionedTxMultiThreadedSelfTest extends IgniteTxMultiTh
         cc.setCacheMode(PARTITIONED);
         cc.setBackups(1);
 
+        cc.setNearConfiguration(null);
+
         cc.setEvictionPolicy(null);
 
         cc.setWriteSynchronizationMode(FULL_SYNC);

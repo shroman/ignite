@@ -1503,9 +1503,8 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
      * @param e Entry to evict if it qualifies for eviction.
      * @param primaryOnly Flag to try to evict only on primary node.
      * @return {@code True} if attempt was made to evict the entry.
-     * @throws IgniteCheckedException If failed.
      */
-    protected boolean evictNearEntry(IgniteTxEntry e, boolean primaryOnly) throws IgniteCheckedException {
+    protected boolean evictNearEntry(IgniteTxEntry e, boolean primaryOnly) {
         assert e != null;
 
         if (isNearLocallyMapped(e, primaryOnly)) {
