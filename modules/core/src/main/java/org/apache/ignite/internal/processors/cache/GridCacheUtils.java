@@ -943,7 +943,7 @@ public class GridCacheUtils {
         throws IgniteCheckedException {
         assert ctx != null;
 
-        if (ctx.deploymentEnabled()) {
+        if (depEnabled) {
             if (obj != null) {
                 if (obj instanceof Iterable)
                     ctx.deploy().registerClasses((Iterable<?>)obj);

@@ -1412,7 +1412,7 @@ public class GridCacheContext<K, V> implements Externalizable {
     }
 
     /**
-     * @return {@code True} if deployment enabled.
+     * @return {@code True} if deployment is enabled.
      */
     public boolean deploymentEnabled() {
         return depEnabled;

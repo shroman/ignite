@@ -45,26 +45,26 @@ public class CacheObjectContext {
     private boolean p2pEnabled;
 
     /** */
-    private boolean depEnabled;
+    private boolean addDepInfo;
 
     /**
      * @param kernalCtx Kernal context.
      * @param dfltAffMapper Default affinity mapper.
      * @param cpyOnGet Copy on get flag.
      * @param storeVal {@code True} if should store unmarshalled value in cache.
-     * @param depEnabled {@code true} if deployment is enabled for the given cache.
+     * @param addDepInfo {@code true} if deployment info should be associated with the objects of this cache.
      */
     public CacheObjectContext(GridKernalContext kernalCtx,
         AffinityKeyMapper dfltAffMapper,
         boolean cpyOnGet,
         boolean storeVal,
-        boolean depEnabled) {
+        boolean addDepInfo) {
         this.kernalCtx = kernalCtx;
         this.p2pEnabled = kernalCtx.config().isPeerClassLoadingEnabled();
         this.dfltAffMapper = dfltAffMapper;
         this.cpyOnGet = cpyOnGet;
         this.storeVal = storeVal;
-        this.depEnabled = depEnabled;
+        this.addDepInfo = addDepInfo;
 
         proc = kernalCtx.cacheObjects();
     }
@@ -77,10 +77,10 @@ public class CacheObjectContext {
     }
 
     /**
-     * @return {@code True} if deployment is enabled for the given cache.
+     * @return {@code True} if deployment info should be associated with the objects of this cache.
      */
-    public boolean deploymentEnabled() {
-        return depEnabled;
+    public boolean addDeploymentInfo() {
+        return addDepInfo;
     }
 
     /**

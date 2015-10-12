@@ -705,7 +705,7 @@ public class CacheObjectPortableProcessorImpl extends IgniteCacheObjectProcessor
             ctx0.copyOnGet(),
             ctx0.storeValue(),
             portableEnabled,
-            ctx0.deploymentEnabled());
+            ctx0.addDeploymentInfo());
 
         ctx.resource().injectGeneric(res.defaultAffMapper());
 
