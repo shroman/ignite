@@ -104,7 +104,7 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
         cacheRCfg.setCacheMode(CacheMode.REPLICATED);
         cacheRCfg.setRebalanceMode(CacheRebalanceMode.SYNC);
         cacheRCfg.setRebalanceBatchSize(1);
-        cacheRCfg.setRebalanceBatchesCount(/**Integer.MAX_VALUE*/1);// Disabled because of SHMEM fails.
+        cacheRCfg.setRebalanceBatchesCount(Integer.MAX_VALUE);
 
         CacheConfiguration<Integer, Integer> cacheRCfg2 = new CacheConfiguration<>();
 

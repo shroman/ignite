@@ -191,6 +191,9 @@ public class GridDhtPreloader extends GridCachePreloaderAdapter {
         demander = new GridDhtPartitionDemander(cctx, demandLock);
 
         cctx.events().addListener(discoLsnr, EVT_NODE_JOINED, EVT_NODE_LEFT, EVT_NODE_FAILED);
+
+        supplier.start();
+        demander.start();
     }
 
     /** {@inheritDoc} */
@@ -207,9 +210,6 @@ public class GridDhtPreloader extends GridCachePreloaderAdapter {
         final long startTopVer = loc.order();
 
         topVer.setIfGreater(startTopVer);
-
-        supplier.start();
-        demander.start();
     }
 
     /** {@inheritDoc} */
@@ -230,6 +230,11 @@ public class GridDhtPreloader extends GridCachePreloaderAdapter {
 
         cctx.events().removeListener(discoLsnr);
 
+        top = null;
+    }
+
+    /** {@inheritDoc} */
+    @Override public void stop() {
         // Acquire write busy lock.
         busyLock.writeLock().lock();
 
@@ -238,8 +243,6 @@ public class GridDhtPreloader extends GridCachePreloaderAdapter {
 
         if (demander != null)
             demander.stop();
-
-        top = null;
     }
 
     /** {@inheritDoc} */

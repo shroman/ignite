@@ -237,6 +237,9 @@ class GridDhtPartitionSupplier {
             while ((sctx != null && newReq) || partIt.hasNext()) {
                 int part = sctx != null && newReq ? sctx.part : partIt.next();
 
+                if (!cctx.affinity().affinityTopologyVersion().equals(d.topologyVersion()))
+                    return;
+
                 newReq = false;
 
                 GridDhtLocalPartition loc;
@@ -696,18 +699,12 @@ class GridDhtPartitionSupplier {
 
     @Deprecated//Backward compatibility. To be removed in future.
     public void startOldListeners() {
-        try {
-            if (!cctx.kernalContext().clientNode() && cctx.rebalanceEnabled()) {
-
-                cctx.io().addHandler(cctx.cacheId(), GridDhtPartitionDemandMessage.class, new CI2<UUID, GridDhtPartitionDemandMessage>() {
-                    @Override public void apply(UUID id, GridDhtPartitionDemandMessage m) {
-                        processOldDemandMessage(m, id);
-                    }
-                });
-            }
-        }
-        catch (Exception ex) {
-            U.error(log, "Unable to start backward compatibility rebalancing lixteners", ex);
+        if (!cctx.kernalContext().clientNode() && cctx.rebalanceEnabled()) {
+            cctx.io().addHandler(cctx.cacheId(), GridDhtPartitionDemandMessage.class, new CI2<UUID, GridDhtPartitionDemandMessage>() {
+                @Override public void apply(UUID id, GridDhtPartitionDemandMessage m) {
+                    processOldDemandMessage(m, id);
+                }
+            });
         }
     }
 
