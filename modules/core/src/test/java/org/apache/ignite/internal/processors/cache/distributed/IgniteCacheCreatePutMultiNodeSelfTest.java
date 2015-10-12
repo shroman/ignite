@@ -135,6 +135,7 @@ public class IgniteCacheCreatePutMultiNodeSelfTest extends GridCommonAbstractTes
 
     /**
      * @param grid Grid.
+     * @param cacheName Cache name.
      * @return Cache.
      */
     private IgniteCache<Integer, Integer> getCache(Ignite grid, String cacheName) {
