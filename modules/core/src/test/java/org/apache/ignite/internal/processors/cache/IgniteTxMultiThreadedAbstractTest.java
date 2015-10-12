@@ -250,8 +250,8 @@ public abstract class IgniteTxMultiThreadedAbstractTest extends IgniteTxAbstract
 
                                     break;
                                 }
-                                catch(TransactionOptimisticException e) {
-                                    log.info("Got error, will retry: " + e);
+                                catch (TransactionOptimisticException e) {
+                                    // Retry.
                                 }
                             }
                         }
@@ -300,8 +300,17 @@ public abstract class IgniteTxMultiThreadedAbstractTest extends IgniteTxAbstract
 
             assertEquals((long)THREADS * ITERATIONS, total);
 
+            // Try to update one more time to make sure cache is in consistent state.
+            try (Transaction tx = grid(0).transactions().txStart(OPTIMISTIC, SERIALIZABLE)) {
+                long val = cache.get(key);
+
+                cache.put(key, val);
+
+                tx.commit();
+            }
+
             for (int i = 0; i < gridCount(); i++)
-                assertEquals(total, (Object)cache.get(key));
+                assertEquals(total, grid(i).cache(null).get(key));
         }
     }
 }

@@ -756,9 +756,6 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
             // Cache version for optimistic check.
             startVer = ver;
 
-            if (retVer)
-                resVer = isNear() ? ((GridNearCacheEntry)this).dhtVersion() : startVer;
-
             GridCacheMvcc mvcc = mvccExtras();
 
             owner = mvcc == null ? null : mvcc.anyOwner();
@@ -876,6 +873,13 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
 
             if (ret != null && expiryPlc != null)
                 updateTtl(expiryPlc);
+
+            if (retVer) {
+                resVer = isNear() ? ((GridNearCacheEntry)this).dhtVersion() : startVer;
+
+                if (resVer == null)
+                    ret = null;
+            }
         }
 
         if (ret != null)

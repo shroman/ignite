@@ -40,11 +40,6 @@ public class GridCachePartitionedTxMultiThreadedSelfTest extends IgniteTxMultiTh
     private TcpDiscoveryIpFinder ipFinder = new TcpDiscoveryVmIpFinder(true);
 
     /** {@inheritDoc} */
-    @Override public void testOptimisticSerializableCommitMultithreaded() throws Exception {
-        fail("https://issues.apache.org/jira/browse/IGNITE-806");
-    }
-
-    /** {@inheritDoc} */
     @SuppressWarnings({"ConstantConditions"})
     @Override protected IgniteConfiguration getConfiguration(String gridName) throws Exception {
         IgniteConfiguration c = super.getConfiguration(gridName);
@@ -52,9 +47,6 @@ public class GridCachePartitionedTxMultiThreadedSelfTest extends IgniteTxMultiTh
         c.getTransactionConfiguration().setTxSerializableEnabled(true);
 
         CacheConfiguration cc = defaultCacheConfiguration();
-
-        // TODO IGNITE-1607 add test with near cache.
-        cc.setNearConfiguration(null);
 
         cc.setCacheMode(PARTITIONED);
         cc.setBackups(1);

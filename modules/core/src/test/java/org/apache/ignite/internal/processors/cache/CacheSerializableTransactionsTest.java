@@ -381,6 +381,73 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
     /**
      * @throws Exception If failed.
      */
+    public void testTxRollback() throws Exception {
+        Ignite ignite0 = ignite(0);
+        Ignite ignite1 = ignite(1);
+
+        final IgniteTransactions txs0 = ignite0.transactions();
+        final IgniteTransactions txs1 = ignite1.transactions();
+
+        for (CacheConfiguration<Integer, Integer> ccfg : cacheConfigurations()) {
+            logCacheInfo(ccfg);
+
+            try {
+                IgniteCache<Integer, Integer> cache0 = ignite0.createCache(ccfg);
+                IgniteCache<Integer, Integer> cache1 = ignite1.cache(ccfg.getName());
+
+                List<Integer> keys = testKeys(cache0);
+
+                for (Integer key : keys) {
+                    log.info("Test key: " + key);
+
+                    Integer expVal = null;
+
+                    for (int i = 0; i < 100; i++) {
+                        try (Transaction tx = txs0.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                            Integer val = cache0.get(key);
+
+                            assertEquals(expVal, val);
+
+                            cache0.put(key, i);
+
+                            tx.rollback();
+                        }
+
+                        try (Transaction tx = txs0.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                            Integer val = cache0.get(key);
+
+                            assertEquals(expVal, val);
+
+                            cache0.put(key, i);
+
+                            tx.commit();
+
+                            expVal = i;
+                        }
+
+                        try (Transaction tx = txs1.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                            Integer val = cache1.get(key);
+
+                            assertEquals(expVal, val);
+
+                            cache1.put(key, val);
+
+                            tx.commit();
+                        }
+                    }
+
+                    checkValue(key, expVal, cache0.getName());
+                }
+            }
+            finally {
+                destroyCache(ignite0, ccfg.getName());
+            }
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
     public void testTxCommitReadOnlyGetAll() throws Exception {
         Ignite ignite0 = ignite(0);
 
@@ -418,6 +485,37 @@ public class CacheSerializableTransactionsTest extends GridCommonAbstractTest {
 
                 for (Integer key : keys)
                     checkValue(key, null, cache.getName());
+            }
+            finally {
+                destroyCache(ignite0, ccfg.getName());
+            }
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testTxCommitReadWriteTwoNodes() throws Exception {
+        Ignite ignite0 = ignite(0);
+
+        final IgniteTransactions txs = ignite0.transactions();
+
+        for (CacheConfiguration<Integer, Integer> ccfg : cacheConfigurations()) {
+            logCacheInfo(ccfg);
+
+            try {
+                IgniteCache<Integer, Integer> cache = ignite0.createCache(ccfg);
+
+                Integer key0 = primaryKey(ignite(0).cache(null));
+                Integer key1 = primaryKey(ignite(1).cache(null));
+
+                try (Transaction tx = txs.txStart(OPTIMISTIC, SERIALIZABLE)) {
+                    cache.put(key0, key0);
+
+                    cache.get(key1);
+
+                    tx.commit();
+                }
             }
             finally {
                 destroyCache(ignite0, ccfg.getName());
