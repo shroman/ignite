@@ -1192,7 +1192,7 @@ $generatorJava.javaClassCode = function (meta, key, pkg, useConstructor, include
     res.line('private static final long serialVersionUID = 0L;');
     res.needEmptyLine = true;
 
-    var fields = (key || includeKeyFields) ? meta.keyFields : [];
+    var fields = (key || includeKeyFields) ? meta.keyFields.slice() : [];
 
     if (!key)
         fields.push.apply(fields, meta.valueFields);
