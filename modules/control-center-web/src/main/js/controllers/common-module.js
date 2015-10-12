@@ -221,15 +221,15 @@ consoleModule.service('$common', [
 
         var VALID_JAVA_IDENTIFIER = new RegExp('^[a-zA-Z_$][a-zA-Z\d_$]*');
 
-        function isValidJavaIdentifier(msg, ident, elemId) {
+        function isValidJavaIdentifier(msg, ident, elemId, panels, panelId) {
             if (isEmptyString(ident))
-                return showPopoverMessage(null, null, elemId, msg + ' is invalid!');
+                return showPopoverMessage(panels, panelId, elemId, msg + ' is invalid!');
 
             if (_.contains(JAVA_KEYWORDS, ident))
-                return showPopoverMessage(null, null, elemId, msg + ' could not contains reserved java keyword: "' + ident + '"!');
+                return showPopoverMessage(panels, panelId, elemId, msg + ' could not contains reserved java keyword: "' + ident + '"!');
 
             if (!VALID_JAVA_IDENTIFIER.test(ident))
-                return showPopoverMessage(null, null, elemId, msg + ' contains invalid identifier: "' + ident + '"!');
+                return showPopoverMessage(panels, panelId, elemId, msg + ' contains invalid identifier: "' + ident + '"!');
 
             return true;
         }
@@ -647,24 +647,24 @@ consoleModule.service('$common', [
             javaBuildInClasses: javaBuildInClasses,
             isJavaBuildInClass: isJavaBuildInClass,
             isValidJavaIdentifier: isValidJavaIdentifier,
-            isValidJavaClass: function (msg, ident, allowBuildInClass, elemId, packageOnly) {
+            isValidJavaClass: function (msg, ident, allowBuildInClass, elemId, packageOnly, panels, panelId) {
                 if (isEmptyString(ident))
-                    return showPopoverMessage(null, null, elemId, msg + ' could not be empty!');
+                    return showPopoverMessage(panels, panelId, elemId, msg + ' could not be empty!');
 
                 var parts = ident.split('.');
 
                 var len = parts.length;
 
                 if (!allowBuildInClass && isJavaBuildInClass(ident))
-                    return showPopoverMessage(null, null, elemId, msg + ' should not be the Java build-in class!');
+                    return showPopoverMessage(panels, panelId, elemId, msg + ' should not be the Java build-in class!');
 
                 if (len < 2 && !isJavaBuildInClass(ident) && !packageOnly)
-                    return showPopoverMessage(null, null, elemId, msg + ' does not have package specified!');
+                    return showPopoverMessage(panels, panelId, elemId, msg + ' does not have package specified!');
 
                 for (var i = 0; i < parts.length; i++) {
                     var part = parts[i];
 
-                    if (!isValidJavaIdentifier(msg, part, elemId))
+                    if (!isValidJavaIdentifier(msg, part, elemId, panels, panelId))
                         return false;
                 }
 
