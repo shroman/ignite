@@ -77,6 +77,76 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
         super(ctx);
     }
 
+    /**
+     * @param qryCurs Query cursors.
+     * @param cur Current cursor.
+     * @param req Sql request.
+     * @param qryId Query id.
+     * @return Query result with items.
+     */
+    private static CacheQueryResult createQueryResult(
+        ConcurrentHashMap<Long, IgniteBiTuple<QueryCursor, Iterator>> qryCurs,
+        Iterator cur, RestQueryRequest req, Long qryId) {
+        CacheQueryResult res = new CacheQueryResult();
+
+        List<Object> items = new ArrayList<>();
+
+        for (int i = 0; i < req.pageSize() && cur.hasNext(); ++i)
+            items.add(cur.next());
+
+        res.setItems(items);
+
+        res.setLast(!cur.hasNext());
+
+        res.setQueryId(qryId);
+
+        if (!cur.hasNext())
+            qryCurs.remove(qryId);
+
+        return res;
+    }
+
+    /**
+     * Creates class instance.
+     *
+     * @param cls Target class.
+     * @param clsName Implementing class name.
+     * @return Class instance.
+     * @throws IgniteException If failed.
+     */
+    private static <T> T instance(Class<? extends T> cls, String clsName) throws IgniteException {
+        try {
+            Class<?> implCls = Class.forName(clsName);
+
+            if (!cls.isAssignableFrom(implCls))
+                throw new IgniteException("Failed to create instance (target class does not extend or implement " +
+                    "required class or interface) [cls=" + cls.getName() + ", clsName=" + clsName + ']');
+
+            Constructor<?> ctor = implCls.getConstructor();
+
+            return (T)ctor.newInstance();
+        }
+        catch (ClassNotFoundException e) {
+            throw new IgniteException("Failed to find target class: " + clsName, e);
+        }
+        catch (NoSuchMethodException e) {
+            throw new IgniteException("Failed to find constructor for provided arguments " +
+                "[clsName=" + clsName + ']', e);
+        }
+        catch (InstantiationException e) {
+            throw new IgniteException("Failed to instantiate target class " +
+                "[clsName=" + clsName + ']', e);
+        }
+        catch (IllegalAccessException e) {
+            throw new IgniteException("Failed to instantiate class (constructor is not available) " +
+                "[clsName=" + clsName + ']', e);
+        }
+        catch (InvocationTargetException e) {
+            throw new IgniteException("Failed to instantiate class (constructor threw an exception) " +
+                "[clsName=" + clsName + ']', e.getCause());
+        }
+    }
+
     /** {@inheritDoc} */
     @Override public Collection<GridRestCommand> supportedCommands() {
         return SUPPORTED_COMMANDS;
@@ -184,7 +254,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
 
                 qryCurs.put(qryId, new IgniteBiTuple<>(qryCur, cur));
 
-                CacheQueryResult res = createQueryResult(qryCurs, cur, req, qryId, ctx);
+                CacheQueryResult res = createQueryResult(qryCurs, cur, req, qryId);
 
                 switch (req.queryType()) {
                     case SQL:
@@ -235,11 +305,10 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
      * Close query callable.
      */
     private static class CloseQueryCallable implements Callable<GridRestResponse> {
-        /** Execute query request. */
-        private RestQueryRequest req;
-
         /** Queries cursors. */
         private final ConcurrentHashMap<Long, IgniteBiTuple<QueryCursor, Iterator>> qryCurs;
+        /** Execute query request. */
+        private RestQueryRequest req;
 
         /**
          * @param req Execute query request.
@@ -278,14 +347,12 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
      * Fetch query callable.
      */
     private static class FetchQueryCallable implements Callable<GridRestResponse> {
-        /** Execute query request. */
-        private RestQueryRequest req;
-
         /** Queries cursors. */
         private final ConcurrentHashMap<Long, IgniteBiTuple<QueryCursor, Iterator>> qryCurs;
-
         /** Grid kernal context. */
         private final GridKernalContext ctx;
+        /** Execute query request. */
+        private RestQueryRequest req;
 
         /**
          * @param ctx Grid kernal context.
@@ -308,7 +375,7 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
                     return new GridRestResponse(GridRestResponse.STATUS_FAILED,
                         "Failed to find query with ID: " + req.queryId());
 
-                CacheQueryResult res = createQueryResult(qryCurs, cur, req, req.queryId(), ctx);
+                CacheQueryResult res = createQueryResult(qryCurs, cur, req, req.queryId());
 
                 return new GridRestResponse(res);
             }
@@ -317,77 +384,6 @@ public class QueryCommandHandler extends GridRestCommandHandlerAdapter {
 
                 return new GridRestResponse(GridRestResponse.STATUS_FAILED, e.getMessage());
             }
-        }
-    }
-
-    /**
-     * @param qryCurs Query cursors.
-     * @param cur Current cursor.
-     * @param req Sql request.
-     * @param qryId Query id.
-     * @param ctx Grid kernal context.
-     * @return Query result with items.
-     */
-    private static CacheQueryResult createQueryResult(
-        ConcurrentHashMap<Long, IgniteBiTuple<QueryCursor, Iterator>> qryCurs,
-        Iterator cur, RestQueryRequest req, Long qryId, GridKernalContext ctx) {
-        CacheQueryResult res = new CacheQueryResult();
-
-        List<Object> items = new ArrayList<>();
-
-        for (int i = 0; i < req.pageSize() && cur.hasNext(); ++i)
-            items.add(ctx.scripting().toScriptObject(cur.next()));
-
-        res.setItems(items);
-
-        res.setLast(!cur.hasNext());
-
-        res.setQueryId(qryId);
-
-        if (!cur.hasNext())
-            qryCurs.remove(qryId);
-
-        return res;
-    }
-
-    /**
-     * Creates class instance.
-     *
-     * @param cls Target class.
-     * @param clsName Implementing class name.
-     * @return Class instance.
-     * @throws IgniteException If failed.
-     */
-    private static <T> T instance(Class<? extends T> cls, String clsName) throws IgniteException {
-        try {
-            Class<?> implCls = Class.forName(clsName);
-
-            if (!cls.isAssignableFrom(implCls))
-                throw new IgniteException("Failed to create instance (target class does not extend or implement " +
-                    "required class or interface) [cls=" + cls.getName() + ", clsName=" + clsName + ']');
-
-            Constructor<?> ctor = implCls.getConstructor();
-
-            return (T)ctor.newInstance();
-        }
-        catch (ClassNotFoundException e) {
-            throw new IgniteException("Failed to find target class: " + clsName, e);
-        }
-        catch (NoSuchMethodException e) {
-            throw new IgniteException("Failed to find constructor for provided arguments " +
-                "[clsName=" + clsName + ']', e);
-        }
-        catch (InstantiationException e) {
-            throw new IgniteException("Failed to instantiate target class " +
-                "[clsName=" + clsName + ']', e);
-        }
-        catch (IllegalAccessException e) {
-            throw new IgniteException("Failed to instantiate class (constructor is not available) " +
-                "[clsName=" + clsName + ']', e);
-        }
-        catch (InvocationTargetException e) {
-            throw new IgniteException("Failed to instantiate class (constructor threw an exception) " +
-                "[clsName=" + clsName + ']', e.getCause());
         }
     }
 }

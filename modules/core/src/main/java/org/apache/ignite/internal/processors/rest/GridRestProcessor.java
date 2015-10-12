@@ -92,13 +92,10 @@ public class GridRestProcessor extends GridProcessorAdapter {
 
     /** Default session timout. */
     private static final int DEFAULT_SES_TIMEOUT = 30_000;
-
-    /** Protocols. */
-    private final Collection<GridRestProtocol> protos = new ArrayList<>();
-
     /** Command handlers. */
     protected final Map<GridRestCommand, GridRestCommandHandler> handlers = new EnumMap<>(GridRestCommand.class);
-
+    /** Protocols. */
+    private final Collection<GridRestProtocol> protos = new ArrayList<>();
     /** */
     private final CountDownLatch startLatch = new CountDownLatch(1);
 
@@ -130,6 +127,85 @@ public class GridRestProcessor extends GridProcessorAdapter {
 
     /** Session time to live. */
     private final long sesTtl;
+
+    /**
+     * @param ctx Context.
+     */
+    public GridRestProcessor(GridKernalContext ctx) {
+        super(ctx);
+
+        long sesExpTime0;
+        String sesExpTime = null;
+
+        try {
+            sesExpTime = System.getProperty(IgniteSystemProperties.IGNITE_REST_SESSION_TIMEOUT);
+
+            if (sesExpTime != null)
+                sesExpTime0 = Long.valueOf(sesExpTime) * 1000;
+            else
+                sesExpTime0 = DEFAULT_SES_TIMEOUT;
+        }
+        catch (NumberFormatException ignore) {
+            U.warn(log, "Failed parsing IGNITE_REST_SESSION_TIMEOUT system variable [IGNITE_REST_SESSION_TIMEOUT="
+                + sesExpTime + "]");
+
+            sesExpTime0 = DEFAULT_SES_TIMEOUT;
+        }
+
+        sesTtl = sesExpTime0;
+
+        sesTimeoutCheckerThread = new IgniteThread(ctx.gridName(), "session-timeout-worker",
+            new GridWorker(ctx.gridName(), "session-timeout-worker", log) {
+                @Override protected void body() throws InterruptedException {
+                    while (!isCancelled()) {
+                        Thread.sleep(SES_TIMEOUT_CHECK_DELAY);
+
+                        for (Map.Entry<UUID, Session> e : sesId2Ses.entrySet()) {
+                            Session ses = e.getValue();
+
+                            if (ses.isTimedOut(sesTtl)) {
+                                sesId2Ses.remove(ses.sesId, ses);
+
+                                clientId2SesId.remove(ses.clientId, ses.sesId);
+                            }
+                        }
+                    }
+                }
+            });
+    }
+
+/**
+     * Applies interceptor to a response object.
+     * Specially handler {@link Map} and {@link Collection} responses.
+     *
+     * @param obj Response object.
+     * @param interceptor Interceptor to apply.
+     * @return Intercepted object.
+     */
+    private static Object interceptSendObject(Object obj, ConnectorMessageInterceptor interceptor) {
+        if (obj instanceof Map) {
+            Map<Object, Object> original = (Map<Object, Object>)obj;
+
+            Map<Object, Object> m = new HashMap<>();
+
+            for (Map.Entry e : original.entrySet())
+                m.put(interceptor.onSend(e.getKey()), interceptor.onSend(e.getValue()));
+
+            return m;
+        }
+        else if (obj instanceof Collection) {
+            Collection<Object> original = (Collection<Object>)obj;
+
+            Collection<Object> c = new ArrayList<>(original.size());
+
+            for (Object e : original)
+                c.add(interceptor.onSend(e));
+
+            return c;
+        }
+        else
+            return interceptor.onSend(obj);
+    }
 
     /**
      * @param req Request.
@@ -386,52 +462,6 @@ public class GridRestProcessor extends GridProcessorAdapter {
         }
     }
 
-    /**
-     * @param ctx Context.
-     */
-    public GridRestProcessor(GridKernalContext ctx) {
-        super(ctx);
-
-        long sesExpTime0;
-        String sesExpTime = null;
-
-        try {
-            sesExpTime = System.getProperty(IgniteSystemProperties.IGNITE_REST_SESSION_TIMEOUT);
-
-            if (sesExpTime != null)
-                sesExpTime0 = Long.valueOf(sesExpTime) * 1000;
-            else
-                sesExpTime0 = DEFAULT_SES_TIMEOUT;
-        }
-        catch (NumberFormatException ignore) {
-            U.warn(log, "Failed parsing IGNITE_REST_SESSION_TIMEOUT system variable [IGNITE_REST_SESSION_TIMEOUT="
-                + sesExpTime + "]");
-
-            sesExpTime0 = DEFAULT_SES_TIMEOUT;
-        }
-
-        sesTtl = sesExpTime0;
-
-        sesTimeoutCheckerThread = new IgniteThread(ctx.gridName(), "session-timeout-worker",
-            new GridWorker(ctx.gridName(), "session-timeout-worker", log) {
-                @Override protected void body() throws InterruptedException {
-                    while (!isCancelled()) {
-                        Thread.sleep(SES_TIMEOUT_CHECK_DELAY);
-
-                        for (Map.Entry<UUID, Session> e : sesId2Ses.entrySet()) {
-                            Session ses = e.getValue();
-
-                            if (ses.isTimedOut(sesTtl)) {
-                                sesId2Ses.remove(ses.sesId, ses);
-
-                                clientId2SesId.remove(ses.clientId, ses.sesId);
-                            }
-                        }
-                    }
-                }
-            });
-    }
-
     /** {@inheritDoc} */
     @Override public void start() throws IgniteCheckedException {
         if (isRestEnabled()) {
@@ -516,7 +546,7 @@ public class GridRestProcessor extends GridProcessorAdapter {
         }
     }
 
-    /**
+        /**
      * Applies {@link ConnectorMessageInterceptor}
      * from {@link ConnectorConfiguration#getMessageInterceptor()} ()}
      * to all user parameters in the request.
@@ -562,8 +592,7 @@ public class GridRestProcessor extends GridProcessorAdapter {
             }
         }
     }
-
-    /**
+/**
      * Applies {@link ConnectorMessageInterceptor} from
      * {@link ConnectorConfiguration#getMessageInterceptor()}
      * to all user objects in the response.
@@ -608,39 +637,6 @@ public class GridRestProcessor extends GridProcessorAdapter {
                     break;
             }
         }
-    }
-
-    /**
-     * Applies interceptor to a response object.
-     * Specially handler {@link Map} and {@link Collection} responses.
-     *
-     * @param obj Response object.
-     * @param interceptor Interceptor to apply.
-     * @return Intercepted object.
-     */
-    private static Object interceptSendObject(Object obj, ConnectorMessageInterceptor interceptor) {
-        if (obj instanceof Map) {
-            Map<Object, Object> original = (Map<Object, Object>)obj;
-
-            Map<Object, Object> m = new HashMap<>();
-
-            for (Map.Entry e : original.entrySet())
-                m.put(interceptor.onSend(e.getKey()), interceptor.onSend(e.getValue()));
-
-            return m;
-        }
-        else if (obj instanceof Collection) {
-            Collection<Object> original = (Collection<Object>)obj;
-
-            Collection<Object> c = new ArrayList<>(original.size());
-
-            for (Object e : original)
-                c.add(interceptor.onSend(e));
-
-            return c;
-        }
-        else
-            return interceptor.onSend(obj);
     }
 
     /**
@@ -893,15 +889,13 @@ public class GridRestProcessor extends GridProcessorAdapter {
 
         /** Session token id. */
         private final UUID sesId;
-
-        /** Security context. */
-        private volatile SecurityContext secCtx;
-
         /**
          * Time when session is used last time.
          * If this time was set at TIMEDOUT_FLAG, then it should never be changed.
          */
         private final AtomicLong lastTouchTime = new AtomicLong(U.currentTimeMillis());
+        /** Security context. */
+        private volatile SecurityContext secCtx;
 
         /**
          * @param clientId Client ID.

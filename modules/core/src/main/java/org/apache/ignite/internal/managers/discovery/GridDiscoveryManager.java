@@ -134,33 +134,24 @@ import static org.apache.ignite.plugin.segmentation.SegmentationPolicy.NOOP;
  * Discovery SPI manager.
  */
 public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
-    /** Fake key for {@code null}-named caches. Used inside {@link DiscoCache}. */
-    private static final String NULL_CACHE_NAME = UUID.randomUUID().toString();
-
-    /** Metrics update frequency. */
-    private static final long METRICS_UPDATE_FREQ = 3000;
-
-    /** */
-    private static final MemoryMXBean mem = ManagementFactory.getMemoryMXBean();
-
-    /** */
-    private static final OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
-
-    /** */
-    private static final RuntimeMXBean rt = ManagementFactory.getRuntimeMXBean();
-
-    /** */
-    private static final ThreadMXBean threads = ManagementFactory.getThreadMXBean();
-
-    /** */
-    private static final Collection<GarbageCollectorMXBean> gc = ManagementFactory.getGarbageCollectorMXBeans();
-
-    /** */
-    private static final String PREFIX = "Topology snapshot";
-
     /** Discovery cached history size. */
     protected static final int DISCOVERY_HISTORY_SIZE = 100;
-
+    /** Fake key for {@code null}-named caches. Used inside {@link DiscoCache}. */
+    private static final String NULL_CACHE_NAME = UUID.randomUUID().toString();
+    /** Metrics update frequency. */
+    private static final long METRICS_UPDATE_FREQ = 3000;
+    /** */
+    private static final MemoryMXBean mem = ManagementFactory.getMemoryMXBean();
+    /** */
+    private static final OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
+    /** */
+    private static final RuntimeMXBean rt = ManagementFactory.getRuntimeMXBean();
+    /** */
+    private static final ThreadMXBean threads = ManagementFactory.getThreadMXBean();
+    /** */
+    private static final Collection<GarbageCollectorMXBean> gc = ManagementFactory.getGarbageCollectorMXBeans();
+    /** */
+    private static final String PREFIX = "Topology snapshot";
     /** Predicate filtering out daemon nodes. */
     private static final IgnitePredicate<ClusterNode> daemonFilter = new P1<ClusterNode>() {
         @Override public boolean apply(ClusterNode n) {
@@ -185,85 +176,80 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
 
     /** Discovery event worker. */
     private final DiscoveryWorker discoWrk = new DiscoveryWorker();
-
-    /** Network segment check worker. */
-    private SegmentCheckWorker segChkWrk;
-
-    /** Network segment check thread. */
-    private IgniteThread segChkThread;
-
     /** Last logged topology. */
     private final AtomicLong lastLoggedTop = new AtomicLong();
-
-    /** Local node. */
-    private ClusterNode locNode;
-
-    /** Local node daemon flag. */
-    private boolean isLocDaemon;
-
-    /** {@code True} if resolvers were configured and network segment check is enabled. */
-    private boolean hasRslvrs;
-
     /** Last segment check result. */
     private final AtomicBoolean lastSegChkRes = new AtomicBoolean(true);
-
     /** Topology cache history. */
     private final Map<AffinityTopologyVersion, DiscoCache> discoCacheHist =
         new GridBoundedConcurrentOrderedMap<>(DISCOVERY_HISTORY_SIZE);
-
-    /** Topology snapshots history. */
-    private volatile Map<Long, Collection<ClusterNode>> topHist = new HashMap<>();
-
     /** Topology version. */
     private final AtomicReference<Snapshot> topSnap =
         new AtomicReference<>(new Snapshot(AffinityTopologyVersion.ZERO, null));
-
+    /** */
+    private final GridSpinBusyLock busyLock = new GridSpinBusyLock();
+    /** Received custom messages history. */
+    private final ArrayDeque<IgniteUuid> rcvdCustomMsgs = new ArrayDeque<>();
+    /** */
+    private final CountDownLatch startLatch = new CountDownLatch(1);
+    /** Network segment check worker. */
+    private SegmentCheckWorker segChkWrk;
+    /** Network segment check thread. */
+    private IgniteThread segChkThread;
+    /** Local node. */
+    private ClusterNode locNode;
+    /** Local node daemon flag. */
+    private boolean isLocDaemon;
+    /** {@code True} if resolvers were configured and network segment check is enabled. */
+    private boolean hasRslvrs;
+    /** Topology snapshots history. */
+    private volatile Map<Long, Collection<ClusterNode>> topHist = new HashMap<>();
     /** Minor topology version. */
     private int minorTopVer;
-
     /** Order supported flag. */
     private boolean discoOrdered;
-
     /** Topology snapshots history supported flag. */
     private boolean histSupported;
-
     /** Configured network segment check frequency. */
     private long segChkFreq;
-
     /** Local node join to topology event. */
     private GridFutureAdapter<DiscoveryEvent> locJoinEvt = new GridFutureAdapter<>();
-
     /** GC CPU load. */
     private volatile double gcCpuLoad;
-
     /** CPU load. */
     private volatile double cpuLoad;
-
     /** Metrics. */
     private final GridLocalMetrics metrics = createMetrics();
-
     /** Metrics update worker. */
     private GridTimeoutProcessor.CancelableTask metricsUpdateTask;
-
     /** Custom event listener. */
     private ConcurrentMap<Class<?>, List<CustomEventListener<DiscoveryCustomMessage>>> customEvtLsnrs =
         new ConcurrentHashMap8<>();
-
     /** Map of dynamic cache filters. */
     private Map<String, CachePredicate> registeredCaches = new HashMap<>();
-
-    /** */
-    private final GridSpinBusyLock busyLock = new GridSpinBusyLock();
-
-    /** Received custom messages history. */
-    private final ArrayDeque<IgniteUuid> rcvdCustomMsgs = new ArrayDeque<>();
-
-    /** */
-    private final CountDownLatch startLatch = new CountDownLatch(1);
 
     /** @param ctx Context. */
     public GridDiscoveryManager(GridKernalContext ctx) {
         super(ctx, ctx.config().getDiscoverySpi());
+    }
+
+    /**
+     * @param nodes Nodes.
+     * @return Total CPUs.
+     */
+    private static int cpus(Collection<ClusterNode> nodes) {
+        Collection<String> macSet = new HashSet<>(nodes.size(), 1.0f);
+
+        int cpus = 0;
+
+        for (ClusterNode n : nodes) {
+            String macs = n.attribute(ATTR_MACS);
+
+            if (macSet.add(macs))
+                cpus += n.metrics().getTotalCpus();
+        }
+
+        return cpus;
     }
 
     /**
@@ -1063,25 +1049,6 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
     }
 
     /**
-     * @param nodes Nodes.
-     * @return Total CPUs.
-     */
-    private static int cpus(Collection<ClusterNode> nodes) {
-        Collection<String> macSet = new HashSet<>(nodes.size(), 1.0f);
-
-        int cpus = 0;
-
-        for (ClusterNode n : nodes) {
-            String macs = n.attribute(ATTR_MACS);
-
-            if (macSet.add(macs))
-                cpus += n.metrics().getTotalCpus();
-        }
-
-        return cpus;
-    }
-
-    /**
      * Prints the latest topology info into log taking into account logging/verbosity settings.
      */
     public void ackTopology() {
@@ -1812,6 +1779,192 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
         ).start();
     }
 
+    /** Discovery topology future. */
+    private static class DiscoTopologyFuture extends GridFutureAdapter<Long> implements GridLocalEventListener {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /** */
+        private GridKernalContext ctx;
+
+        /** Topology await version. */
+        private long awaitVer;
+
+        /** Empty constructor required by {@link Externalizable}. */
+        private DiscoTopologyFuture() {
+            // No-op.
+        }
+
+        /**
+         * @param ctx Context.
+         * @param awaitVer Await version.
+         */
+        private DiscoTopologyFuture(GridKernalContext ctx, long awaitVer) {
+            this.ctx = ctx;
+            this.awaitVer = awaitVer;
+        }
+
+        /** Initializes future. */
+        private void init() {
+            ctx.event().addLocalEventListener(this, EVT_NODE_JOINED, EVT_NODE_LEFT, EVT_NODE_FAILED);
+
+            // Close potential window.
+            long topVer = ctx.discovery().topologyVersion();
+
+            if (topVer >= awaitVer)
+                onDone(topVer);
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean onDone(@Nullable Long res, @Nullable Throwable err) {
+            if (super.onDone(res, err)) {
+                ctx.event().removeLocalEventListener(this, EVT_NODE_JOINED, EVT_NODE_LEFT, EVT_NODE_FAILED);
+
+                return true;
+            }
+
+            return false;
+        }
+
+        /** {@inheritDoc} */
+        @Override public void onEvent(Event evt) {
+            assert evt.type() == EVT_NODE_JOINED || evt.type() == EVT_NODE_LEFT || evt.type() == EVT_NODE_FAILED;
+
+            DiscoveryEvent discoEvt = (DiscoveryEvent)evt;
+
+            if (discoEvt.topologyVersion() >= awaitVer)
+                onDone(discoEvt.topologyVersion());
+        }
+    }
+
+    /**
+     *
+     */
+    private static class Snapshot {
+        /** */
+        private final AffinityTopologyVersion topVer;
+
+        /** */
+        @GridToStringExclude
+        private final DiscoCache discoCache;
+
+        /**
+         * @param topVer Topology version.
+         * @param discoCache Disco cache.
+         */
+        private Snapshot(AffinityTopologyVersion topVer, DiscoCache discoCache) {
+            this.topVer = topVer;
+            this.discoCache = discoCache;
+        }
+
+        /** {@inheritDoc} */
+        @Override public String toString() {
+            return S.toString(Snapshot.class, this);
+        }
+    }
+
+    /**
+     * Cache predicate.
+     */
+    private static class CachePredicate {
+        /** Cache filter. */
+        private final IgnitePredicate<ClusterNode> cacheFilter;
+
+        /** If near cache is enabled on data nodes. */
+        private final boolean nearEnabled;
+
+        /** Cache mode. */
+        private final CacheMode cacheMode;
+
+        /** Collection of client near nodes. */
+        private final ConcurrentHashMap<UUID, Boolean> clientNodes;
+
+        /**
+         * @param cacheFilter Cache filter.
+         * @param nearEnabled Near enabled flag.
+         * @param cacheMode Cache mode.
+         */
+        private CachePredicate(IgnitePredicate<ClusterNode> cacheFilter, boolean nearEnabled, CacheMode cacheMode) {
+            assert cacheFilter != null;
+
+            this.cacheFilter = cacheFilter;
+            this.nearEnabled = nearEnabled;
+            this.cacheMode = cacheMode;
+
+            clientNodes = new ConcurrentHashMap<>();
+        }
+
+        /**
+         * @param nodeId Near node ID to add.
+         * @param nearEnabled Near enabled flag.
+         * @return {@code True} if new node ID was added.
+         */
+        public boolean addClientNode(UUID nodeId, boolean nearEnabled) {
+            assert nodeId != null;
+
+            Boolean old = clientNodes.putIfAbsent(nodeId, nearEnabled);
+
+            return old == null;
+        }
+
+        /**
+         * @param leftNodeId Left node ID.
+         * @return {@code True} if existing node ID was removed.
+         */
+        public boolean onNodeLeft(UUID leftNodeId) {
+            assert leftNodeId != null;
+
+            Boolean old = clientNodes.remove(leftNodeId);
+
+            return old != null;
+        }
+
+        /**
+         * @param node Node to check.
+         * @return {@code True} if this node is a data node for given cache.
+         */
+        public boolean dataNode(ClusterNode node) {
+            return !node.isDaemon() && CU.affinityNode(node, cacheFilter);
+        }
+
+        /**
+         * @param node Node to check.
+         * @return {@code True} if cache is accessible on the given node.
+         */
+        public boolean cacheNode(ClusterNode node) {
+            return !node.isDaemon() && (CU.affinityNode(node, cacheFilter) || clientNodes.containsKey(node.id()));
+        }
+
+        /**
+         * @param node Node to check.
+         * @return {@code True} if near cache is present on the given nodes.
+         */
+        public boolean nearNode(ClusterNode node) {
+            if (node.isDaemon())
+                return false;
+
+            if (CU.affinityNode(node, cacheFilter))
+                return nearEnabled;
+
+            Boolean near = clientNodes.get(node.id());
+
+            return near != null && near;
+        }
+
+        /**
+         * @param node Node to check.
+         * @return {@code True} if client cache is present on the given nodes.
+         */
+        public boolean clientNode(ClusterNode node) {
+            if (node.isDaemon())
+                return false;
+
+            Boolean near = clientNodes.get(node.id());
+
+            return near != null && !near;
+        }
+    }
+
     /** Worker for network segment checks. */
     private class SegmentCheckWorker extends GridWorker {
         /** */
@@ -2276,90 +2429,6 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
         /** {@inheritDoc} */
         @Override public String toString() {
             return S.toString(MetricsUpdater.class, this, super.toString());
-        }
-    }
-
-    /** Discovery topology future. */
-    private static class DiscoTopologyFuture extends GridFutureAdapter<Long> implements GridLocalEventListener {
-        /** */
-        private static final long serialVersionUID = 0L;
-
-        /** */
-        private GridKernalContext ctx;
-
-        /** Topology await version. */
-        private long awaitVer;
-
-        /** Empty constructor required by {@link Externalizable}. */
-        private DiscoTopologyFuture() {
-            // No-op.
-        }
-
-        /**
-         * @param ctx Context.
-         * @param awaitVer Await version.
-         */
-        private DiscoTopologyFuture(GridKernalContext ctx, long awaitVer) {
-            this.ctx = ctx;
-            this.awaitVer = awaitVer;
-        }
-
-        /** Initializes future. */
-        private void init() {
-            ctx.event().addLocalEventListener(this, EVT_NODE_JOINED, EVT_NODE_LEFT, EVT_NODE_FAILED);
-
-            // Close potential window.
-            long topVer = ctx.discovery().topologyVersion();
-
-            if (topVer >= awaitVer)
-                onDone(topVer);
-        }
-
-        /** {@inheritDoc} */
-        @Override public boolean onDone(@Nullable Long res, @Nullable Throwable err) {
-            if (super.onDone(res, err)) {
-                ctx.event().removeLocalEventListener(this, EVT_NODE_JOINED, EVT_NODE_LEFT, EVT_NODE_FAILED);
-
-                return true;
-            }
-
-            return false;
-        }
-
-        /** {@inheritDoc} */
-        @Override public void onEvent(Event evt) {
-            assert evt.type() == EVT_NODE_JOINED || evt.type() == EVT_NODE_LEFT || evt.type() == EVT_NODE_FAILED;
-
-            DiscoveryEvent discoEvt = (DiscoveryEvent)evt;
-
-            if (discoEvt.topologyVersion() >= awaitVer)
-                onDone(discoEvt.topologyVersion());
-        }
-    }
-
-    /**
-     *
-     */
-    private static class Snapshot {
-        /** */
-        private final AffinityTopologyVersion topVer;
-
-        /** */
-        @GridToStringExclude
-        private final DiscoCache discoCache;
-
-        /**
-         * @param topVer Topology version.
-         * @param discoCache Disco cache.
-         */
-        private Snapshot(AffinityTopologyVersion topVer, DiscoCache discoCache) {
-            this.topVer = topVer;
-            this.discoCache = discoCache;
-        }
-
-        /** {@inheritDoc} */
-        @Override public String toString() {
-            return S.toString(Snapshot.class, this);
         }
     }
 
@@ -2839,108 +2908,6 @@ public class GridDiscoveryManager extends GridManagerAdapter<DiscoverySpi> {
         /** {@inheritDoc} */
         @Override public String toString() {
             return S.toString(DiscoCache.class, this, "allNodesWithDaemons", U.toShortString(allNodes));
-        }
-    }
-
-    /**
-     * Cache predicate.
-     */
-    private static class CachePredicate {
-        /** Cache filter. */
-        private final IgnitePredicate<ClusterNode> cacheFilter;
-
-        /** If near cache is enabled on data nodes. */
-        private final boolean nearEnabled;
-
-        /** Cache mode. */
-        private final CacheMode cacheMode;
-
-        /** Collection of client near nodes. */
-        private final ConcurrentHashMap<UUID, Boolean> clientNodes;
-
-        /**
-         * @param cacheFilter Cache filter.
-         * @param nearEnabled Near enabled flag.
-         * @param cacheMode Cache mode.
-         */
-        private CachePredicate(IgnitePredicate<ClusterNode> cacheFilter, boolean nearEnabled, CacheMode cacheMode) {
-            assert cacheFilter != null;
-
-            this.cacheFilter = cacheFilter;
-            this.nearEnabled = nearEnabled;
-            this.cacheMode = cacheMode;
-
-            clientNodes = new ConcurrentHashMap<>();
-        }
-
-        /**
-         * @param nodeId Near node ID to add.
-         * @param nearEnabled Near enabled flag.
-         * @return {@code True} if new node ID was added.
-         */
-        public boolean addClientNode(UUID nodeId, boolean nearEnabled) {
-            assert nodeId != null;
-
-            Boolean old = clientNodes.putIfAbsent(nodeId, nearEnabled);
-
-            return old == null;
-        }
-
-        /**
-         * @param leftNodeId Left node ID.
-         * @return {@code True} if existing node ID was removed.
-         */
-        public boolean onNodeLeft(UUID leftNodeId) {
-            assert leftNodeId != null;
-
-            Boolean old = clientNodes.remove(leftNodeId);
-
-            return old != null;
-        }
-
-        /**
-         * @param node Node to check.
-         * @return {@code True} if this node is a data node for given cache.
-         */
-        public boolean dataNode(ClusterNode node) {
-            return !node.isDaemon() && CU.affinityNode(node, cacheFilter);
-        }
-
-        /**
-         * @param node Node to check.
-         * @return {@code True} if cache is accessible on the given node.
-         */
-        public boolean cacheNode(ClusterNode node) {
-            return !node.isDaemon() && (CU.affinityNode(node, cacheFilter) || clientNodes.containsKey(node.id()));
-        }
-
-        /**
-         * @param node Node to check.
-         * @return {@code True} if near cache is present on the given nodes.
-         */
-        public boolean nearNode(ClusterNode node) {
-            if (node.isDaemon())
-                return false;
-
-            if (CU.affinityNode(node, cacheFilter))
-                return nearEnabled;
-
-            Boolean near = clientNodes.get(node.id());
-
-            return near != null && near;
-        }
-
-        /**
-         * @param node Node to check.
-         * @return {@code True} if client cache is present on the given nodes.
-         */
-        public boolean clientNode(ClusterNode node) {
-            if (node.isDaemon())
-                return false;
-
-            Boolean near = clientNodes.get(node.id());
-
-            return near != null && !near;
         }
     }
 }

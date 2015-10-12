@@ -149,52 +149,36 @@ import static org.apache.ignite.transactions.TransactionIsolation.SERIALIZABLE;
 public class GridCacheProcessor extends GridProcessorAdapter {
     /** Null cache name. */
     private static final String NULL_NAME = U.id8(UUID.randomUUID());
-
-    /** Shared cache context. */
-    private GridCacheSharedContext<?, ?> sharedCtx;
-
     /** */
     private final Map<String, GridCacheAdapter<?, ?>> caches;
-
     /** Caches stopped from onKernalStop callback. */
     private final Map<String, GridCacheAdapter> stoppedCaches = new ConcurrentHashMap<>();
-
     /** Map of proxies. */
     private final Map<String, IgniteCacheProxy<?, ?>> jCacheProxies;
-
     /** Map of preload finish futures grouped by preload order. */
     private final NavigableMap<Integer, IgniteInternalFuture<?>> preloadFuts;
-
-    /** Maximum detected rebalance order. */
-    private int maxRebalanceOrder;
-
     /** Caches stop sequence. */
     private final Deque<String> stopSeq;
-
-    /** Transaction interface implementation. */
-    private IgniteTransactionsImpl transactions;
-
-    /** Pending cache starts. */
-    private ConcurrentMap<String, IgniteInternalFuture> pendingFuts = new ConcurrentHashMap<>();
-
-    /** Template configuration add futures. */
-    private ConcurrentMap<String, IgniteInternalFuture> pendingTemplateFuts = new ConcurrentHashMap<>();
-
-    /** Dynamic caches. */
-    private ConcurrentMap<String, DynamicCacheDescriptor> registeredCaches = new ConcurrentHashMap<>();
-
-    /** Cache templates. */
-    private ConcurrentMap<String, DynamicCacheDescriptor> registeredTemplates = new ConcurrentHashMap<>();
-
-    /** */
-    private IdentityHashMap<CacheStore, ThreadLocal> sesHolders = new IdentityHashMap<>();
-
-    /** Must use JDK marshaller since it is used by discovery to fire custom events. */
-    private Marshaller marshaller = new JdkMarshaller();
-
     /** Count down latch for caches. */
     private final CountDownLatch cacheStartedLatch = new CountDownLatch(1);
-
+    /** Shared cache context. */
+    private GridCacheSharedContext<?, ?> sharedCtx;
+    /** Maximum detected rebalance order. */
+    private int maxRebalanceOrder;
+    /** Transaction interface implementation. */
+    private IgniteTransactionsImpl transactions;
+    /** Pending cache starts. */
+    private ConcurrentMap<String, IgniteInternalFuture> pendingFuts = new ConcurrentHashMap<>();
+    /** Template configuration add futures. */
+    private ConcurrentMap<String, IgniteInternalFuture> pendingTemplateFuts = new ConcurrentHashMap<>();
+    /** Dynamic caches. */
+    private ConcurrentMap<String, DynamicCacheDescriptor> registeredCaches = new ConcurrentHashMap<>();
+    /** Cache templates. */
+    private ConcurrentMap<String, DynamicCacheDescriptor> registeredTemplates = new ConcurrentHashMap<>();
+    /** */
+    private IdentityHashMap<CacheStore, ThreadLocal> sesHolders = new IdentityHashMap<>();
+    /** Must use JDK marshaller since it is used by discovery to fire custom events. */
+    private Marshaller marshaller = new JdkMarshaller();
     /** */
     private Map<String, DynamicCacheDescriptor> cachesOnDisconnect;
 
@@ -212,6 +196,24 @@ public class GridCacheProcessor extends GridProcessorAdapter {
         preloadFuts = new TreeMap<>();
 
         stopSeq = new LinkedList<>();
+    }
+
+    /**
+     * @param name Name to mask.
+     * @return Masked name.
+     */
+    private static String maskNull(String name) {
+        return name == null ? NULL_NAME : name;
+    }
+
+    /**
+     * @param name Name to unmask.
+     * @return Unmasked name.
+     */
+    @SuppressWarnings("StringEquality")
+    private static String unmaskNull(String name) {
+        // Intentional identity equality.
+        return name == NULL_NAME ? null : name;
     }
 
     /**
@@ -2261,7 +2263,6 @@ public class GridCacheProcessor extends GridProcessorAdapter {
         return F.first(initiateCacheChanges(F.asList(t), false));
     }
 
-
     /**
      * @param cacheName Cache name to close.
      * @return Future that will be completed when cache is closed.
@@ -3365,21 +3366,54 @@ public class GridCacheProcessor extends GridProcessorAdapter {
     }
 
     /**
-     * @param name Name to mask.
-     * @return Masked name.
+     *
      */
-    private static String maskNull(String name) {
-        return name == null ? NULL_NAME : name;
-    }
+    private static class LocalAffinityFunction implements AffinityFunction {
+        /** */
+        private static final long serialVersionUID = 0L;
 
-    /**
-     * @param name Name to unmask.
-     * @return Unmasked name.
-     */
-    @SuppressWarnings("StringEquality")
-    private static String unmaskNull(String name) {
-        // Intentional identity equality.
-        return name == NULL_NAME ? null : name;
+        /** {@inheritDoc} */
+        @Override public List<List<ClusterNode>> assignPartitions(AffinityFunctionContext affCtx) {
+            ClusterNode locNode = null;
+
+            for (ClusterNode n : affCtx.currentTopologySnapshot()) {
+                if (n.isLocal()) {
+                    locNode = n;
+
+                    break;
+                }
+            }
+
+            if (locNode == null)
+                throw new IgniteException("Local node is not included into affinity nodes for 'LOCAL' cache");
+
+            List<List<ClusterNode>> res = new ArrayList<>(partitions());
+
+            for (int part = 0; part < partitions(); part++)
+                res.add(Collections.singletonList(locNode));
+
+            return Collections.unmodifiableList(res);
+        }
+
+        /** {@inheritDoc} */
+        @Override public void reset() {
+            // No-op.
+        }
+
+        /** {@inheritDoc} */
+        @Override public int partitions() {
+            return 1;
+        }
+
+        /** {@inheritDoc} */
+        @Override public int partition(Object key) {
+            return 0;
+        }
+
+        /** {@inheritDoc} */
+        @Override public void removeNode(UUID nodeId) {
+            // No-op.
+        }
     }
 
     /**
@@ -3476,57 +3510,6 @@ public class GridCacheProcessor extends GridProcessorAdapter {
         /** {@inheritDoc} */
         @Override public String toString() {
             return S.toString(TemplateConfigurationFuture.class, this);
-        }
-    }
-
-    /**
-     *
-     */
-    private static class LocalAffinityFunction implements AffinityFunction {
-        /** */
-        private static final long serialVersionUID = 0L;
-
-        /** {@inheritDoc} */
-        @Override public List<List<ClusterNode>> assignPartitions(AffinityFunctionContext affCtx) {
-            ClusterNode locNode = null;
-
-            for (ClusterNode n : affCtx.currentTopologySnapshot()) {
-                if (n.isLocal()) {
-                    locNode = n;
-
-                    break;
-                }
-            }
-
-            if (locNode == null)
-                throw new IgniteException("Local node is not included into affinity nodes for 'LOCAL' cache");
-
-            List<List<ClusterNode>> res = new ArrayList<>(partitions());
-
-            for (int part = 0; part < partitions(); part++)
-                res.add(Collections.singletonList(locNode));
-
-            return Collections.unmodifiableList(res);
-        }
-
-        /** {@inheritDoc} */
-        @Override public void reset() {
-            // No-op.
-        }
-
-        /** {@inheritDoc} */
-        @Override public int partitions() {
-            return 1;
-        }
-
-        /** {@inheritDoc} */
-        @Override public int partition(Object key) {
-            return 0;
-        }
-
-        /** {@inheritDoc} */
-        @Override public void removeNode(UUID nodeId) {
-            // No-op.
         }
     }
 }

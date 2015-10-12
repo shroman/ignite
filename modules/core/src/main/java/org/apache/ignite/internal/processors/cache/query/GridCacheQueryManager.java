@@ -136,33 +136,24 @@ import static org.apache.ignite.internal.processors.cache.query.GridCacheQueryTy
 public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapter<K, V> {
     /** */
     public static int MAX_ITERATORS = 1000;
-
-    /** */
-    protected GridQueryProcessor qryProc;
-
-    /** */
-    private String space;
-
-    /** */
-    private int maxIterCnt;
-
-    /** */
-    private volatile GridCacheQueryMetricsAdapter metrics = new GridCacheQueryMetricsAdapter();
-
     /** */
     private final ConcurrentMap<UUID, Map<Long, GridFutureAdapter<QueryResult<K, V>>>> qryIters =
         new ConcurrentHashMap8<>();
-
     /** */
     private final ConcurrentMap<UUID, Map<Long, GridFutureAdapter<FieldsResult>>> fieldsQryRes =
         new ConcurrentHashMap8<>();
-
-    /** */
-    private volatile ConcurrentMap<Object, CachedResult<?>> qryResCache = new ConcurrentHashMap8<>();
-
     /** */
     private final GridSpinBusyLock busyLock = new GridSpinBusyLock();
-
+    /** */
+    protected GridQueryProcessor qryProc;
+    /** */
+    private String space;
+    /** */
+    private int maxIterCnt;
+    /** */
+    private volatile GridCacheQueryMetricsAdapter metrics = new GridCacheQueryMetricsAdapter();
+    /** */
+    private volatile ConcurrentMap<Object, CachedResult<?>> qryResCache = new ConcurrentHashMap8<>();
     /** Event listener. */
     private GridLocalEventListener lsnr;
 
@@ -171,6 +162,17 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
 
     /** */
     private AffinityTopologyVersion qryTopVer;
+
+    /**
+     * @param sndId Sender node ID.
+     * @param reqId Request ID.
+     * @return Recipient ID.
+     */
+    private static Object recipient(UUID sndId, long reqId) {
+        assert sndId != null;
+
+        return new IgniteBiTuple<>(sndId, reqId);
+    }
 
     /** {@inheritDoc} */
     @Override public void start0() throws IgniteCheckedException {
@@ -1715,17 +1717,6 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
     }
 
     /**
-     * @param sndId Sender node ID.
-     * @param reqId Request ID.
-     * @return Recipient ID.
-     */
-    private static Object recipient(UUID sndId, long reqId) {
-        assert sndId != null;
-
-        return new IgniteBiTuple<>(sndId, reqId);
-    }
-
-    /**
      * @param qryInfo Info.
      * @return Iterator.
      * @throws IgniteCheckedException In case of error.
@@ -2028,6 +2019,89 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      */
     public String space() {
         return space;
+    }
+
+    /**
+     * Query for {@link IndexingSpi}.
+     *
+     * @param keepPortable Keep portable flag.
+     * @return Query.
+     */
+    public <R> CacheQuery<R> createSpiQuery(boolean keepPortable) {
+        return new GridCacheQueryAdapter<>(cctx,
+            SPI,
+            null,
+            null,
+            null,
+            null,
+            false,
+            keepPortable);
+    }
+
+    /**
+     * Creates user's predicate based scan query.
+     *
+     * @param filter Scan filter.
+     * @param part Partition.
+     * @param keepPortable Keep portable flag.
+     * @return Created query.
+     */
+    public CacheQuery<Map.Entry<K, V>> createScanQuery(@Nullable IgniteBiPredicate<K, V> filter,
+        @Nullable Integer part, boolean keepPortable) {
+
+        return new GridCacheQueryAdapter<>(cctx,
+            SCAN,
+            null,
+            null,
+            (IgniteBiPredicate<Object, Object>)filter,
+            part,
+            false,
+            keepPortable);
+    }
+
+    /**
+     * Creates user's full text query, queried class, and query clause. For more information refer to {@link CacheQuery}
+     * documentation.
+     *
+     * @param clsName Query class name.
+     * @param search Search clause.
+     * @param keepPortable Keep portable flag.
+     * @return Created query.
+     */
+    public CacheQuery<Map.Entry<K, V>> createFullTextQuery(String clsName,
+        String search, boolean keepPortable) {
+        A.notNull("clsName", clsName);
+        A.notNull("search", search);
+
+        return new GridCacheQueryAdapter<>(cctx,
+            TEXT,
+            clsName,
+            search,
+            null,
+            null,
+            false,
+            keepPortable);
+    }
+
+    /**
+     * Creates user's SQL fields query for given clause. For more information refer to {@link CacheQuery}
+     * documentation.
+     *
+     * @param qry Query.
+     * @param keepPortable Keep portable flag.
+     * @return Created query.
+     */
+    public CacheQuery<List<?>> createSqlFieldsQuery(String qry, boolean keepPortable) {
+        A.notNull(qry, "qry");
+
+        return new GridCacheQueryAdapter<>(cctx,
+            SQL_FIELDS,
+            null,
+            qry,
+            null,
+            null,
+            false,
+            keepPortable);
     }
 
     /**
@@ -2435,221 +2509,6 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
     /**
      *
      */
-    private abstract class AbstractLazySwapEntry {
-        /** */
-        private K key;
-
-        /** */
-        private V val;
-
-        /**
-         * @return Key bytes.
-         */
-        protected abstract byte[] keyBytes();
-
-        /**
-         * @return Value.
-         * @throws IgniteCheckedException If failed.
-         */
-        protected abstract V unmarshalValue() throws IgniteCheckedException;
-
-        /**
-         * @return Key.
-         */
-        K key() {
-            try {
-                if (key != null)
-                    return key;
-
-                key = cctx.toCacheKeyObject(keyBytes()).value(cctx.cacheObjectContext(), false);
-
-                return key;
-            }
-            catch (IgniteCheckedException e) {
-                throw new IgniteException(e);
-            }
-        }
-
-        /**
-         * @return Value.
-         */
-        V value() {
-            try {
-                if (val != null)
-                    return val;
-
-                val = unmarshalValue();
-
-                return val;
-            }
-            catch (IgniteCheckedException e) {
-                throw new IgniteException(e);
-            }
-        }
-
-        /**
-         * @return TTL.
-         */
-        abstract long timeToLive();
-
-        /**
-         * @return Expire time.
-         */
-        abstract long expireTime();
-
-        /**
-         * @return Version.
-         */
-        abstract GridCacheVersion version();
-    }
-
-    /**
-     *
-     */
-    private class LazySwapEntry extends AbstractLazySwapEntry {
-        /** */
-        private final Map.Entry<byte[], byte[]> e;
-
-        /**
-         * @param e Entry with
-         */
-        LazySwapEntry(Map.Entry<byte[], byte[]> e) {
-            this.e = e;
-        }
-
-        /** {@inheritDoc} */
-        @Override protected byte[] keyBytes() {
-            return e.getKey();
-        }
-
-        /** {@inheritDoc} */
-        @SuppressWarnings("IfMayBeConditional")
-        @Override protected V unmarshalValue() throws IgniteCheckedException {
-            IgniteBiTuple<byte[], Byte> t = GridCacheSwapEntryImpl.getValue(e.getValue());
-
-            CacheObject obj = cctx.cacheObjects().toCacheObject(cctx.cacheObjectContext(), t.get2(), t.get1());
-
-            return obj.value(cctx.cacheObjectContext(), false);
-        }
-
-        /** {@inheritDoc} */
-        @Override long timeToLive() {
-            return GridCacheSwapEntryImpl.timeToLive(e.getValue());
-        }
-
-        /** {@inheritDoc} */
-        @Override long expireTime() {
-            return GridCacheSwapEntryImpl.expireTime(e.getValue());
-        }
-
-        /** {@inheritDoc} */
-        @Override GridCacheVersion version() {
-            return GridCacheSwapEntryImpl.version(e.getValue());
-        }
-    }
-
-    /**
-     *
-     */
-    private class LazyOffheapEntry extends AbstractLazySwapEntry {
-        /** */
-        private final T2<Long, Integer> keyPtr;
-
-        /** */
-        private final T2<Long, Integer> valPtr;
-
-        /**
-         * @param keyPtr Key address.
-         * @param valPtr Value address.
-         */
-        private LazyOffheapEntry(T2<Long, Integer> keyPtr, T2<Long, Integer> valPtr) {
-            assert keyPtr != null;
-            assert valPtr != null;
-
-            this.keyPtr = keyPtr;
-            this.valPtr = valPtr;
-        }
-
-        /** {@inheritDoc} */
-        @Override protected byte[] keyBytes() {
-            return U.copyMemory(keyPtr.get1(), keyPtr.get2());
-        }
-
-        /** {@inheritDoc} */
-        @Override protected V unmarshalValue() throws IgniteCheckedException {
-            long ptr = GridCacheOffheapSwapEntry.valueAddress(valPtr.get1(), valPtr.get2());
-
-            CacheObject obj = cctx.fromOffheap(ptr, false);
-
-            V val = CU.value(obj, cctx, false);
-
-            assert val != null;
-
-            return val;
-        }
-
-        /** {@inheritDoc} */
-        @Override long timeToLive() {
-            return GridCacheOffheapSwapEntry.timeToLive(valPtr.get1());
-        }
-
-        /** {@inheritDoc} */
-        @Override long expireTime() {
-            return GridCacheOffheapSwapEntry.expireTime(valPtr.get1());
-        }
-
-        /** {@inheritDoc} */
-        @Override GridCacheVersion version() {
-            return GridCacheOffheapSwapEntry.version(valPtr.get1());
-        }
-    }
-
-    /**
-     *
-     */
-    private class OffheapIteratorClosure
-        extends CX2<T2<Long, Integer>, T2<Long, Integer>, IgniteBiTuple<K, V>> {
-        /** */
-        private static final long serialVersionUID = 7410163202728985912L;
-
-        /** */
-        private IgniteBiPredicate<K, V> filter;
-
-        /** */
-        private boolean keepPortable;
-
-        /**
-         * @param filter Filter.
-         * @param keepPortable Keep portable flag.
-         */
-        private OffheapIteratorClosure(
-            @Nullable IgniteBiPredicate<K, V> filter,
-            boolean keepPortable) {
-            assert filter != null;
-
-            this.filter = filter;
-            this.keepPortable = keepPortable;
-        }
-
-        /** {@inheritDoc} */
-        @Nullable @Override public IgniteBiTuple<K, V> applyx(T2<Long, Integer> keyPtr,
-            T2<Long, Integer> valPtr)
-            throws IgniteCheckedException {
-            LazyOffheapEntry e = new LazyOffheapEntry(keyPtr, valPtr);
-
-            K key = (K)cctx.unwrapPortableIfNeeded(e.key(), keepPortable);
-            V val = (V)cctx.unwrapPortableIfNeeded(e.value(), keepPortable);
-
-            if (!filter.apply(key, val))
-                return null;
-
-            return new IgniteBiTuple<>(e.key(), (V)cctx.unwrapTemporary(e.value()));
-        }
-    }
-
-    /**
-     *
-     */
     private static class CompoundIterator<T> extends GridIteratorAdapter<T> {
         /** */
         private static final long serialVersionUID = 4585888051556166304L;
@@ -2712,14 +2571,12 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
      * Cached result.
      */
     private abstract static class CachedResult<R> extends GridFutureAdapter<IgniteSpiCloseableIterator<R>> {
-        /** */
-        private CircularQueue<R> queue;
-
-        /** */
-        private int pruned;
-
         /** Absolute position of each recipient. */
         private final Map<Object, QueueIterator> recipients = new GridLeanMap<>(1);
+        /** */
+        private CircularQueue<R> queue;
+        /** */
+        private int pruned;
 
         /**
          * @param rcpt ID of the recipient.
@@ -3022,85 +2879,217 @@ public abstract class GridCacheQueryManager<K, V> extends GridCacheManagerAdapte
     }
 
     /**
-     * Query for {@link IndexingSpi}.
      *
-     * @param keepPortable Keep portable flag.
-     * @return Query.
      */
-    public <R> CacheQuery<R> createSpiQuery(boolean keepPortable) {
-        return new GridCacheQueryAdapter<>(cctx,
-            SPI,
-            null,
-            null,
-            null,
-            null,
-            false,
-            keepPortable);
+    private abstract class AbstractLazySwapEntry {
+        /** */
+        private K key;
+
+        /** */
+        private V val;
+
+        /**
+         * @return Key bytes.
+         */
+        protected abstract byte[] keyBytes();
+
+        /**
+         * @return Value.
+         * @throws IgniteCheckedException If failed.
+         */
+        protected abstract V unmarshalValue() throws IgniteCheckedException;
+
+        /**
+         * @return Key.
+         */
+        K key() {
+            try {
+                if (key != null)
+                    return key;
+
+                key = cctx.toCacheKeyObject(keyBytes()).value(cctx.cacheObjectContext(), false);
+
+                return key;
+            }
+            catch (IgniteCheckedException e) {
+                throw new IgniteException(e);
+            }
+        }
+
+        /**
+         * @return Value.
+         */
+        V value() {
+            try {
+                if (val != null)
+                    return val;
+
+                val = unmarshalValue();
+
+                return val;
+            }
+            catch (IgniteCheckedException e) {
+                throw new IgniteException(e);
+            }
+        }
+
+        /**
+         * @return TTL.
+         */
+        abstract long timeToLive();
+
+        /**
+         * @return Expire time.
+         */
+        abstract long expireTime();
+
+        /**
+         * @return Version.
+         */
+        abstract GridCacheVersion version();
     }
 
     /**
-     * Creates user's predicate based scan query.
      *
-     * @param filter Scan filter.
-     * @param part Partition.
-     * @param keepPortable Keep portable flag.
-     * @return Created query.
      */
-    public CacheQuery<Map.Entry<K, V>> createScanQuery(@Nullable IgniteBiPredicate<K, V> filter,
-        @Nullable Integer part, boolean keepPortable) {
+    private class LazySwapEntry extends AbstractLazySwapEntry {
+        /** */
+        private final Map.Entry<byte[], byte[]> e;
 
-        return new GridCacheQueryAdapter<>(cctx,
-            SCAN,
-            null,
-            null,
-            (IgniteBiPredicate<Object, Object>)filter,
-            part,
-            false,
-            keepPortable);
+        /**
+         * @param e Entry with
+         */
+        LazySwapEntry(Map.Entry<byte[], byte[]> e) {
+            this.e = e;
+        }
+
+        /** {@inheritDoc} */
+        @Override protected byte[] keyBytes() {
+            return e.getKey();
+        }
+
+        /** {@inheritDoc} */
+        @SuppressWarnings("IfMayBeConditional")
+        @Override protected V unmarshalValue() throws IgniteCheckedException {
+            IgniteBiTuple<byte[], Byte> t = GridCacheSwapEntryImpl.getValue(e.getValue());
+
+            CacheObject obj = cctx.cacheObjects().toCacheObject(cctx.cacheObjectContext(), t.get2(), t.get1());
+
+            return obj.value(cctx.cacheObjectContext(), false);
+        }
+
+        /** {@inheritDoc} */
+        @Override long timeToLive() {
+            return GridCacheSwapEntryImpl.timeToLive(e.getValue());
+        }
+
+        /** {@inheritDoc} */
+        @Override long expireTime() {
+            return GridCacheSwapEntryImpl.expireTime(e.getValue());
+        }
+
+        /** {@inheritDoc} */
+        @Override GridCacheVersion version() {
+            return GridCacheSwapEntryImpl.version(e.getValue());
+        }
     }
 
     /**
-     * Creates user's full text query, queried class, and query clause. For more information refer to {@link CacheQuery}
-     * documentation.
      *
-     * @param clsName Query class name.
-     * @param search Search clause.
-     * @param keepPortable Keep portable flag.
-     * @return Created query.
      */
-    public CacheQuery<Map.Entry<K, V>> createFullTextQuery(String clsName,
-        String search, boolean keepPortable) {
-        A.notNull("clsName", clsName);
-        A.notNull("search", search);
+    private class LazyOffheapEntry extends AbstractLazySwapEntry {
+        /** */
+        private final T2<Long, Integer> keyPtr;
 
-        return new GridCacheQueryAdapter<>(cctx,
-            TEXT,
-            clsName,
-            search,
-            null,
-            null,
-            false,
-            keepPortable);
+        /** */
+        private final T2<Long, Integer> valPtr;
+
+        /**
+         * @param keyPtr Key address.
+         * @param valPtr Value address.
+         */
+        private LazyOffheapEntry(T2<Long, Integer> keyPtr, T2<Long, Integer> valPtr) {
+            assert keyPtr != null;
+            assert valPtr != null;
+
+            this.keyPtr = keyPtr;
+            this.valPtr = valPtr;
+        }
+
+        /** {@inheritDoc} */
+        @Override protected byte[] keyBytes() {
+            return U.copyMemory(keyPtr.get1(), keyPtr.get2());
+        }
+
+        /** {@inheritDoc} */
+        @Override protected V unmarshalValue() throws IgniteCheckedException {
+            long ptr = GridCacheOffheapSwapEntry.valueAddress(valPtr.get1(), valPtr.get2());
+
+            CacheObject obj = cctx.fromOffheap(ptr, false);
+
+            V val = CU.value(obj, cctx, false);
+
+            assert val != null;
+
+            return val;
+        }
+
+        /** {@inheritDoc} */
+        @Override long timeToLive() {
+            return GridCacheOffheapSwapEntry.timeToLive(valPtr.get1());
+        }
+
+        /** {@inheritDoc} */
+        @Override long expireTime() {
+            return GridCacheOffheapSwapEntry.expireTime(valPtr.get1());
+        }
+
+        /** {@inheritDoc} */
+        @Override GridCacheVersion version() {
+            return GridCacheOffheapSwapEntry.version(valPtr.get1());
+        }
     }
 
     /**
-     * Creates user's SQL fields query for given clause. For more information refer to {@link CacheQuery}
-     * documentation.
      *
-     * @param qry Query.
-     * @param keepPortable Keep portable flag.
-     * @return Created query.
      */
-    public CacheQuery<List<?>> createSqlFieldsQuery(String qry, boolean keepPortable) {
-        A.notNull(qry, "qry");
+    private class OffheapIteratorClosure
+        extends CX2<T2<Long, Integer>, T2<Long, Integer>, IgniteBiTuple<K, V>> {
+        /** */
+        private static final long serialVersionUID = 7410163202728985912L;
 
-        return new GridCacheQueryAdapter<>(cctx,
-            SQL_FIELDS,
-            null,
-            qry,
-            null,
-            null,
-            false,
-            keepPortable);
+        /** */
+        private IgniteBiPredicate<K, V> filter;
+
+        /** */
+        private boolean keepPortable;
+
+        /**
+         * @param filter Filter.
+         * @param keepPortable Keep portable flag.
+         */
+        private OffheapIteratorClosure(
+            @Nullable IgniteBiPredicate<K, V> filter,
+            boolean keepPortable) {
+            assert filter != null;
+
+            this.filter = filter;
+            this.keepPortable = keepPortable;
+        }
+
+        /** {@inheritDoc} */
+        @Nullable @Override public IgniteBiTuple<K, V> applyx(T2<Long, Integer> keyPtr,
+            T2<Long, Integer> valPtr)
+            throws IgniteCheckedException {
+            LazyOffheapEntry e = new LazyOffheapEntry(keyPtr, valPtr);
+
+            K key = (K)cctx.unwrapPortableIfNeeded(e.key(), keepPortable);
+            V val = (V)cctx.unwrapPortableIfNeeded(e.value(), keepPortable);
+
+            if (!filter.apply(key, val))
+                return null;
+
+            return new IgniteBiTuple<>(e.key(), (V)cctx.unwrapTemporary(e.value()));
+        }
     }
 }

@@ -73,6 +73,14 @@ public class GridTopologyCommandHandler extends GridRestCommandHandlerAdapter {
         super(ctx);
     }
 
+    /**
+     * @param col Collection;
+     * @return Non-empty list.
+     */
+    private static Collection<String> nonEmptyList(Collection<String> col) {
+        return col == null ? Collections.<String>emptyList() : col;
+    }
+
     /** {@inheritDoc} */
     @Override public Collection<GridRestCommand> supportedCommands() {
         return SUPPORTED_COMMANDS;
@@ -202,7 +210,7 @@ public class GridTopologyCommandHandler extends GridRestCommandHandlerAdapter {
         for (Map.Entry<String, CacheMode> cache : nodeCaches.entrySet()) {
             String cacheName = cache.getKey();
 
-            if (CU.isSystemCache(cacheName))
+            if (CU.isSystemCache(cacheName) || CU.isIgfsCache(ctx.config(), cacheName))
                 continue;
 
             String mode = cache.getValue().toString();
@@ -304,14 +312,6 @@ public class GridTopologyCommandHandler extends GridRestCommandHandlerAdapter {
         }
 
         return nodeBean;
-    }
-
-    /**
-     * @param col Collection;
-     * @return Non-empty list.
-     */
-    private static Collection<String> nonEmptyList(Collection<String> col) {
-        return col == null ? Collections.<String>emptyList() : col;
     }
 
     /**
