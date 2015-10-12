@@ -95,6 +95,7 @@ consoleModule.controller('clustersController', [
             atomics: {xml: '', java: '', allDefaults: true},
             communication: {xml: '', java: '', allDefaults: true},
             deployment: {xml: '', java: '', allDefaults: true},
+            discovery: {xml: '', java: '', allDefaults: true},
             events: {xml: '', java: '', allDefaults: true},
             marshaller: {xml: '', java: '', allDefaults: true},
             metrics: {xml: '', java: '', allDefaults: true},
@@ -244,6 +245,10 @@ consoleModule.controller('clustersController', [
                                 $scope.preview.deployment.java = $generatorJava.clusterDeployment(val).asString();
                                 $scope.preview.deployment.allDefaults = $common.isEmptyString($scope.preview.deployment.xml);
 
+                                $scope.preview.discovery.xml = $generatorXml.clusterDiscovery(val.discovery).asString();
+                                $scope.preview.discovery.java = $generatorJava.clusterDiscovery(val.discovery).asString();
+                                $scope.preview.discovery.allDefaults = $common.isEmptyString($scope.preview.discovery.xml);
+
                                 $scope.preview.events.xml = $generatorXml.clusterEvents(val).asString();
                                 $scope.preview.events.java = $generatorJava.clusterEvents(val).asString();
                                 $scope.preview.events.allDefaults = $common.isEmptyString($scope.preview.events.xml);
@@ -359,6 +364,23 @@ consoleModule.controller('clustersController', [
         function validate(item) {
             if ($common.isEmptyString(item.name))
                 return showPopoverMessage($scope.panels, 'general', 'clusterName', 'Name should not be empty');
+
+            var d = item.discovery;
+
+            if (!$common.isEmptyString(d.addressResolver) && !$common.isValidJavaClass('Address resolver', d.addressResolver, false, 'addressResolver', false, $scope.panels, 'discovery'))
+                return false;
+
+            if (!$common.isEmptyString(d.listener) && !$common.isValidJavaClass('Discovery listener', d.listener, false, 'listener', false, $scope.panels, 'discovery'))
+                return false;
+
+            if (!$common.isEmptyString(d.dataExchange) && !$common.isValidJavaClass('Data exchange', d.dataExchange, false, 'dataExchange', false, $scope.panels, 'discovery'))
+                return false;
+
+            if (!$common.isEmptyString(d.metricsProvider) && !$common.isValidJavaClass('Metrics provider', d.metricsProvider, false, 'metricsProvider', false, $scope.panels, 'discovery'))
+                return false;
+
+            if (!$common.isEmptyString(d.authenticator) && !$common.isValidJavaClass('Node authenticator', d.authenticator, false, 'authenticator', false, $scope.panels, 'discovery'))
+                return false;
 
             if (item.discovery.kind == 'Vm' && item.discovery.Vm.addresses.length == 0)
                 return showPopoverMessage($scope.panels, 'general', 'addresses', 'Addresses are not specified');

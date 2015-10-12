@@ -329,6 +329,9 @@ $generatorXml.clusterGeneral = function (cluster, res) {
         }
 
         res.endBlock('</property>');
+
+        $generatorXml.clusterDiscovery(d, res);
+
         res.endBlock('</bean>');
         res.endBlock('</property>');
 
@@ -400,6 +403,40 @@ $generatorXml.clusterDeployment = function (cluster, res) {
 
     if ($generatorXml.property(res, cluster, 'deploymentMode', null, 'SHARED'))
         res.needEmptyLine = true;
+
+    return res;
+};
+
+// Generate discovery group.
+$generatorXml.clusterDiscovery = function (disco, res) {
+    if (!res)
+        res = $generatorCommon.builder();
+
+    $generatorXml.property(res, disco, 'localAddress');
+    $generatorXml.property(res, disco, 'localPort', undefined, 47500);
+    $generatorXml.property(res, disco, 'localPortRange', undefined, 100);
+    $generatorXml.beanProperty(res, disco, 'addressResolver', {className: disco.addressResolver}, true);
+    $generatorXml.property(res, disco, 'socketTimeout');
+    $generatorXml.property(res, disco, 'ackTimeout');
+    $generatorXml.property(res, disco, 'maxAckTimeout', undefined, 600000);
+    $generatorXml.property(res, disco, 'discoNetworkTimeout', 'setNetworkTimeout', 5000);
+    $generatorXml.property(res, disco, 'joinTimeout', undefined, 0);
+    $generatorXml.property(res, disco, 'threadPriority', undefined, 10);
+    $generatorXml.property(res, disco, 'heartbeatFrequency', undefined, 2000);
+    $generatorXml.property(res, disco, 'maxMissedHeartbeats', undefined, 1);
+    $generatorXml.property(res, disco, 'maxMissedClientHeartbeats', undefined, 5);
+    $generatorXml.property(res, disco, 'topHistorySize', undefined, 100);
+    $generatorXml.beanProperty(res, disco, 'listener', {className: disco.listener}, true);
+    $generatorXml.beanProperty(res, disco, 'dataExchange', {className: disco.dataExchange}, true);
+    $generatorXml.beanProperty(res, disco, 'metricsProvider', {className: disco.metricsProvider}, true);
+    $generatorXml.property(res, disco, 'reconnectCount', undefined, 10);
+    $generatorXml.property(res, disco, 'statisticsPrintFrequency', undefined, 0);
+    $generatorXml.property(res, disco, 'ipFinderCleanFrequency', undefined, 60000);
+    $generatorXml.beanProperty(res, disco, 'authenticator', {className: disco.authenticator}, true);
+    $generatorXml.property(res, disco, 'forceServerMode', undefined, false);
+    $generatorXml.property(res, disco, 'clientReconnectDisabled', undefined, false);
+
+    res.needEmptyLine = true;
 
     return res;
 };

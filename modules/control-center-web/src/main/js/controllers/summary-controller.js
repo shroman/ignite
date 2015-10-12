@@ -92,7 +92,7 @@ consoleModule.controller('summaryController', [
     };
 
     function selectPojoClass(config) {
-        $generatorJava.metadatas.forEach(function(meta) {
+        _.forEach($generatorJava.metadatas, function(meta) {
             if (meta.keyType == config.pojoClass)
                 return config.pojoClassBody = meta.keyClass;
 

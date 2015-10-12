@@ -124,7 +124,7 @@ consoleModule.controller('sqlController',
         };
 
         paragraph.chartTimeLineEnabled = function () {
-            return !$common.isEmptyArray(this.chartKeyCols) && this.chartKeyCols[0] == TIME_LINE;
+            return !$common.isEmptyArray(this.chartKeyCols) && angular.equals(this.chartKeyCols[0], TIME_LINE);
         };
 
         paragraph.timeLineSupported = function () {
@@ -389,14 +389,14 @@ consoleModule.controller('sqlController',
 
         paragraph.gridOptions.api.setColumnDefs(columnDefs);
 
-        // Not object.
-        paragraph.chartKeyCols = _retainColumns(paragraph.chartColumns, paragraph.chartKeyCols, _notObjectType);
-
-        // Numeric.
-        paragraph.chartValCols = _retainColumns(paragraph.chartColumns, paragraph.chartValCols, _numberType, paragraph.chartKeyCols[0]);
-
         if (paragraph.chartColumns.length > 0)
             paragraph.chartColumns.push(TIME_LINE);
+
+        // We could accept onl not object columns for X axis.
+        paragraph.chartKeyCols = _retainColumns(paragraph.chartColumns, paragraph.chartKeyCols, _notObjectType);
+
+        // We could accept only numeric columns for Y axis.
+        paragraph.chartValCols = _retainColumns(paragraph.chartColumns, paragraph.chartValCols, _numberType, paragraph.chartKeyCols[0]);
     };
 
     $scope.toggleSystemColumns = function (paragraph) {

@@ -461,6 +461,10 @@ $generatorJava.clusterGeneral = function (cluster, clientNearCfg, res) {
                 res.line('Unknown discovery kind: ' + d.kind);
         }
 
+        res.needEmptyLine = false;
+
+        $generatorJava.clusterDiscovery(d, res);
+
         res.emptyLineIfNeeded();
 
         res.line('cfg.setDiscoverySpi(discovery);');
@@ -530,6 +534,63 @@ $generatorJava.clusterDeployment = function (cluster, res) {
         res = $generatorCommon.builder();
 
     $generatorJava.property(res, 'cfg', cluster, 'deploymentMode', null, null, 'SHARED');
+
+    res.needEmptyLine = true;
+
+    return res;
+};
+
+// Generate discovery group.
+$generatorJava.clusterDiscovery = function (disco, res) {
+    if (!res)
+        res = $generatorCommon.builder();
+
+    $generatorJava.property(res, 'discovery', disco, 'localAddress');
+    $generatorJava.property(res, 'discovery', disco, 'localPort', undefined, undefined, 47500);
+    $generatorJava.property(res, 'discovery', disco, 'localPortRange', undefined, undefined, 100);
+
+    if ($commonUtils.isDefinedAndNotEmpty(disco.addressResolver)) {
+        $generatorJava.beanProperty(res, 'discovery', disco, 'addressResolver', 'addressResolver', disco.addressResolver, {}, true);
+        res.needEmptyLine = false;
+    }
+
+    $generatorJava.property(res, 'discovery', disco, 'socketTimeout');
+    $generatorJava.property(res, 'discovery', disco, 'ackTimeout');
+    $generatorJava.property(res, 'discovery', disco, 'maxAckTimeout', undefined, undefined, 600000);
+    $generatorJava.property(res, 'discovery', disco, 'networkTimeout', undefined, undefined, 5000);
+    $generatorJava.property(res, 'discovery', disco, 'joinTimeout', undefined, undefined, 0);
+    $generatorJava.property(res, 'discovery', disco, 'threadPriority', undefined, undefined, 10);
+    $generatorJava.property(res, 'discovery', disco, 'heartbeatFrequency', undefined, undefined, 2000);
+    $generatorJava.property(res, 'discovery', disco, 'maxMissedHeartbeats', undefined, undefined, 1);
+    $generatorJava.property(res, 'discovery', disco, 'maxMissedClientHeartbeats', undefined, undefined, 5);
+    $generatorJava.property(res, 'discovery', disco, 'topHistorySize', undefined, undefined, 100);
+
+    if ($commonUtils.isDefinedAndNotEmpty(disco.listener)) {
+        $generatorJava.beanProperty(res, 'discovery', disco, 'listener', 'listener', disco.listener, {}, true);
+        res.needEmptyLine = false;
+    }
+
+    if ($commonUtils.isDefinedAndNotEmpty(disco.dataExchange)) {
+        $generatorJava.beanProperty(res, 'discovery', disco, 'dataExchange', 'dataExchange', disco.dataExchange, {}, true);
+        res.needEmptyLine = false;
+    }
+
+    if ($commonUtils.isDefinedAndNotEmpty(disco.metricsProvider)) {
+        $generatorJava.beanProperty(res, 'discovery', disco, 'metricsProvider', 'metricsProvider', disco.metricsProvider, {}, true);
+        res.needEmptyLine = false;
+    }
+
+    $generatorJava.property(res, 'discovery', disco, 'reconnectCount', undefined, undefined, 10);
+    $generatorJava.property(res, 'discovery', disco, 'statisticsPrintFrequency', undefined, undefined, 0);
+    $generatorJava.property(res, 'discovery', disco, 'ipFinderCleanFrequency', undefined, undefined, 60000);
+
+    if ($commonUtils.isDefinedAndNotEmpty(disco.authenticator)) {
+        $generatorJava.beanProperty(res, 'discovery', disco, 'authenticator', 'authenticator', disco.authenticator, {}, true);
+        res.needEmptyLine = false;
+    }
+
+    $generatorJava.property(res, 'discovery', disco, 'forceServerMode', undefined, undefined, false);
+    $generatorJava.property(res, 'discovery', disco, 'clientReconnectDisabled', undefined, undefined, false);
 
     res.needEmptyLine = true;
 

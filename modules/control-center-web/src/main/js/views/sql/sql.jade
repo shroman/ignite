@@ -160,9 +160,9 @@ block container
                                                         a(ng-show='paragraph.chart' ng-click='$event.stopPropagation()' bs-popover data-template-url='chart-settings' data-placement='bottom' data-auto-close='1' data-trigger='click') Chart settings
                                                     div(ng-repeat='chart in paragraph.charts')
                                                         nvd3(options='chart.options' data='chart.data' api='chart.api')
-                                                .sql-empty-result(ng-show='!paragraph.timeLineSupported() && paragraph.chartTimeLineEnabled()') Pie chart does not supported 'TIME_LINE' column for X-axis
+                                                .sql-empty-result(ng-show='!paragraph.timeLineSupported() && paragraph.chartTimeLineEnabled()') Pie chart does not support 'TIME_LINE' column for X-axis
                                         .sql-empty-result(ng-hide='paragraph.queryExecute()')
-                                            | Charts does not support&nbsp
+                                            | Charts do not support&nbsp
                                             b Explain
                                             | &nbspand&nbsp
                                             b Scan
