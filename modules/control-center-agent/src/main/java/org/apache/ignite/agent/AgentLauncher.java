@@ -21,6 +21,7 @@ import com.beust.jcommander.JCommander;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.ignite.agent.handlers.RestExecutor;
@@ -63,32 +64,53 @@ public class AgentLauncher {
 
         jCommander.setProgramName("ignite-web-agent." + (osName.contains("win") ? "bat" : "sh"));
 
+        String prop = cmdCfg.configPath();
+
+        try {
+            cfg.load(new File(cmdCfg.configPath()).toURI().toURL());
+        }
+        catch (IOException ignore) {
+            log.log(Level.WARNING, "Failed to load agent property file: '" + prop + "'", ignore);
+        }
+
+        cfg.merge(cmdCfg);
+
         if (cmdCfg.help()) {
             jCommander.usage();
 
             return;
         }
 
+        System.out.println();
+        System.out.println("Configuration settings:");
+        System.out.println(cmdCfg);
+        System.out.println();
+
         if (cmdCfg.testDriveSql() && cmdCfg.nodeUri() != null)
             log.log(Level.WARNING,
                 "URI for connect to Ignite REST server will be ignored because --test-drive-sql option was specified.");
 
-
-        if (cmdCfg.configPath() != null)
-            cfg.load(new File(cmdCfg.configPath()).toURI().toURL());
-        else {
-            try {
-                cfg.load(new File("./default.properties").toURI().toURL());
-            }
-            catch (IOException ignore) {
-                // No-op.
-            }
+        if (!cmdCfg.testDriveSql() && !cmdCfg.testDriveMetadata()) {
+            System.out.println("To start web-agent in test-drive mode, pass \"-tm\" and \"-ts\" parameters");
+            System.out.println();
         }
 
-        cfg.merge(cmdCfg);
-
         if (cfg.token() == null) {
-            System.out.print("Token: ");
+            String webHost= "";
+
+            try {
+                webHost = new URI(cfg.serverUri()).getHost();
+            }
+            catch (URISyntaxException e) {
+                log.log(Level.SEVERE, "Failed to parse Ignite Web Console uri", e);
+
+                return;
+            }
+
+            System.out.println("Security token is required to establish connection to the web console.");
+            System.out.println(String.format("It is available on the Profile page: https://%s/profile", webHost));
+
+            System.out.print("Enter security token: ");
 
             cfg.token(new String(System.console().readPassword()));
         }
@@ -106,8 +128,9 @@ public class AgentLauncher {
         try {
             SslContextFactory sslCtxFactory = new SslContextFactory();
 
-            // TODO IGNITE-843 Fix issue with trust all: if (Boolean.TRUE.equals(Boolean.getBoolean("trust.all")))
-            sslCtxFactory.setTrustAll(true);
+            // Workaround for use self-signed certificate:
+            if (Boolean.getBoolean("trust.all"))
+                sslCtxFactory.setTrustAll(true);
 
             WebSocketClient client = new WebSocketClient(sslCtxFactory);
 

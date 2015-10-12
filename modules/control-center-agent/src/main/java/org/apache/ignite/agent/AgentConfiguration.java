@@ -18,6 +18,7 @@
 package org.apache.ignite.agent;
 
 import com.beust.jcommander.Parameter;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -41,26 +42,31 @@ public class AgentConfiguration {
     public static final int DFLT_NODE_PORT = 8080;
 
     /** */
-    @Parameter(names = {"-t", "--token"}, description = "User's security token")
-    private String token;
+    @Parameter(names = {"-t", "--token"}, description = "User's security token used to establish connection to Ignite Console.")
+    private String tok;
 
     /** */
-    @Parameter(names = {"-s", "--server-uri"}, description = "URI for connect to Ignite Web Console via " +
-        "web-socket protocol, default value: wss://localhost:3001")
+    @Parameter(names = {"-s", "--server-uri"}, description = "URI for connect to Ignite Console via web-socket protocol" +
+        "           " +
+        "      Default value: wss://localhost:3001")
     private String srvUri;
 
     /** */
-    @Parameter(names = {"-n", "--node-uri"},
-        description = "URI for connect to Ignite REST server, default value: http://localhost:8080")
+    @Parameter(names = {"-n", "--node-uri"}, description = "URI for connect to Ignite node REST server" +
+        "                        " +
+        "      Default value: http://localhost:8080")
     private String nodeUri;
 
     /** */
-    @Parameter(names = {"-c", "--config"}, description = "Path to configuration file")
+    @Parameter(names = {"-c", "--config"}, description = "Path to agent property file" +
+        "                                  " +
+        "      Default value: ./default.properties")
     private String cfgPath;
 
     /** */
-    @Parameter(names = {"-d", "--driver-folder"},
-        description = "Path to folder with JDBC drivers, default value: ./jdbc-drivers")
+    @Parameter(names = {"-d", "--driver-folder"}, description = "Path to folder with JDBC drivers" +
+        "                             " +
+        "      Default value: ./jdbc-drivers")
     private String driversFolder;
 
     /** */
@@ -82,14 +88,14 @@ public class AgentConfiguration {
      * @return Token.
      */
     public String token() {
-        return token;
+        return tok;
     }
 
     /**
-     * @param token Token.
+     * @param tok Token.
      */
-    public void token(String token) {
-        this.token = token;
+    public void token(String tok) {
+        this.tok = tok;
     }
 
     /**
@@ -124,7 +130,7 @@ public class AgentConfiguration {
      * @return Configuration path.
      */
     public String configPath() {
-        return cfgPath;
+        return cfgPath == null ? "./default.properties" : cfgPath;
     }
 
     /**
@@ -173,17 +179,7 @@ public class AgentConfiguration {
      * @return {@code true} If agent options usage should be printed.
      */
     public Boolean help() {
-        boolean noArgs =
-            token == null &&
-            srvUri == null &&
-            nodeUri == null &&
-            cfgPath == null &&
-            driversFolder == null &&
-            meta == null &&
-            sql == null &&
-            help == null;
-
-        return noArgs || (help != null ? help : false);
+        return help != null ? help : false;
     }
 
     /**
@@ -254,5 +250,33 @@ public class AgentConfiguration {
 
         if (cmd.testDriveSql())
             testDriveSql(true);
+    }
+
+    /** {@inheritDoc} */
+    @Override public String toString() {
+        StringBuilder sb = new StringBuilder();
+
+        if (tok != null)
+            sb.append("User's security token         : ").append(token()).append('\n');
+
+        sb.append("URI to Ignite node REST server: ").append(nodeUri == null ? DFLT_NODE_URI : nodeUri).append('\n');
+        sb.append("URI to Ignite Console server  : ").append(srvUri == null ? DFLT_SERVER_URI : srvUri).append('\n');
+        sb.append("Path to agent property file   : ").append(configPath()).append('\n');
+
+        String drvFld = driversFolder();
+
+        if (drvFld == null) {
+            File agentHome = AgentUtils.getAgentHome();
+
+            if (agentHome != null)
+                drvFld = new File(agentHome, "jdbc-drivers").getPath();
+        }
+
+        sb.append("Path to JDBC drivers folder   : ").append(drvFld).append('\n');
+
+        sb.append("Test-drive for load metadata  : ").append(testDriveMetadata()).append('\n');
+        sb.append("Test-drive for execute query  : ").append(testDriveSql());
+
+        return sb.toString();
     }
 }
