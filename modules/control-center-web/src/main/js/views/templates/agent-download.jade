@@ -45,5 +45,5 @@
                     i.tipLabel.fa.fa-clipboard(ng-click-copy='{{user.token}}' bs-tooltip='' data-title='Copy security token to clipboard')
                     i.tipLabel.fa.fa-question-circle(ng-if=lines bs-tooltip='' data-title='The security token is used for authorization of web agent')
             .modal-footer
-                button.btn.btn-default(ng-if='checkConnection' ng-click='goHome()') Home
+                button.btn.btn-default(ng-if='checkConnection' ng-click='goHome()') Back to Configuration
                 button.btn.btn-primary(ng-click='downloadAgent()') Download zip
