@@ -68,6 +68,8 @@ import static org.apache.ignite.internal.portable.GridPortableMarshaller.SHORT;
 import static org.apache.ignite.internal.portable.GridPortableMarshaller.SHORT_ARR;
 import static org.apache.ignite.internal.portable.GridPortableMarshaller.STRING;
 import static org.apache.ignite.internal.portable.GridPortableMarshaller.STRING_ARR;
+import static org.apache.ignite.internal.portable.GridPortableMarshaller.TIMESTAMP;
+import static org.apache.ignite.internal.portable.GridPortableMarshaller.TIMESTAMP_ARR;
 import static org.apache.ignite.internal.portable.GridPortableMarshaller.UUID;
 import static org.apache.ignite.internal.portable.GridPortableMarshaller.UUID_ARR;
 
@@ -135,6 +137,7 @@ public class PortableUtils {
         PLAIN_CLASS_TO_FLAG.put(String.class, GridPortableMarshaller.STRING);
         PLAIN_CLASS_TO_FLAG.put(UUID.class, GridPortableMarshaller.UUID);
         PLAIN_CLASS_TO_FLAG.put(Date.class, GridPortableMarshaller.DATE);
+        PLAIN_CLASS_TO_FLAG.put(Timestamp.class, GridPortableMarshaller.TIMESTAMP);
 
         PLAIN_CLASS_TO_FLAG.put(byte[].class, GridPortableMarshaller.BYTE_ARR);
         PLAIN_CLASS_TO_FLAG.put(short[].class, GridPortableMarshaller.SHORT_ARR);
@@ -148,6 +151,7 @@ public class PortableUtils {
         PLAIN_CLASS_TO_FLAG.put(String[].class, GridPortableMarshaller.STRING_ARR);
         PLAIN_CLASS_TO_FLAG.put(UUID[].class, GridPortableMarshaller.UUID_ARR);
         PLAIN_CLASS_TO_FLAG.put(Date[].class, GridPortableMarshaller.DATE_ARR);
+        PLAIN_CLASS_TO_FLAG.put(Timestamp[].class, GridPortableMarshaller.TIMESTAMP_ARR);
 
         for (Map.Entry<Class<?>, Byte> entry : PLAIN_CLASS_TO_FLAG.entrySet())
             FLAG_TO_CLASS.put(entry.getValue(), entry.getKey());
@@ -163,9 +167,9 @@ public class PortableUtils {
 
         for (byte b : new byte[] {
             BYTE, SHORT, INT, LONG, FLOAT, DOUBLE,
-            CHAR, BOOLEAN, DECIMAL, STRING, UUID, DATE,
+            CHAR, BOOLEAN, DECIMAL, STRING, UUID, DATE, TIMESTAMP,
             BYTE_ARR, SHORT_ARR, INT_ARR, LONG_ARR, FLOAT_ARR, DOUBLE_ARR,
-            CHAR_ARR, BOOLEAN_ARR, DECIMAL_ARR, STRING_ARR, UUID_ARR, DATE_ARR,
+            CHAR_ARR, BOOLEAN_ARR, DECIMAL_ARR, STRING_ARR, UUID_ARR, DATE_ARR, TIMESTAMP_ARR,
             ENUM, ENUM_ARR, NULL}) {
 
             PLAIN_TYPE_FLAG[b] = true;
@@ -249,10 +253,12 @@ public class PortableUtils {
                 break;
 
             case DATE:
-                if (val instanceof Timestamp)
-                    writer.doWriteTimestamp((Timestamp)val);
-                else
-                    writer.doWriteDate((Date)val);
+                writer.doWriteDate((Date)val);
+
+                break;
+
+            case TIMESTAMP:
+                writer.doWriteTimestamp((Timestamp) val);
 
                 break;
 
@@ -316,6 +322,11 @@ public class PortableUtils {
 
                 break;
 
+            case TIMESTAMP_ARR:
+                writer.doWriteTimestampArray((Timestamp[])val);
+
+                break;
+
             default:
                 throw new IllegalArgumentException("Can't write object with type: " + val.getClass());
         }
@@ -366,7 +377,7 @@ public class PortableUtils {
      * @return {@code true} if content of serialized array value cannot contain references to other object.
      */
     public static boolean isPlainArrayType(int type) {
-        return type >= BYTE_ARR && type <= DATE_ARR;
+        return (type >= BYTE_ARR && type <= DATE_ARR) || type == TIMESTAMP_ARR;
     }
 
     /**
@@ -374,9 +385,6 @@ public class PortableUtils {
      * @return Portable field type.
      */
     public static byte typeByClass(Class<?> cls) {
-        if (Date.class.isAssignableFrom(cls))
-            return DATE;
-
         Byte type = PLAIN_CLASS_TO_FLAG.get(cls);
 
         if (type != null)
