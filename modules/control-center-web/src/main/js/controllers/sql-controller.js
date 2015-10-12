@@ -720,7 +720,7 @@ consoleModule.controller('sqlController',
         _tryStopRefresh(paragraph);
 
         if (paragraph.rate && paragraph.rate.installed && paragraph.queryArgs) {
-            $scope.chartAcceptKeyColumn(paragraph, {value: -1, label: TIME_LINE});
+            $scope.chartAcceptKeyColumn(paragraph, TIME_LINE);
 
             _executeRefresh(paragraph);
 
