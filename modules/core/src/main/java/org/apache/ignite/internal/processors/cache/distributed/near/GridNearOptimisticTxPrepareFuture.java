@@ -72,7 +72,7 @@ import static org.apache.ignite.transactions.TransactionState.PREPARING;
  */
 public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAdapter
     implements GridCacheMvccFuture<IgniteInternalTx> {
-
+    /** */
     private KeyLockFuture keyLockFut = new KeyLockFuture();
 
     /**
@@ -446,14 +446,13 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
      * @param writes Write entries.
      * @param remap Remap flag.
      * @param topLocked {@code True} if thread already acquired lock preventing topology change.
-     * @throws IgniteCheckedException If failed.
      */
     private void prepare(
         Iterable<IgniteTxEntry> reads,
         Iterable<IgniteTxEntry> writes,
         boolean remap,
         boolean topLocked
-    ) throws IgniteCheckedException {
+    ) {
         AffinityTopologyVersion topVer = tx.topologyVersion();
 
         assert topVer.topologyVersion() > 0;
@@ -524,7 +523,8 @@ public class GridNearOptimisticTxPrepareFuture extends GridNearTxPrepareFutureAd
 
         keyLockFut.onAllKeysAdded();
 
-        add(keyLockFut);
+        if (!remap)
+            add(keyLockFut);
 
         if (isDone()) {
             if (log.isDebugEnabled())
