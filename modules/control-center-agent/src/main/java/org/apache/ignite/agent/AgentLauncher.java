@@ -36,16 +36,15 @@ import static org.apache.ignite.agent.AgentConfiguration.DFLT_SERVER_PORT;
  * Control Center Agent launcher.
  */
 public class AgentLauncher {
+    /** */
+    private static final Logger log = Logger.getLogger(AgentLauncher.class.getName());
+    /** */
+    private static final int RECONNECT_INTERVAL = 3000;
+
     /** Static initializer. */
     static {
         AgentLoggingConfigurator.configure();
     }
-
-    /** */
-    private static final Logger log = Logger.getLogger(AgentLauncher.class.getName());
-
-    /** */
-    private static final int RECONNECT_INTERVAL = 3000;
 
     /**
      * @param args Args.
@@ -56,41 +55,41 @@ public class AgentLauncher {
 
         AgentConfiguration cfg = new AgentConfiguration();
 
-        AgentConfiguration cmdCfg = new AgentConfiguration();
-
-        JCommander jCommander = new JCommander(cmdCfg, args);
+        JCommander jCommander = new JCommander(cfg, args);
 
         String osName = System.getProperty("os.name").toLowerCase();
 
         jCommander.setProgramName("ignite-web-agent." + (osName.contains("win") ? "bat" : "sh"));
 
-        String prop = cmdCfg.configPath();
+        String prop = cfg.configPath();
+
+        AgentConfiguration propCfg = new AgentConfiguration();
 
         try {
-            cfg.load(new File(cmdCfg.configPath()).toURI().toURL());
+            propCfg.load(new File(prop).toURI().toURL());
         }
         catch (IOException ignore) {
             log.log(Level.WARNING, "Failed to load agent property file: '" + prop + "'", ignore);
         }
 
-        cfg.merge(cmdCfg);
+        cfg.merge(propCfg);
 
-        if (cmdCfg.help()) {
+        if (cfg.help()) {
             jCommander.usage();
 
             return;
         }
 
         System.out.println();
-        System.out.println("Configuration settings:");
-        System.out.println(cmdCfg);
+        System.out.println("Agent configuration:");
+        System.out.println(cfg);
         System.out.println();
 
-        if (cmdCfg.testDriveSql() && cmdCfg.nodeUri() != null)
+        if (cfg.testDriveSql() && cfg.nodeUri() != null)
             log.log(Level.WARNING,
                 "URI for connect to Ignite REST server will be ignored because --test-drive-sql option was specified.");
 
-        if (!cmdCfg.testDriveSql() && !cmdCfg.testDriveMetadata()) {
+        if (!cfg.testDriveSql() && !cfg.testDriveMetadata()) {
             System.out.println("To start web-agent in test-drive mode, pass \"-tm\" and \"-ts\" parameters");
             System.out.println();
         }

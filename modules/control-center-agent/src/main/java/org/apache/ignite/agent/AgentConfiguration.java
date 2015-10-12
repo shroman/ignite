@@ -29,18 +29,14 @@ import java.util.Properties;
  * Agent configuration.
  */
 public class AgentConfiguration {
-    /** Default server URI. */
-    private static final String DFLT_SERVER_URI = "wss://localhost:3001";
-
     /** Default server port. */
     public static final int DFLT_SERVER_PORT = 3001;
-
-    /** Default Ignite node HTTP URI. */
-    private static final String DFLT_NODE_URI = "http://localhost:8080";
-
     /** Default Ignite node HTTP port. */
     public static final int DFLT_NODE_PORT = 8080;
-
+    /** Default server URI. */
+    private static final String DFLT_SERVER_URI = "wss://localhost:3001";
+    /** Default Ignite node HTTP URI. */
+    private static final String DFLT_NODE_URI = "http://localhost:8080";
     /** */
     @Parameter(names = {"-t", "--token"}, description = "User's security token used to establish connection to Ignite Console.")
     private String tok;
@@ -227,28 +223,28 @@ public class AgentConfiguration {
      * @param cmd Command.
      */
     public void merge(AgentConfiguration cmd) {
-        if (cmd.token() != null)
+        if (tok == null)
             token(cmd.token());
 
-        if (cmd.serverUri() != null)
+        if (srvUri == null)
             serverUri(cmd.serverUri());
 
         if (srvUri == null)
             serverUri(DFLT_SERVER_URI);
 
-        if (cmd.nodeUri() != null)
+        if (nodeUri == null)
             nodeUri(cmd.nodeUri());
 
         if (nodeUri == null)
             nodeUri(DFLT_NODE_URI);
 
-        if (cmd.driversFolder() != null)
+        if (driversFolder == null)
             driversFolder(cmd.driversFolder());
 
-        if (cmd.testDriveMetadata())
+        if (testDriveMetadata())
             testDriveMetadata(true);
 
-        if (cmd.testDriveSql())
+        if (testDriveSql())
             testDriveSql(true);
     }
 

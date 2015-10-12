@@ -26,6 +26,7 @@ import java.net.ConnectException;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.net.ssl.SSLHandshakeException;
 import org.apache.ignite.agent.handlers.DatabaseMetadataExtractor;
 import org.apache.ignite.agent.handlers.RestExecutor;
 import org.apache.ignite.agent.remote.Remote;
@@ -46,14 +47,11 @@ import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 @WebSocket
 public class AgentSocket implements WebSocketSender {
     /** */
-    private static final Logger log = Logger.getLogger(AgentSocket.class.getName());
-
-    /** */
     public static final Gson GSON = new Gson();
-
     /** */
     public static final JsonParser PARSER = new JsonParser();
-
+    /** */
+    private static final Logger log = Logger.getLogger(AgentSocket.class.getName());
     /** */
     private final CountDownLatch closeLatch = new CountDownLatch(1);
 
@@ -143,6 +141,12 @@ public class AgentSocket implements WebSocketSender {
     public void onError(Session ses, Throwable error) {
         if (error instanceof ConnectException)
             log.log(Level.WARNING, error.getMessage());
+        else if (error instanceof SSLHandshakeException) {
+            log.log(Level.SEVERE, "Failed to establish SSL connection to Ignite Console. Start agent with " +
+                "\"-Dtrust.all=true\" to skip certificate validation in case of using self-signed certificate.", error);
+
+            System.exit(1);
+        }
         else
             log.log(Level.SEVERE, "Connection error.", error);
 
