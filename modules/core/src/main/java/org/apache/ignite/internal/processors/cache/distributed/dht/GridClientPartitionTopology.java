@@ -60,39 +60,28 @@ public class GridClientPartitionTopology implements GridDhtPartitionTopology {
 
     /** Flag to control amount of output for full map. */
     private static final boolean FULL_MAP_DEBUG = false;
-
-    /** Cache shared context. */
-    private GridCacheSharedContext cctx;
-
-    /** Cache ID. */
-    private int cacheId;
-
     /** Logger. */
     private final IgniteLogger log;
-
-    /** Node to partition map. */
-    private GridDhtPartitionFullMap node2part;
-
-    /** Partition to node map. */
-    private Map<Integer, Set<UUID>> part2node = new HashMap<>();
-
-    /** */
-    private GridDhtPartitionExchangeId lastExchangeId;
-
-    /** */
-    private AffinityTopologyVersion topVer = AffinityTopologyVersion.NONE;
-
-    /** */
-    private volatile boolean stopping;
-
-    /** A future that will be completed when topology with version topVer will be ready to use. */
-    private GridDhtTopologyFuture topReadyFut;
-
     /** */
     private final GridAtomicLong updateSeq = new GridAtomicLong(1);
-
     /** Lock. */
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    /** Cache shared context. */
+    private GridCacheSharedContext cctx;
+    /** Cache ID. */
+    private int cacheId;
+    /** Node to partition map. */
+    private GridDhtPartitionFullMap node2part;
+    /** Partition to node map. */
+    private Map<Integer, Set<UUID>> part2node = new HashMap<>();
+    /** */
+    private GridDhtPartitionExchangeId lastExchangeId;
+    /** */
+    private AffinityTopologyVersion topVer = AffinityTopologyVersion.NONE;
+    /** */
+    private volatile boolean stopping;
+    /** A future that will be completed when topology with version topVer will be ready to use. */
+    private GridDhtTopologyFuture topReadyFut;
 
     /**
      * @param cctx Context.
@@ -313,13 +302,18 @@ public class GridClientPartitionTopology implements GridDhtPartitionTopology {
     }
 
     /** {@inheritDoc} */
-    @Nullable @Override public GridDhtLocalPartition localPartition(int p, AffinityTopologyVersion topVer, boolean create)
+    @Nullable @Override public GridDhtLocalPartition localPartition(
+        int p,
+        AffinityTopologyVersion topVer,
+        boolean create
+    )
         throws GridDhtInvalidPartitionException {
         if (!create)
             return null;
 
-        throw new GridDhtInvalidPartitionException(p, "Adding entry to evicted partition [part=" + p +
-            ", topVer=" + topVer + ", this.topVer=" + this.topVer + ']');
+        throw new GridDhtInvalidPartitionException(p, "Adding entry to evicted partition (often may be caused by " +
+            "inconsistent 'key.hashCode()' implementation) " +
+            "[part=" + p + ", topVer=" + topVer + ", this.topVer=" + this.topVer + ']');
     }
 
     /** {@inheritDoc} */

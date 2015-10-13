@@ -100,21 +100,16 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
     /** Create time. */
     @GridToStringExclude
     private final long createTime = U.currentTimeMillis();
-
-    /** Eviction history. */
-    private volatile Map<KeyCacheObject, GridCacheVersion> evictHist = new HashMap<>();
-
     /** Lock. */
     private final ReentrantLock lock = new ReentrantLock();
-
     /** Public size counter. */
     private final LongAdder8 mapPubSize = new LongAdder8();
-
     /** Remove queue. */
     private final GridCircularBuffer<T2<KeyCacheObject, GridCacheVersion>> rmvQueue;
-
     /** Group reservations. */
     private final CopyOnWriteArrayList<GridDhtPartitionsReservation> reservations = new CopyOnWriteArrayList<>();
+    /** Eviction history. */
+    private volatile Map<KeyCacheObject, GridCacheVersion> evictHist = new HashMap<>();
 
     /**
      * @param cctx Context.
@@ -258,7 +253,8 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
         GridDhtPartitionState state = state();
 
         if (state == EVICTED)
-            throw new GridDhtInvalidPartitionException(id, "Adding entry to invalid partition [part=" + id + ']');
+            throw new GridDhtInvalidPartitionException(id, "Adding entry to invalid partition " +
+                "(often may be caused by inconsistent 'key.hashCode()' implementation) [part=" + id + ']');
 
         map.put(entry.key(), entry);
 

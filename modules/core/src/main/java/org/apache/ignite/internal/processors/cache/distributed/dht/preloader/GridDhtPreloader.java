@@ -42,6 +42,7 @@ import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtAffini
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtAffinityAssignmentResponse;
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtAssignmentFetchFuture;
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtFuture;
+import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtInvalidPartitionException;
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtLocalPartition;
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtPartitionTopology;
 import org.apache.ignite.internal.util.GridAtomicLong;
@@ -69,28 +70,20 @@ import static org.apache.ignite.internal.util.GridConcurrentFactory.newMap;
 public class GridDhtPreloader extends GridCachePreloaderAdapter {
     /** Default preload resend timeout. */
     public static final long DFLT_PRELOAD_RESEND_TIMEOUT = 1500;
-
-    /** */
-    private GridDhtPartitionTopology top;
-
     /** Topology version. */
     private final GridAtomicLong topVer = new GridAtomicLong();
-
     /** Force key futures. */
     private final ConcurrentMap<IgniteUuid, GridDhtForceKeysFuture<?, ?>> forceKeyFuts = newMap();
-
-    /** Partition suppliers. */
-    private GridDhtPartitionSupplyPool supplyPool;
-
-    /** Partition demanders. */
-    private GridDhtPartitionDemandPool demandPool;
-
-    /** Start future. */
-    private GridFutureAdapter<Object> startFut;
-
     /** Busy lock to prevent activities from accessing exchanger while it's stopping. */
     private final ReadWriteLock busyLock = new ReentrantReadWriteLock();
-
+    /** */
+    private GridDhtPartitionTopology top;
+    /** Partition suppliers. */
+    private GridDhtPartitionSupplyPool supplyPool;
+    /** Partition demanders. */
+    private GridDhtPartitionDemandPool demandPool;
+    /** Start future. */
+    private GridFutureAdapter<Object> startFut;
     /** Pending affinity assignment futures. */
     private ConcurrentMap<AffinityTopologyVersion, GridDhtAssignmentFetchFuture> pendingAssignmentFetchFuts =
         new ConcurrentHashMap8<>();
@@ -379,10 +372,13 @@ public class GridDhtPreloader extends GridCachePreloaderAdapter {
                 GridDhtLocalPartition locPart = top.localPartition(p, AffinityTopologyVersion.NONE, false);
 
                 // If this node is no longer an owner.
-                if (locPart == null && !top.owners(p).contains(loc))
+                if (locPart == null && !top.owners(p).contains(loc)) {
                     res.addMissed(k);
 
-                GridCacheEntryEx entry;
+                    continue;
+                }
+
+                GridCacheEntryEx entry = null;
 
                 if (cctx.isSwapOrOffheapEnabled()) {
                     while (true) {
@@ -396,6 +392,14 @@ public class GridDhtPreloader extends GridCachePreloaderAdapter {
                         catch (GridCacheEntryRemovedException ignore) {
                             if (log.isDebugEnabled())
                                 log.debug("Got removed entry: " + k);
+                        }
+                        catch (GridDhtInvalidPartitionException ignore) {
+                            if (log.isDebugEnabled())
+                                log.debug("Local node is no longer an owner: " + p);
+
+                            res.addMissed(k);
+
+                            break;
                         }
                     }
                 }

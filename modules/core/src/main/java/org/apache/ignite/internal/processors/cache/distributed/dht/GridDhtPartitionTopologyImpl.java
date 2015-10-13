@@ -77,30 +77,22 @@ class GridDhtPartitionTopologyImpl implements GridDhtPartitionTopology {
     /** */
     private final ConcurrentMap<Integer, GridDhtLocalPartition> locParts =
         new ConcurrentHashMap8<>();
-
-    /** Node to partition map. */
-    private GridDhtPartitionFullMap node2part;
-
-    /** Partition to node map. */
-    private Map<Integer, Set<UUID>> part2node = new HashMap<>();
-
-    /** */
-    private GridDhtPartitionExchangeId lastExchangeId;
-
-    /** */
-    private AffinityTopologyVersion topVer = AffinityTopologyVersion.NONE;
-
-    /** */
-    private volatile boolean stopping;
-
-    /** A future that will be completed when topology with version topVer will be ready to use. */
-    private GridDhtTopologyFuture topReadyFut;
-
     /** */
     private final GridAtomicLong updateSeq = new GridAtomicLong(1);
-
     /** Lock. */
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    /** Node to partition map. */
+    private GridDhtPartitionFullMap node2part;
+    /** Partition to node map. */
+    private Map<Integer, Set<UUID>> part2node = new HashMap<>();
+    /** */
+    private GridDhtPartitionExchangeId lastExchangeId;
+    /** */
+    private AffinityTopologyVersion topVer = AffinityTopologyVersion.NONE;
+    /** */
+    private volatile boolean stopping;
+    /** A future that will be completed when topology with version topVer will be ready to use. */
+    private GridDhtTopologyFuture topReadyFut;
 
     /**
      * @param cctx Context.
@@ -563,16 +555,18 @@ class GridDhtPartitionTopologyImpl implements GridDhtPartitionTopology {
                     return null;
 
                 if (!belongs)
-                    throw new GridDhtInvalidPartitionException(p, "Adding entry to evicted partition [part=" + p +
-                        ", topVer=" + topVer + ", this.topVer=" + this.topVer + ']');
+                    throw new GridDhtInvalidPartitionException(p, "Adding entry to evicted partition " +
+                        "(often may be caused by inconsistent 'key.hashCode()' implementation) " +
+                        "[part=" + p + ", topVer=" + topVer + ", this.topVer=" + this.topVer + ']');
 
                 continue;
             }
 
             if (loc == null && create) {
                 if (!belongs)
-                    throw new GridDhtInvalidPartitionException(p, "Creating partition which does not belong [part=" +
-                        p + ", topVer=" + topVer + ", this.topVer=" + this.topVer + ']');
+                    throw new GridDhtInvalidPartitionException(p, "Creating partition which does not belong to " +
+                        "local node (often may be caused by inconsistent 'key.hashCode()' implementation) " +
+                        "[part=" + p + ", topVer=" + topVer + ", this.topVer=" + this.topVer + ']');
 
                 lock.writeLock().lock();
 

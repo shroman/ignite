@@ -641,7 +641,7 @@ public class GridCacheProcessor extends GridProcessorAdapter {
             if (ctx.config().isDaemon() && !CU.isMarshallerCache(cfgs[i].getName()))
                 continue;
 
-            checkSerializable(cfgs[i]);
+            cloneCheckSerializable(cfgs[i]);
 
             CacheConfiguration<?, ?> cfg = new CacheConfiguration(cfgs[i]);
 
@@ -2025,9 +2025,14 @@ public class GridCacheProcessor extends GridProcessorAdapter {
      * @return Future that will be completed when cache is deployed.
      */
     public IgniteInternalFuture<?> createFromTemplate(String cacheName) {
-        CacheConfiguration cfg = createConfigFromTemplate(cacheName);
+        try {
+            CacheConfiguration cfg = createConfigFromTemplate(cacheName);
 
-        return dynamicStartCache(cfg, cacheName, null, true, true);
+            return dynamicStartCache(cfg, cacheName, null, true, true);
+        }
+        catch (IgniteCheckedException e) {
+            throw U.convertException(e);
+        }
     }
 
     /**
@@ -2054,7 +2059,7 @@ public class GridCacheProcessor extends GridProcessorAdapter {
      * @param cacheName Cache name.
      * @return Cache configuration.
      */
-    private CacheConfiguration createConfigFromTemplate(String cacheName) {
+    private CacheConfiguration createConfigFromTemplate(String cacheName) throws IgniteCheckedException {
         CacheConfiguration cfgTemplate = null;
 
         CacheConfiguration dfltCacheCfg = null;
@@ -2114,6 +2119,8 @@ public class GridCacheProcessor extends GridProcessorAdapter {
 
         if (cfgTemplate == null)
             cfgTemplate = new CacheConfiguration();
+        else
+            cfgTemplate = cloneCheckSerializable(cfgTemplate);
 
         CacheConfiguration cfg = new CacheConfiguration(cfgTemplate);
 
@@ -2170,7 +2177,7 @@ public class GridCacheProcessor extends GridProcessorAdapter {
 
         if (ccfg != null) {
             try {
-                checkSerializable(ccfg);
+                cloneCheckSerializable(ccfg);
             }
             catch (IgniteCheckedException e) {
                 return new GridFinishedFuture<>(e);
@@ -3341,9 +3348,9 @@ public class GridCacheProcessor extends GridProcessorAdapter {
      * @param val Object to check.
      * @throws IgniteCheckedException If validation failed.
      */
-    private void checkSerializable(CacheConfiguration val) throws IgniteCheckedException {
+    private CacheConfiguration cloneCheckSerializable(CacheConfiguration val) throws IgniteCheckedException {
         if (val == null)
-            return;
+            return null;
 
         if (val.getCacheStoreFactory() != null) {
             try {
@@ -3357,7 +3364,7 @@ public class GridCacheProcessor extends GridProcessorAdapter {
         }
 
         try {
-            marshaller.unmarshal(marshaller.marshal(val), val.getClass().getClassLoader());
+            return marshaller.unmarshal(marshaller.marshal(val), val.getClass().getClassLoader());
         }
         catch (IgniteCheckedException e) {
             throw new IgniteCheckedException("Failed to validate cache configuration " +

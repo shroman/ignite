@@ -101,83 +101,61 @@ public class GridDhtPartitionsExchangeFuture extends GridFutureAdapter<AffinityT
 
     /** Dummy reassign flag. */
     private final boolean reassign;
-
-    /** Discovery event. */
-    private volatile DiscoveryEvent discoEvt;
-
     /** */
     @GridToStringInclude
     private final Collection<UUID> rcvdIds = new GridConcurrentHashSet<>();
-
-    /** Remote nodes. */
-    private volatile Collection<ClusterNode> rmtNodes;
-
-    /** Remote nodes. */
-    @GridToStringInclude
-    private volatile Collection<UUID> rmtIds;
-
     /** Oldest node. */
     @GridToStringExclude
     private final AtomicReference<ClusterNode> oldestNode = new AtomicReference<>();
-
     /** ExchangeFuture id. */
     private final GridDhtPartitionExchangeId exchId;
-
     /** Init flag. */
     @GridToStringInclude
     private final AtomicBoolean init = new AtomicBoolean(false);
-
     /** Ready for reply flag. */
     @GridToStringInclude
     private final AtomicBoolean ready = new AtomicBoolean(false);
-
     /** Replied flag. */
     @GridToStringInclude
     private final AtomicBoolean replied = new AtomicBoolean(false);
-
-    /** Timeout object. */
-    @GridToStringExclude
-    private volatile GridTimeoutObject timeoutObj;
-
     /** Cache context. */
     private final GridCacheSharedContext<?, ?> cctx;
-
-    /** Busy lock to prevent activities from accessing exchanger while it's stopping. */
-    private ReadWriteLock busyLock;
-
-    /** */
-    private AtomicBoolean added = new AtomicBoolean(false);
-
-    /** Event latch. */
-    @GridToStringExclude
-    private CountDownLatch evtLatch = new CountDownLatch(1);
-
-    /** */
-    private GridFutureAdapter<Boolean> initFut;
-
-    /** Topology snapshot. */
-    private AtomicReference<GridDiscoveryTopologySnapshot> topSnapshot = new AtomicReference<>();
-
-    /** Last committed cache version before next topology version use. */
-    private AtomicReference<GridCacheVersion> lastVer = new AtomicReference<>();
-
     /**
      * Messages received on non-coordinator are stored in case if this node
      * becomes coordinator.
      */
     private final Map<UUID, GridDhtPartitionsSingleMessage> singleMsgs = new ConcurrentHashMap8<>();
-
     /** Messages received from new coordinator. */
     private final Map<UUID, GridDhtPartitionsFullMessage> fullMsgs = new ConcurrentHashMap8<>();
-
+    /** */
+    private final Object mux = new Object();
+    /** Discovery event. */
+    private volatile DiscoveryEvent discoEvt;
+    /** Remote nodes. */
+    private volatile Collection<ClusterNode> rmtNodes;
+    /** Remote nodes. */
+    @GridToStringInclude
+    private volatile Collection<UUID> rmtIds;
+    /** Timeout object. */
+    @GridToStringExclude
+    private volatile GridTimeoutObject timeoutObj;
+    /** Busy lock to prevent activities from accessing exchanger while it's stopping. */
+    private ReadWriteLock busyLock;
+    /** */
+    private AtomicBoolean added = new AtomicBoolean(false);
+    /** Event latch. */
+    @GridToStringExclude
+    private CountDownLatch evtLatch = new CountDownLatch(1);
+    /** */
+    private GridFutureAdapter<Boolean> initFut;
+    /** Topology snapshot. */
+    private AtomicReference<GridDiscoveryTopologySnapshot> topSnapshot = new AtomicReference<>();
+    /** Last committed cache version before next topology version use. */
+    private AtomicReference<GridCacheVersion> lastVer = new AtomicReference<>();
     /** */
     @SuppressWarnings({"FieldCanBeLocal", "UnusedDeclaration"})
     @GridToStringInclude
     private volatile IgniteInternalFuture<?> partReleaseFut;
-
-    /** */
-    private final Object mux = new Object();
-
     /** Logger. */
     private IgniteLogger log;
 
@@ -192,6 +170,9 @@ public class GridDhtPartitionsExchangeFuture extends GridFutureAdapter<AffinityT
 
     /** */
     private boolean clientOnlyExchange;
+
+    /** Init timestamp. Used to track the amount of time spent to complete the future. */
+    private long initTs;
 
     /**
      * Dummy future created to trigger reassignments if partition
@@ -487,6 +468,8 @@ public class GridDhtPartitionsExchangeFuture extends GridFutureAdapter<AffinityT
         if (init.compareAndSet(false, true)) {
             if (isDone())
                 return;
+
+            initTs = U.currentTimeMillis();
 
             try {
                 // Wait for event to occur to make sure that discovery
@@ -800,7 +783,7 @@ public class GridDhtPartitionsExchangeFuture extends GridFutureAdapter<AffinityT
 
                             for (Map.Entry<IgniteTxKey, Collection<GridCacheMvccCandidate>> e : locks.entrySet())
                                 U.warn(log, "Awaited locked entry [key=" + e.getKey() + ", mvcc=" + e.getValue() + ']');
-                            
+
                             dumpedObjects++;
                         }
                     }
@@ -1059,7 +1042,8 @@ public class GridDhtPartitionsExchangeFuture extends GridFutureAdapter<AffinityT
 
         if (super.onDone(res, err) && !dummy && !forcePreload) {
             if (log.isDebugEnabled())
-                log.debug("Completed partition exchange [localNode=" + cctx.localNodeId() + ", exchange= " + this + ']');
+                log.debug("Completed partition exchange [localNode=" + cctx.localNodeId() + ", exchange= " + this +
+                    "duration=" + duration() + ", durationFromInit=" + (U.currentTimeMillis() - initTs) + ']');
 
             initFut.onDone(err == null);
 
@@ -1206,7 +1190,7 @@ public class GridDhtPartitionsExchangeFuture extends GridFutureAdapter<AffinityT
                         else if (log.isDebugEnabled())
                             log.debug("Exchange future full map is not sent [allReceived=" + allReceived() +
                                 ", ready=" + ready + ", replied=" + replied.get() + ", init=" + init.get() +
-                                ", fut=" + this + ']');
+                                ", fut=" + GridDhtPartitionsExchangeFuture.this + ']');
                     }
                 }
             });

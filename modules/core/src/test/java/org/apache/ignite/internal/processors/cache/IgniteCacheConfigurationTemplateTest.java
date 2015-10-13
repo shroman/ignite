@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.cache.CacheExistsException;
+import org.apache.ignite.cache.affinity.rendezvous.RendezvousAffinityFunction;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.events.Event;
@@ -42,17 +43,13 @@ import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
  */
 public class IgniteCacheConfigurationTemplateTest extends GridCommonAbstractTest {
     /** */
-    private static TcpDiscoveryIpFinder ipFinder = new TcpDiscoveryVmIpFinder(true);
-
-    /** */
     private static final String TEMPLATE1 = "org.apache.ignite*";
-
     /** */
     private static final String TEMPLATE2 = "org.apache.ignite.test.*";
-
     /** */
     private static final String TEMPLATE3 = "org.apache.ignite.test2.*";
-
+    /** */
+    private static TcpDiscoveryIpFinder ipFinder = new TcpDiscoveryVmIpFinder(true);
     /** */
     private boolean clientMode;
 
@@ -362,6 +359,36 @@ public class IgniteCacheConfigurationTemplateTest extends GridCommonAbstractTest
         evt = evtLatch.await(3000, TimeUnit.MILLISECONDS);
 
         assertTrue(evt);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testTemplateCleanup() throws Exception {
+        startGridsMultiThreaded(3);
+
+        try {
+            CacheConfiguration ccfg = new CacheConfiguration("affTemplate-*");
+
+            ccfg.setAffinity(new RendezvousAffinityFunction());
+
+            ignite(0).addCacheConfiguration(ccfg);
+
+            ignite(0).getOrCreateCache("affTemplate-1");
+
+            IgniteCache<Object, Object> cache = ignite(0).getOrCreateCache("affTemplate-2");
+
+            ignite(0).destroyCache("affTemplate-1");
+
+            startGrid(3);
+
+            cache.put(1, 1);
+
+            assertEquals(1, cache.get(1));
+        }
+        finally {
+            stopAllGrids();
+        }
     }
 
     /**

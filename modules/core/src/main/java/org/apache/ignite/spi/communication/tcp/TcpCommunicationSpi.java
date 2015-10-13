@@ -281,47 +281,125 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
      * {@code "Math.min(4, Runtime.getRuntime().availableProcessors())"}.
      */
     public static final int DFLT_SELECTORS_CNT = Math.min(4, Runtime.getRuntime().availableProcessors());
-
-    /** Node ID meta for session. */
-    private static final int NODE_ID_META = GridNioSessionMetaKey.nextUniqueKey();
-
-    /** Message tracker meta for session. */
-    private static final int TRACKER_META = GridNioSessionMetaKey.nextUniqueKey();
-
     /**
      * Default local port range (value is <tt>100</tt>).
      * See {@link #setLocalPortRange(int)} for details.
      */
     public static final int DFLT_PORT_RANGE = 100;
-
     /** Default value for {@code TCP_NODELAY} socket option (value is <tt>true</tt>). */
     public static final boolean DFLT_TCP_NODELAY = true;
-
     /** Default received messages threshold for sending ack. */
     public static final int DFLT_ACK_SND_THRESHOLD = 16;
-
     /** Default socket write timeout. */
     public static final long DFLT_SOCK_WRITE_TIMEOUT = 2000;
-
+    /** Node ID message type. */
+    public static final byte NODE_ID_MSG_TYPE = -1;
+    /** */
+    public static final byte RECOVERY_LAST_ID_MSG_TYPE = -2;
+    /** */
+    public static final byte HANDSHAKE_MSG_TYPE = -3;
+    /** Node ID meta for session. */
+    private static final int NODE_ID_META = GridNioSessionMetaKey.nextUniqueKey();
+    /** Message tracker meta for session. */
+    private static final int TRACKER_META = GridNioSessionMetaKey.nextUniqueKey();
     /** No-op runnable. */
     private static final IgniteRunnable NOOP = new IgniteRunnable() {
         @Override public void run() {
             // No-op.
         }
     };
+    /** Shared memory workers. */
+    private final Collection<ShmemWorker> shmemWorkers = new ConcurrentLinkedDeque8<>();
+    /** Clients. */
+    private final ConcurrentMap<UUID, GridCommunicationClient> clients = GridConcurrentFactory.newMap();
+    /** Received messages count. */
+    private final LongAdder8 rcvdMsgsCnt = new LongAdder8();
+    /** Sent messages count.*/
+    private final LongAdder8 sentMsgsCnt = new LongAdder8();
+    /** Received bytes count. */
+    private final LongAdder8 rcvdBytesCnt = new LongAdder8();
+    /** Sent bytes count.*/
+    private final LongAdder8 sentBytesCnt = new LongAdder8();
+    /** Context initialization latch. */
+    private final CountDownLatch ctxInitLatch = new CountDownLatch(1);
+    /** metrics listener. */
+    private final GridNioMetricsListener metricsLsnr = new GridNioMetricsListener() {
+        @Override public void onBytesSent(int bytesCnt) {
+            sentBytesCnt.add(bytesCnt);
+        }
 
-    /** Node ID message type. */
-    public static final byte NODE_ID_MSG_TYPE = -1;
-
+        @Override public void onBytesReceived(int bytesCnt) {
+            rcvdBytesCnt.add(bytesCnt);
+        }
+    };
+    /** Client connect futures. */
+    private final ConcurrentMap<UUID, GridFutureAdapter<GridCommunicationClient>> clientFuts =
+        GridConcurrentFactory.newMap();
     /** */
-    public static final byte RECOVERY_LAST_ID_MSG_TYPE = -2;
-
-    /** */
-    public static final byte HANDSHAKE_MSG_TYPE = -3;
-
+    private final ConcurrentMap<ClientKey, GridNioRecoveryDescriptor> recoveryDescs = GridConcurrentFactory.newMap();
     /** */
     private ConnectGateway connectGate;
+    /** Logger. */
+    @LoggerResource
+    private IgniteLogger log;
+    /** Discovery listener. */
+    private final GridLocalEventListener discoLsnr = new GridLocalEventListener() {
+        @Override public void onEvent(Event evt) {
+            assert evt instanceof DiscoveryEvent : evt;
+            assert evt.type() == EVT_NODE_LEFT || evt.type() == EVT_NODE_FAILED ;
 
+            onNodeLeft(((DiscoveryEvent)evt).eventNode().id());
+        }
+    };
+    /** Local IP address. */
+    private String locAddr;
+    /** Complex variable that represents this node IP address. */
+    private volatile InetAddress locHost;
+    /** Local port which node uses. */
+    private int locPort = DFLT_PORT;
+    /** Local port range. */
+    private int locPortRange = DFLT_PORT_RANGE;
+    /** Local port which node uses to accept shared memory connections. */
+    private int shmemPort = DFLT_SHMEM_PORT;
+    /** Allocate direct buffer or heap buffer. */
+    private boolean directBuf = true;
+    /** Allocate direct buffer or heap buffer. */
+    private boolean directSndBuf;
+    /** Idle connection timeout. */
+    private long idleConnTimeout = DFLT_IDLE_CONN_TIMEOUT;
+    /** Connect timeout. */
+    private long connTimeout = DFLT_CONN_TIMEOUT;
+    /** Maximum connect timeout. */
+    private long maxConnTimeout = DFLT_MAX_CONN_TIMEOUT;
+    /** Reconnect attempts count. */
+    @SuppressWarnings({"FieldAccessedSynchronizedAndUnsynchronized"})
+    private int reconCnt = DFLT_RECONNECT_CNT;
+    /** Socket send buffer. */
+    private int sockSndBuf = DFLT_SOCK_BUF_SIZE;
+    /** Socket receive buffer. */
+    private int sockRcvBuf = DFLT_SOCK_BUF_SIZE;
+    /** Message queue limit. */
+    private int msgQueueLimit = DFLT_MSG_QUEUE_LIMIT;
+    /** Slow client queue limit. */
+    private int slowClientQueueLimit;
+    /** NIO server. */
+    private GridNioServer<Message> nioSrvr;
+    /** Shared memory server. */
+    private IpcSharedMemoryServerEndpoint shmemSrv;
+    /** {@code TCP_NODELAY} option value for created sockets. */
+    private boolean tcpNoDelay = DFLT_TCP_NODELAY;
+    /** Number of received messages after which acknowledgment is sent. */
+    private int ackSndThreshold = DFLT_ACK_SND_THRESHOLD;
+    /** Maximum number of unacknowledged messages. */
+    private int unackedMsgsBufSize;
+    /** Socket write timeout. */
+    private long sockWriteTimeout = DFLT_SOCK_WRITE_TIMEOUT;
+    /** Recovery and idle clients handler. */
+    private CommunicationWorker commWorker;
+    /** Shared memory accept worker. */
+    private ShmemAcceptWorker shmemAcceptWorker;
+    /** SPI listener. */
+    private volatile CommunicationListener<Message> lsnr;
     /** Server listener. */
     private final GridNioServerListener<Message> srvLsnr =
         new GridNioServerListenerAdapter<Message>() {
@@ -724,144 +802,14 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
                 }
             }
         };
-
-    /** Logger. */
-    @LoggerResource
-    private IgniteLogger log;
-
-    /** Local IP address. */
-    private String locAddr;
-
-    /** Complex variable that represents this node IP address. */
-    private volatile InetAddress locHost;
-
-    /** Local port which node uses. */
-    private int locPort = DFLT_PORT;
-
-    /** Local port range. */
-    private int locPortRange = DFLT_PORT_RANGE;
-
-    /** Local port which node uses to accept shared memory connections. */
-    private int shmemPort = DFLT_SHMEM_PORT;
-
-    /** Allocate direct buffer or heap buffer. */
-    private boolean directBuf = true;
-
-    /** Allocate direct buffer or heap buffer. */
-    private boolean directSndBuf;
-
-    /** Idle connection timeout. */
-    private long idleConnTimeout = DFLT_IDLE_CONN_TIMEOUT;
-
-    /** Connect timeout. */
-    private long connTimeout = DFLT_CONN_TIMEOUT;
-
-    /** Maximum connect timeout. */
-    private long maxConnTimeout = DFLT_MAX_CONN_TIMEOUT;
-
-    /** Reconnect attempts count. */
-    @SuppressWarnings({"FieldAccessedSynchronizedAndUnsynchronized"})
-    private int reconCnt = DFLT_RECONNECT_CNT;
-
-    /** Socket send buffer. */
-    private int sockSndBuf = DFLT_SOCK_BUF_SIZE;
-
-    /** Socket receive buffer. */
-    private int sockRcvBuf = DFLT_SOCK_BUF_SIZE;
-
-    /** Message queue limit. */
-    private int msgQueueLimit = DFLT_MSG_QUEUE_LIMIT;
-
-    /** Slow client queue limit. */
-    private int slowClientQueueLimit;
-
-    /** NIO server. */
-    private GridNioServer<Message> nioSrvr;
-
-    /** Shared memory server. */
-    private IpcSharedMemoryServerEndpoint shmemSrv;
-
-    /** {@code TCP_NODELAY} option value for created sockets. */
-    private boolean tcpNoDelay = DFLT_TCP_NODELAY;
-
-    /** Number of received messages after which acknowledgment is sent. */
-    private int ackSndThreshold = DFLT_ACK_SND_THRESHOLD;
-
-    /** Maximum number of unacknowledged messages. */
-    private int unackedMsgsBufSize;
-
-    /** Socket write timeout. */
-    private long sockWriteTimeout = DFLT_SOCK_WRITE_TIMEOUT;
-
-    /** Recovery and idle clients handler. */
-    private CommunicationWorker commWorker;
-
-    /** Shared memory accept worker. */
-    private ShmemAcceptWorker shmemAcceptWorker;
-
-    /** Shared memory workers. */
-    private final Collection<ShmemWorker> shmemWorkers = new ConcurrentLinkedDeque8<>();
-
-    /** Clients. */
-    private final ConcurrentMap<UUID, GridCommunicationClient> clients = GridConcurrentFactory.newMap();
-
-    /** SPI listener. */
-    private volatile CommunicationListener<Message> lsnr;
-
     /** Bound port. */
     private int boundTcpPort = -1;
-
     /** Bound port for shared memory server. */
     private int boundTcpShmemPort = -1;
-
     /** Count of selectors to use in TCP server. */
     private int selectorsCnt = DFLT_SELECTORS_CNT;
-
     /** Address resolver. */
     private AddressResolver addrRslvr;
-
-    /** Received messages count. */
-    private final LongAdder8 rcvdMsgsCnt = new LongAdder8();
-
-    /** Sent messages count.*/
-    private final LongAdder8 sentMsgsCnt = new LongAdder8();
-
-    /** Received bytes count. */
-    private final LongAdder8 rcvdBytesCnt = new LongAdder8();
-
-    /** Sent bytes count.*/
-    private final LongAdder8 sentBytesCnt = new LongAdder8();
-
-    /** Context initialization latch. */
-    private final CountDownLatch ctxInitLatch = new CountDownLatch(1);
-
-    /** metrics listener. */
-    private final GridNioMetricsListener metricsLsnr = new GridNioMetricsListener() {
-        @Override public void onBytesSent(int bytesCnt) {
-            sentBytesCnt.add(bytesCnt);
-        }
-
-        @Override public void onBytesReceived(int bytesCnt) {
-            rcvdBytesCnt.add(bytesCnt);
-        }
-    };
-
-    /** Client connect futures. */
-    private final ConcurrentMap<UUID, GridFutureAdapter<GridCommunicationClient>> clientFuts =
-        GridConcurrentFactory.newMap();
-
-    /** */
-    private final ConcurrentMap<ClientKey, GridNioRecoveryDescriptor> recoveryDescs = GridConcurrentFactory.newMap();
-
-    /** Discovery listener. */
-    private final GridLocalEventListener discoLsnr = new GridLocalEventListener() {
-        @Override public void onEvent(Event evt) {
-            assert evt instanceof DiscoveryEvent : evt;
-            assert evt.type() == EVT_NODE_LEFT || evt.type() == EVT_NODE_FAILED ;
-
-            onNodeLeft(((DiscoveryEvent)evt).eventNode().id());
-        }
-    };
 
     /**
      * @return {@code True} if ssl enabled.
@@ -897,6 +845,11 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
         }
     }
 
+    /** {@inheritDoc} */
+    @Override public String getLocalAddress() {
+        return locAddr;
+    }
+
     /**
      * Sets local host address for socket binding. Note that one node could have
      * additional addresses beside the loopback one. This configuration
@@ -913,8 +866,8 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
     }
 
     /** {@inheritDoc} */
-    @Override public String getLocalAddress() {
-        return locAddr;
+    @Override public int getLocalPort() {
+        return locPort;
     }
 
     /**
@@ -930,8 +883,8 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
     }
 
     /** {@inheritDoc} */
-    @Override public int getLocalPort() {
-        return locPort;
+    @Override public int getLocalPortRange() {
+        return locPortRange;
     }
 
     /**
@@ -956,8 +909,8 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
     }
 
     /** {@inheritDoc} */
-    @Override public int getLocalPortRange() {
-        return locPortRange;
+    @Override public int getSharedMemoryPort() {
+        return shmemPort;
     }
 
     /**
@@ -975,8 +928,8 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
     }
 
     /** {@inheritDoc} */
-    @Override public int getSharedMemoryPort() {
-        return shmemPort;
+    @Override public long getIdleConnectionTimeout() {
+        return idleConnTimeout;
     }
 
     /**
@@ -990,11 +943,6 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
     @IgniteSpiConfiguration(optional = true)
     public void setIdleConnectionTimeout(long idleConnTimeout) {
         this.idleConnTimeout = idleConnTimeout;
-    }
-
-    /** {@inheritDoc} */
-    @Override public long getIdleConnectionTimeout() {
-        return idleConnTimeout;
     }
 
     /** {@inheritDoc} */
@@ -1049,6 +997,12 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
         this.unackedMsgsBufSize = unackedMsgsBufSize;
     }
 
+    /** {@inheritDoc} */
+    @Deprecated
+    @Override public int getConnectionBufferSize() {
+        return 0;
+    }
+
     /**
      * Sets connection buffer size. If set to {@code 0} connection buffer is disabled.
      *
@@ -1064,7 +1018,7 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
 
     /** {@inheritDoc} */
     @Deprecated
-    @Override public int getConnectionBufferSize() {
+    @Override public long getConnectionBufferFlushFrequency() {
         return 0;
     }
 
@@ -1076,9 +1030,8 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
     }
 
     /** {@inheritDoc} */
-    @Deprecated
-    @Override public long getConnectionBufferFlushFrequency() {
-        return 0;
+    @Override public long getConnectTimeout() {
+        return connTimeout;
     }
 
     /**
@@ -1101,8 +1054,8 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
     }
 
     /** {@inheritDoc} */
-    @Override public long getConnectTimeout() {
-        return connTimeout;
+    @Override public long getMaxConnectTimeout() {
+        return maxConnTimeout;
     }
 
     /**
@@ -1127,8 +1080,8 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
     }
 
     /** {@inheritDoc} */
-    @Override public long getMaxConnectTimeout() {
-        return maxConnTimeout;
+    @Override public int getReconnectCount() {
+        return reconCnt;
     }
 
     /**
@@ -1149,8 +1102,8 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
     }
 
     /** {@inheritDoc} */
-    @Override public int getReconnectCount() {
-        return reconCnt;
+    @Override public boolean isDirectBuffer() {
+        return directBuf;
     }
 
     /**
@@ -1165,11 +1118,6 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
     @IgniteSpiConfiguration(optional = true)
     public void setDirectBuffer(boolean directBuf) {
         this.directBuf = directBuf;
-    }
-
-    /** {@inheritDoc} */
-    @Override public boolean isDirectBuffer() {
-        return directBuf;
     }
 
     /** {@inheritDoc} */
@@ -1189,6 +1137,11 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
         this.directSndBuf = directSndBuf;
     }
 
+    /** {@inheritDoc} */
+    @Override public int getSelectorsCount() {
+        return selectorsCnt;
+    }
+
     /**
      * Sets the count of selectors te be used in TCP server.
      * <p/>
@@ -1202,8 +1155,8 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
     }
 
     /** {@inheritDoc} */
-    @Override public int getSelectorsCount() {
-        return selectorsCnt;
+    @Override public boolean isTcpNoDelay() {
+        return tcpNoDelay;
     }
 
     /**
@@ -1226,8 +1179,8 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
     }
 
     /** {@inheritDoc} */
-    @Override public boolean isTcpNoDelay() {
-        return tcpNoDelay;
+    @Override public int getSocketReceiveBuffer() {
+        return sockRcvBuf;
     }
 
     /**
@@ -1243,8 +1196,8 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
     }
 
     /** {@inheritDoc} */
-    @Override public int getSocketReceiveBuffer() {
-        return sockRcvBuf;
+    @Override public int getSocketSendBuffer() {
+        return sockSndBuf;
     }
 
     /**
@@ -1260,8 +1213,8 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
     }
 
     /** {@inheritDoc} */
-    @Override public int getSocketSendBuffer() {
-        return sockSndBuf;
+    @Override public int getMessageQueueLimit() {
+        return msgQueueLimit;
     }
 
     /**
@@ -1277,11 +1230,6 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
     @IgniteSpiConfiguration(optional = true)
     public void setMessageQueueLimit(int msgQueueLimit) {
         this.msgQueueLimit = msgQueueLimit;
-    }
-
-    /** {@inheritDoc} */
-    @Override public int getMessageQueueLimit() {
-        return msgQueueLimit;
     }
 
     /** {@inheritDoc} */
@@ -1305,6 +1253,12 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
         this.slowClientQueueLimit = slowClientQueueLimit;
     }
 
+    /** {@inheritDoc} */
+    @Deprecated
+    @Override public int getMinimumBufferedMessageCount() {
+        return 0;
+    }
+
     /**
      * Sets the minimum number of messages for this SPI, that are buffered
      * prior to sending.
@@ -1318,22 +1272,16 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
         // No-op.
     }
 
-    /** {@inheritDoc} */
-    @Deprecated
-    @Override public int getMinimumBufferedMessageCount() {
-        return 0;
-    }
-
-    /** {@inheritDoc} */
-    @Override public void setListener(CommunicationListener<Message> lsnr) {
-        this.lsnr = lsnr;
-    }
-
     /**
      * @return Listener.
      */
     public CommunicationListener getListener() {
         return lsnr;
+    }
+
+    /** {@inheritDoc} */
+    @Override public void setListener(CommunicationListener<Message> lsnr) {
+        this.lsnr = lsnr;
     }
 
     /** {@inheritDoc} */
@@ -2050,11 +1998,21 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
         if (locNode == null)
             throw new IgniteCheckedException("Failed to create NIO client (local node is stopping)");
 
+        if (log.isDebugEnabled())
+            log.debug("Creating NIO client to node: " + node);
+
         // If remote node has shared memory server enabled and has the same set of MACs
         // then we are likely to run on the same host and shared memory communication could be tried.
         if (shmemPort != null && U.sameMacs(locNode, node)) {
             try {
-                return createShmemClient(node, shmemPort);
+                GridCommunicationClient client = createShmemClient(
+                    node,
+                    shmemPort);
+
+                if (log.isDebugEnabled())
+                    log.debug("Shmem client created: " + client);
+
+                return client;
             }
             catch (IgniteCheckedException e) {
                 if (e.hasCause(IpcOutOfSystemResourcesException.class))
@@ -2071,7 +2029,12 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
         connectGate.enter();
 
         try {
-            return createTcpClient(node);
+            GridCommunicationClient client = createTcpClient(node);
+
+            if (log.isDebugEnabled())
+                log.debug("TCP client created: " + client);
+
+            return client;
         }
         finally {
             connectGate.leave();
@@ -2453,9 +2416,6 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
             throw errs;
         }
 
-        if (log.isDebugEnabled())
-            log.debug("Created client: " + client);
-
         return client;
     }
 
@@ -2832,6 +2792,337 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
     }
 
     /**
+     *
+     */
+    private static class ConnectFuture extends GridFutureAdapter<GridCommunicationClient> {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        // No-op.
+    }
+
+    /**
+     *
+     */
+    private static class HandshakeTimeoutObject<T> implements IgniteSpiTimeoutObject {
+        /** */
+        private final IgniteUuid id = IgniteUuid.randomUuid();
+
+        /** */
+        private final T obj;
+
+        /** */
+        private final long endTime;
+
+        /** */
+        private final AtomicBoolean done = new AtomicBoolean();
+
+        /**
+         * @param obj Client.
+         * @param endTime End time.
+         */
+        private HandshakeTimeoutObject(T obj, long endTime) {
+            assert obj != null;
+            assert obj instanceof GridCommunicationClient || obj instanceof SelectableChannel;
+            assert endTime > 0;
+
+            this.obj = obj;
+            this.endTime = endTime;
+        }
+
+        /**
+         * @return {@code True} if object has not yet been timed out.
+         */
+        boolean cancel() {
+            return done.compareAndSet(false, true);
+        }
+
+        /** {@inheritDoc} */
+        @Override public void onTimeout() {
+            if (done.compareAndSet(false, true)) {
+                // Close socket - timeout occurred.
+                if (obj instanceof GridCommunicationClient)
+                    ((GridCommunicationClient)obj).forceClose();
+                else
+                    U.closeQuiet((AbstractInterruptibleChannel)obj);
+            }
+        }
+
+        /** {@inheritDoc} */
+        @Override public long endTime() {
+            return endTime;
+        }
+
+        /** {@inheritDoc} */
+        @Override public IgniteUuid id() {
+            return id;
+        }
+
+        /** {@inheritDoc} */
+        @Override public String toString() {
+            return S.toString(HandshakeTimeoutObject.class, this);
+        }
+    }
+
+    /**
+     * Handshake message.
+     */
+    @SuppressWarnings("PublicInnerClass")
+    public static class HandshakeMessage implements Message {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /** */
+        private UUID nodeId;
+
+        /** */
+        private long rcvCnt;
+
+        /** */
+        private long connectCnt;
+
+        /**
+         * Default constructor required by {@link Message}.
+         */
+        public HandshakeMessage() {
+            // No-op.
+        }
+
+        /**
+         * @param nodeId Node ID.
+         * @param connectCnt Connect count.
+         * @param rcvCnt Number of received messages.
+         */
+        public HandshakeMessage(UUID nodeId, long connectCnt, long rcvCnt) {
+            assert nodeId != null;
+            assert rcvCnt >= 0 : rcvCnt;
+
+            this.nodeId = nodeId;
+            this.connectCnt = connectCnt;
+            this.rcvCnt = rcvCnt;
+        }
+
+        /**
+         * @return Connect count.
+         */
+        public long connectCount() {
+            return connectCnt;
+        }
+
+        /**
+         * @return Number of received messages.
+         */
+        public long received() {
+            return rcvCnt;
+        }
+
+        /**
+         * @return Node ID.
+         */
+        public UUID nodeId() {
+            return nodeId;
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean writeTo(ByteBuffer buf, MessageWriter writer) {
+            if (buf.remaining() < 33)
+                return false;
+
+            buf.put(HANDSHAKE_MSG_TYPE);
+
+            byte[] bytes = U.uuidToBytes(nodeId);
+
+            assert bytes.length == 16 : bytes.length;
+
+            buf.put(bytes);
+
+            buf.putLong(rcvCnt);
+
+            buf.putLong(connectCnt);
+
+            return true;
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean readFrom(ByteBuffer buf, MessageReader reader) {
+            if (buf.remaining() < 32)
+                return false;
+
+            byte[] nodeIdBytes = new byte[16];
+
+            buf.get(nodeIdBytes);
+
+            nodeId = U.bytesToUuid(nodeIdBytes, 0);
+
+            rcvCnt = buf.getLong();
+
+            connectCnt = buf.getLong();
+
+            return true;
+        }
+
+        /** {@inheritDoc} */
+        @Override public byte directType() {
+            return HANDSHAKE_MSG_TYPE;
+        }
+
+        /** {@inheritDoc} */
+        @Override public byte fieldsCount() {
+            throw new UnsupportedOperationException();
+        }
+
+        /** {@inheritDoc} */
+        @Override public String toString() {
+            return S.toString(HandshakeMessage.class, this);
+        }
+    }
+
+    /**
+     * Recovery acknowledgment message.
+     */
+    @SuppressWarnings("PublicInnerClass")
+    public static class RecoveryLastReceivedMessage implements Message {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /** */
+        private long rcvCnt;
+
+        /**
+         * Default constructor required by {@link Message}.
+         */
+        public RecoveryLastReceivedMessage() {
+            // No-op.
+        }
+
+        /**
+         * @param rcvCnt Number of received messages.
+         */
+        public RecoveryLastReceivedMessage(long rcvCnt) {
+            this.rcvCnt = rcvCnt;
+        }
+
+        /**
+         * @return Number of received messages.
+         */
+        public long received() {
+            return rcvCnt;
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean writeTo(ByteBuffer buf, MessageWriter writer) {
+            if (buf.remaining() < 9)
+                return false;
+
+            buf.put(RECOVERY_LAST_ID_MSG_TYPE);
+
+            buf.putLong(rcvCnt);
+
+            return true;
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean readFrom(ByteBuffer buf, MessageReader reader) {
+            if (buf.remaining() < 8)
+                return false;
+
+            rcvCnt = buf.getLong();
+
+            return true;
+        }
+
+        /** {@inheritDoc} */
+        @Override public byte directType() {
+            return RECOVERY_LAST_ID_MSG_TYPE;
+        }
+
+        /** {@inheritDoc} */
+        @Override public byte fieldsCount() {
+            return 0;
+        }
+
+        /** {@inheritDoc} */
+        @Override public String toString() {
+            return S.toString(RecoveryLastReceivedMessage.class, this);
+        }
+    }
+
+    /**
+     * Node ID message.
+     */
+    @SuppressWarnings("PublicInnerClass")
+    public static class NodeIdMessage implements Message {
+        /** */
+        private static final long serialVersionUID = 0L;
+
+        /** */
+        private byte[] nodeIdBytes;
+
+        /** */
+        private byte[] nodeIdBytesWithType;
+
+        /** */
+        public NodeIdMessage() {
+            // No-op.
+        }
+
+        /**
+         * @param nodeId Node ID.
+         */
+        private NodeIdMessage(UUID nodeId) {
+            assert nodeId != null;
+
+            nodeIdBytes = U.uuidToBytes(nodeId);
+
+            nodeIdBytesWithType = new byte[nodeIdBytes.length + 1];
+
+            nodeIdBytesWithType[0] = NODE_ID_MSG_TYPE;
+
+            System.arraycopy(nodeIdBytes, 0, nodeIdBytesWithType, 1, nodeIdBytes.length);
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean writeTo(ByteBuffer buf, MessageWriter writer) {
+            assert nodeIdBytes.length == 16;
+
+            if (buf.remaining() < 17)
+                return false;
+
+            buf.put(NODE_ID_MSG_TYPE);
+            buf.put(nodeIdBytes);
+
+            return true;
+        }
+
+        /** {@inheritDoc} */
+        @Override public boolean readFrom(ByteBuffer buf, MessageReader reader) {
+            if (buf.remaining() < 16)
+                return false;
+
+            nodeIdBytes = new byte[16];
+
+            buf.get(nodeIdBytes);
+
+            return true;
+        }
+
+        /** {@inheritDoc} */
+        @Override public byte directType() {
+            return NODE_ID_MSG_TYPE;
+        }
+
+        /** {@inheritDoc} */
+        @Override public byte fieldsCount() {
+            return 0;
+        }
+
+        /** {@inheritDoc} */
+        @Override public String toString() {
+            return S.toString(NodeIdMessage.class, this);
+        }
+    }
+
+    /**
      * This worker takes responsibility to shut the server down when stopping,
      * No other thread shall stop passed server.
      */
@@ -3155,79 +3446,6 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
     /**
      *
      */
-    private static class ConnectFuture extends GridFutureAdapter<GridCommunicationClient> {
-        /** */
-        private static final long serialVersionUID = 0L;
-
-        // No-op.
-    }
-
-    /**
-     *
-     */
-    private static class HandshakeTimeoutObject<T> implements IgniteSpiTimeoutObject {
-        /** */
-        private final IgniteUuid id = IgniteUuid.randomUuid();
-
-        /** */
-        private final T obj;
-
-        /** */
-        private final long endTime;
-
-        /** */
-        private final AtomicBoolean done = new AtomicBoolean();
-
-        /**
-         * @param obj Client.
-         * @param endTime End time.
-         */
-        private HandshakeTimeoutObject(T obj, long endTime) {
-            assert obj != null;
-            assert obj instanceof GridCommunicationClient || obj instanceof SelectableChannel;
-            assert endTime > 0;
-
-            this.obj = obj;
-            this.endTime = endTime;
-        }
-
-        /**
-         * @return {@code True} if object has not yet been timed out.
-         */
-        boolean cancel() {
-            return done.compareAndSet(false, true);
-        }
-
-        /** {@inheritDoc} */
-        @Override public void onTimeout() {
-            if (done.compareAndSet(false, true)) {
-                // Close socket - timeout occurred.
-                if (obj instanceof GridCommunicationClient)
-                    ((GridCommunicationClient)obj).forceClose();
-                else
-                    U.closeQuiet((AbstractInterruptibleChannel)obj);
-            }
-        }
-
-        /** {@inheritDoc} */
-        @Override public long endTime() {
-            return endTime;
-        }
-
-        /** {@inheritDoc} */
-        @Override public IgniteUuid id() {
-            return id;
-        }
-
-        /** {@inheritDoc} */
-        @Override public String toString() {
-            return S.toString(HandshakeTimeoutObject.class, this);
-        }
-    }
-
-    /**
-     *
-     */
     private class HandshakeClosure extends IgniteInClosure2X<InputStream, OutputStream> {
         /** */
         private static final long serialVersionUID = 0L;
@@ -3300,264 +3518,6 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter
             catch (IOException e) {
                 throw new IgniteCheckedException("Failed to perform handshake.", e);
             }
-        }
-    }
-
-    /**
-     * Handshake message.
-     */
-    @SuppressWarnings("PublicInnerClass")
-    public static class HandshakeMessage implements Message {
-        /** */
-        private static final long serialVersionUID = 0L;
-
-        /** */
-        private UUID nodeId;
-
-        /** */
-        private long rcvCnt;
-
-        /** */
-        private long connectCnt;
-
-        /**
-         * Default constructor required by {@link Message}.
-         */
-        public HandshakeMessage() {
-            // No-op.
-        }
-
-        /**
-         * @param nodeId Node ID.
-         * @param connectCnt Connect count.
-         * @param rcvCnt Number of received messages.
-         */
-        public HandshakeMessage(UUID nodeId, long connectCnt, long rcvCnt) {
-            assert nodeId != null;
-            assert rcvCnt >= 0 : rcvCnt;
-
-            this.nodeId = nodeId;
-            this.connectCnt = connectCnt;
-            this.rcvCnt = rcvCnt;
-        }
-
-        /**
-         * @return Connect count.
-         */
-        public long connectCount() {
-            return connectCnt;
-        }
-
-        /**
-         * @return Number of received messages.
-         */
-        public long received() {
-            return rcvCnt;
-        }
-
-        /**
-         * @return Node ID.
-         */
-        public UUID nodeId() {
-            return nodeId;
-        }
-
-        /** {@inheritDoc} */
-        @Override public boolean writeTo(ByteBuffer buf, MessageWriter writer) {
-            if (buf.remaining() < 33)
-                return false;
-
-            buf.put(HANDSHAKE_MSG_TYPE);
-
-            byte[] bytes = U.uuidToBytes(nodeId);
-
-            assert bytes.length == 16 : bytes.length;
-
-            buf.put(bytes);
-
-            buf.putLong(rcvCnt);
-
-            buf.putLong(connectCnt);
-
-            return true;
-        }
-
-        /** {@inheritDoc} */
-        @Override public boolean readFrom(ByteBuffer buf, MessageReader reader) {
-            if (buf.remaining() < 32)
-                return false;
-
-            byte[] nodeIdBytes = new byte[16];
-
-            buf.get(nodeIdBytes);
-
-            nodeId = U.bytesToUuid(nodeIdBytes, 0);
-
-            rcvCnt = buf.getLong();
-
-            connectCnt = buf.getLong();
-
-            return true;
-        }
-
-        /** {@inheritDoc} */
-        @Override public byte directType() {
-            return HANDSHAKE_MSG_TYPE;
-        }
-
-        /** {@inheritDoc} */
-        @Override public byte fieldsCount() {
-            throw new UnsupportedOperationException();
-        }
-
-        /** {@inheritDoc} */
-        @Override public String toString() {
-            return S.toString(HandshakeMessage.class, this);
-        }
-    }
-
-    /**
-     * Recovery acknowledgment message.
-     */
-    @SuppressWarnings("PublicInnerClass")
-    public static class RecoveryLastReceivedMessage implements Message {
-        /** */
-        private static final long serialVersionUID = 0L;
-
-        /** */
-        private long rcvCnt;
-
-        /**
-         * Default constructor required by {@link Message}.
-         */
-        public RecoveryLastReceivedMessage() {
-            // No-op.
-        }
-
-        /**
-         * @param rcvCnt Number of received messages.
-         */
-        public RecoveryLastReceivedMessage(long rcvCnt) {
-            this.rcvCnt = rcvCnt;
-        }
-
-        /**
-         * @return Number of received messages.
-         */
-        public long received() {
-            return rcvCnt;
-        }
-
-        /** {@inheritDoc} */
-        @Override public boolean writeTo(ByteBuffer buf, MessageWriter writer) {
-            if (buf.remaining() < 9)
-                return false;
-
-            buf.put(RECOVERY_LAST_ID_MSG_TYPE);
-
-            buf.putLong(rcvCnt);
-
-            return true;
-        }
-
-        /** {@inheritDoc} */
-        @Override public boolean readFrom(ByteBuffer buf, MessageReader reader) {
-            if (buf.remaining() < 8)
-                return false;
-
-            rcvCnt = buf.getLong();
-
-            return true;
-        }
-
-        /** {@inheritDoc} */
-        @Override public byte directType() {
-            return RECOVERY_LAST_ID_MSG_TYPE;
-        }
-
-        /** {@inheritDoc} */
-        @Override public byte fieldsCount() {
-            return 0;
-        }
-
-        /** {@inheritDoc} */
-        @Override public String toString() {
-            return S.toString(RecoveryLastReceivedMessage.class, this);
-        }
-    }
-
-    /**
-     * Node ID message.
-     */
-    @SuppressWarnings("PublicInnerClass")
-    public static class NodeIdMessage implements Message {
-        /** */
-        private static final long serialVersionUID = 0L;
-
-        /** */
-        private byte[] nodeIdBytes;
-
-        /** */
-        private byte[] nodeIdBytesWithType;
-
-        /** */
-        public NodeIdMessage() {
-            // No-op.
-        }
-
-        /**
-         * @param nodeId Node ID.
-         */
-        private NodeIdMessage(UUID nodeId) {
-            assert nodeId != null;
-
-            nodeIdBytes = U.uuidToBytes(nodeId);
-
-            nodeIdBytesWithType = new byte[nodeIdBytes.length + 1];
-
-            nodeIdBytesWithType[0] = NODE_ID_MSG_TYPE;
-
-            System.arraycopy(nodeIdBytes, 0, nodeIdBytesWithType, 1, nodeIdBytes.length);
-        }
-
-        /** {@inheritDoc} */
-        @Override public boolean writeTo(ByteBuffer buf, MessageWriter writer) {
-            assert nodeIdBytes.length == 16;
-
-            if (buf.remaining() < 17)
-                return false;
-
-            buf.put(NODE_ID_MSG_TYPE);
-            buf.put(nodeIdBytes);
-
-            return true;
-        }
-
-        /** {@inheritDoc} */
-        @Override public boolean readFrom(ByteBuffer buf, MessageReader reader) {
-            if (buf.remaining() < 16)
-                return false;
-
-            nodeIdBytes = new byte[16];
-
-            buf.get(nodeIdBytes);
-
-            return true;
-        }
-
-        /** {@inheritDoc} */
-        @Override public byte directType() {
-            return NODE_ID_MSG_TYPE;
-        }
-
-        /** {@inheritDoc} */
-        @Override public byte fieldsCount() {
-            return 0;
-        }
-
-        /** {@inheritDoc} */
-        @Override public String toString() {
-            return S.toString(NodeIdMessage.class, this);
         }
     }
 
