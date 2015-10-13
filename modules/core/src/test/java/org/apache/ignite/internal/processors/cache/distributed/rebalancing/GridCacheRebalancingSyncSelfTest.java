@@ -365,8 +365,6 @@ public class GridCacheRebalancingSyncSelfTest extends GridCommonAbstractTest {
                     waitForRebalancing(3, 5, 0);
                     waitForRebalancing(4, 5, 0);
 
-                    awaitPartitionMapExchange();
-
                     //New cache should start rebalancing.
                     CacheConfiguration<Integer, Integer> cacheRCfg = new CacheConfiguration<>();
 
