@@ -1256,14 +1256,15 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                 commitErr.get());
         }
 
+        if (near()) {
+            // Must evict near entries before rolling back from
+            // transaction manager, so they will be removed from cache.
+            for (IgniteTxEntry e : allEntries())
+                evictNearEntry(e, false);
+        }
+
         if (doneFlag.compareAndSet(false, true)) {
             try {
-                if (near())
-                    // Must evict near entries before rolling back from
-                    // transaction manager, so they will be removed from cache.
-                    for (IgniteTxEntry e : allEntries())
-                        evictNearEntry(e, false);
-
                 cctx.tm().rollbackTx(this);
 
                 if (!internal()) {

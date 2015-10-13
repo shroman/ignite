@@ -155,7 +155,7 @@ public abstract class IgniteTxMultiThreadedAbstractTest extends IgniteTxAbstract
     /**
      * @throws IgniteCheckedException If test failed.
      */
-    public void _testOptimisticSerializableCommitMultithreaded() throws Exception {
+    public void testOptimisticSerializableCommitMultithreaded() throws Exception {
         checkCommitMultithreaded(OPTIMISTIC, SERIALIZABLE);
 
         finalChecks();

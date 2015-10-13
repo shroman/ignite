@@ -52,6 +52,7 @@ import org.apache.ignite.internal.util.future.GridCompoundFuture;
 import org.apache.ignite.internal.util.future.GridFinishedFuture;
 import org.apache.ignite.internal.util.future.GridFutureAdapter;
 import org.apache.ignite.internal.util.lang.GridPlainRunnable;
+import org.apache.ignite.internal.util.tostring.GridToStringExclude;
 import org.apache.ignite.internal.util.tostring.GridToStringInclude;
 import org.apache.ignite.internal.util.typedef.C1;
 import org.apache.ignite.internal.util.typedef.CI1;
@@ -77,6 +78,7 @@ import static org.apache.ignite.transactions.TransactionState.PREPARING;
 public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearTxPrepareFutureAdapter
     implements GridCacheMvccFuture<IgniteInternalTx> {
     /** */
+    @GridToStringExclude
     private KeyLockFuture keyLockFut = new KeyLockFuture();
 
     /** */
@@ -192,7 +194,11 @@ public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearTxPre
         if (isDone())
             return false;
 
-        this.err.compareAndSet(null, err);
+        if (err != null) {
+            this.err.compareAndSet(null, err);
+
+            keyLockFut.onDone(err);
+        }
 
         return onComplete();
     }
