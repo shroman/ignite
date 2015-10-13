@@ -1296,6 +1296,8 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
                             orderMap.get(order).add(cacheId);
                         }
 
+                        Runnable marsR = null;
+
                         //Ordered rebalance scheduling.
                         for (Integer order : orderMap.keySet()) {
                             for (Integer cacheId : orderMap.get(order)) {
@@ -1316,9 +1318,8 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
                                     U.log(log, "Rebalancing scheduled: [cache=" + cacheCtx.name() +
                                         " , waitList=" + waitList.toString() + "]");
 
-                                    //Marshaller cache rebalancing launches in sync way.
                                     if (cacheId == CU.cacheId(GridCacheUtils.MARSH_CACHE_NAME))
-                                        r.run();
+                                        marsR = r;
                                     else
                                         rebalancingQueue.add(r);
                                 }
@@ -1328,6 +1329,9 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
                         while (!rebalancingQueueOwning.compareAndSet(0, 1)) {
                             U.sleep(10); // Wait for thread stop.
                         }
+
+                        if (marsR != null)
+                            marsR.run();//Marshaller cache rebalancing launches in sync way.
 
                         cctx.kernalContext().closure().callLocalSafe(new GPC<Boolean>() {
                             @Override public Boolean call() {
