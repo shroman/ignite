@@ -671,9 +671,9 @@ public abstract class GridDhtTransactionalCacheAdapter<K, V> extends GridDhtCach
                         if (log.isDebugEnabled())
                             log.debug("Got removed entry when adding lock (will retry): " + entry);
                     }
-                    catch (GridDistributedLockCancelledException e) {
+                    catch (IgniteCheckedException | GridDistributedLockCancelledException e) {
                         if (log.isDebugEnabled())
-                            log.debug("Got lock request for cancelled lock (will fail): " + entry);
+                            log.debug("Failed to add entry [err=" + e + ", entry=" + entry + ']');
 
                         return new GridDhtFinishedFuture<>(e);
                     }

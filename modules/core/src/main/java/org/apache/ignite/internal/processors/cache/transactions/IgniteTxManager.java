@@ -993,6 +993,14 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
     }
 
     /**
+     * @param tx Transaction.
+     * @return {@code True} if transaction read entries should be unlocked.
+     */
+    private boolean unlockReadEntries(IgniteInternalTx tx) {
+        return (tx.pessimistic() && !tx.readCommitted()) || (tx.optimistic() && tx.serializable());
+    }
+
+    /**
      * Commits a transaction.
      *
      * @param tx Transaction to commit.
@@ -1046,8 +1054,8 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
             // 4. Unlock write resources.
             unlockMultiple(tx, tx.writeEntries());
 
-            // 5. For pessimistic transaction, unlock read resources if required.
-            if (tx.pessimistic() && !tx.readCommitted())
+            // 5. Unlock read resources if required.
+            if (unlockReadEntries(tx))
                 unlockMultiple(tx, tx.readEntries());
 
             // 6. Notify evictions.
@@ -1125,8 +1133,8 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
             // 2. Unlock write resources.
             unlockMultiple(tx, tx.writeEntries());
 
-            // 3. For pessimistic transaction, unlock read resources if required.
-            if (tx.pessimistic() && !tx.readCommitted())
+            // 3. Unlock read resources if required.
+            if (unlockReadEntries(tx))
                 unlockMultiple(tx, tx.readEntries());
 
             // 4. Notify evictions.
@@ -1188,8 +1196,8 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
             // 1. Unlock write resources.
             unlockMultiple(tx, tx.writeEntries());
 
-            // 2. For pessimistic transaction, unlock read resources if required.
-            if (tx.pessimistic() && !tx.readCommitted())
+            // 2. Unlock read resources if required.
+            if (unlockReadEntries(tx))
                 unlockMultiple(tx, tx.readEntries());
 
             // 3. Notify evictions.
@@ -1396,7 +1404,11 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
                     assert !entry1.detached() : "Expected non-detached entry for near transaction " +
                         "[locNodeId=" + cctx.localNodeId() + ", entry=" + entry1 + ']';
 
-                    if (!entry1.tmLock(tx, timeout)) {
+                    GridCacheVersion serReadVer = txEntry1.serializableReadVersion();
+
+                    assert serReadVer == null || ser : txEntry1;
+
+                    if (!entry1.tmLock(tx, timeout, serReadVer)) {
                         // Unlock locks locked so far.
                         for (IgniteTxEntry txEntry2 : entries) {
                             if (txEntry2 == txEntry1)
@@ -1429,6 +1441,11 @@ public class IgniteTxManager extends GridCacheSharedManagerAdapter {
 
                         break;
                     }
+                }
+                catch (IgniteCheckedException e) {
+                    tx.setRollbackOnly();
+
+                    throw e;
                 }
                 catch (GridDistributedLockCancelledException ignore) {
                     tx.setRollbackOnly();

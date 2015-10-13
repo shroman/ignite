@@ -325,7 +325,8 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
 
         threadId = Thread.currentThread().getId();
 
-        log = U.logger(cctx.kernalContext(), logRef, this);
+        if (log == null)
+            log = U.logger(cctx.kernalContext(), logRef, this);
     }
 
     /**
@@ -374,7 +375,8 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
         implicitSingle = false;
         loc = false;
 
-        log = U.logger(cctx.kernalContext(), logRef, this);
+        if (log == null)
+            log = U.logger(cctx.kernalContext(), logRef, this);
     }
 
     /** {@inheritDoc} */
@@ -430,6 +432,9 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
 
     /** {@inheritDoc} */
     @Override public Collection<IgniteTxEntry> optimisticLockEntries() {
+        if (optimistic() && serializable())
+            return allEntries();
+
         return writeEntries();
     }
 
@@ -1498,9 +1503,8 @@ public abstract class IgniteTxAdapter extends GridMetadataAwareAdapter
      * @param e Entry to evict if it qualifies for eviction.
      * @param primaryOnly Flag to try to evict only on primary node.
      * @return {@code True} if attempt was made to evict the entry.
-     * @throws IgniteCheckedException If failed.
      */
-    protected boolean evictNearEntry(IgniteTxEntry e, boolean primaryOnly) throws IgniteCheckedException {
+    protected boolean evictNearEntry(IgniteTxEntry e, boolean primaryOnly) {
         assert e != null;
 
         if (isNearLocallyMapped(e, primaryOnly)) {

@@ -29,6 +29,7 @@ import org.apache.ignite.internal.processors.cache.GridCacheReturn;
 import org.apache.ignite.internal.processors.cache.KeyCacheObject;
 import org.apache.ignite.internal.processors.cache.dr.GridCacheDrInfo;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
+import org.apache.ignite.internal.util.lang.GridInClosure3;
 import org.apache.ignite.lang.IgniteBiInClosure;
 import org.jetbrains.annotations.Nullable;
 
@@ -164,14 +165,17 @@ public interface IgniteTxLocalEx extends IgniteInternalTx {
      * @param c Closure.
      * @param deserializePortable Deserialize portable flag.
      * @param skipVals Skip values flag.
+     * @param needVer If {@code true} version is required for loaded values.
+     * @param c Closure to be applied for loaded values.
      * @return Future with {@code True} value if loading took place.
      */
-    public IgniteInternalFuture<Boolean> loadMissing(
+    public IgniteInternalFuture<Void> loadMissing(
         GridCacheContext cacheCtx,
         boolean readThrough,
         boolean async,
         Collection<KeyCacheObject> keys,
         boolean deserializePortable,
         boolean skipVals,
-        IgniteBiInClosure<KeyCacheObject, Object> c);
+        boolean needVer,
+        GridInClosure3<KeyCacheObject, Object, GridCacheVersion> c);
 }

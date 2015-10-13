@@ -33,6 +33,8 @@ import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersionedEntryEx;
 import org.apache.ignite.internal.processors.dr.GridDrType;
 import org.apache.ignite.internal.util.lang.GridTuple3;
+import org.apache.ignite.internal.util.typedef.T2;
+import org.apache.ignite.lang.IgniteBiTuple;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -286,7 +288,6 @@ public interface GridCacheEntryEx {
      * @param subjId Subject ID initiated this read.
      * @param transformClo Transform closure to record event.
      * @param taskName Task name.
-     *      together with getting the value is an atomic operation.
      * @param expiryPlc Expiry policy.
      * @return Cached value.
      * @throws IgniteCheckedException If loading value failed.
@@ -306,6 +307,32 @@ public interface GridCacheEntryEx {
         String taskName,
         @Nullable IgniteCacheExpiryPolicy expiryPlc)
         throws IgniteCheckedException, GridCacheEntryRemovedException, GridCacheFilterFailedException;
+
+    /**
+     * @param tx Cache transaction.
+     * @param readSwap Flag indicating whether to check swap memory.
+     * @param unmarshal Unmarshal flag.
+     * @param updateMetrics If {@code true} then metrics should be updated.
+     * @param evt Flag to signal event notification.
+     * @param subjId Subject ID initiated this read.
+     * @param transformClo Transform closure to record event.
+     * @param taskName Task name.
+     * @param expiryPlc Expiry policy.
+     * @return Cached value and entry version.
+     * @throws IgniteCheckedException If loading value failed.
+     * @throws GridCacheEntryRemovedException If entry was removed.
+     */
+    @Nullable public T2<CacheObject, GridCacheVersion> innerGetVersioned(
+        IgniteInternalTx tx,
+        boolean readSwap,
+        boolean unmarshal,
+        boolean updateMetrics,
+        boolean evt,
+        UUID subjId,
+        Object transformClo,
+        String taskName,
+        @Nullable IgniteCacheExpiryPolicy expiryPlc)
+        throws IgniteCheckedException, GridCacheEntryRemovedException;
 
     /**
      * Reloads entry from underlying storage.
@@ -510,12 +537,14 @@ public interface GridCacheEntryEx {
      *
      * @param tx Cache transaction.
      * @param timeout Timeout for lock acquisition.
+     * @param serReadVer Optional read entry version for optimistic serializable transaction.
      * @return {@code True} if lock was acquired, {@code false} otherwise.
      * @throws GridCacheEntryRemovedException If this entry is obsolete.
      * @throws GridDistributedLockCancelledException If lock has been cancelled.
+     * @throws IgniteCheckedException If failed.
      */
-    public boolean tmLock(IgniteInternalTx tx, long timeout) throws GridCacheEntryRemovedException,
-        GridDistributedLockCancelledException;
+    public boolean tmLock(IgniteInternalTx tx, long timeout, @Nullable GridCacheVersion serReadVer)
+        throws GridCacheEntryRemovedException, GridDistributedLockCancelledException, IgniteCheckedException;
 
     /**
      * Unlocks acquired lock.

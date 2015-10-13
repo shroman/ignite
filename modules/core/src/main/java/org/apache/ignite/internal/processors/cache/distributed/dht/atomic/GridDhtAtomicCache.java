@@ -1043,7 +1043,9 @@ public class GridDhtAtomicCache<K, V> extends GridDhtCacheAdapter<K, V> {
             deserializePortable,
             expiry,
             skipVals,
-            canRemap);
+            canRemap,
+            false,
+            null);
 
         fut.init();
 

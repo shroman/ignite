@@ -38,6 +38,7 @@ import org.apache.ignite.internal.processors.cache.KeyCacheObject;
 import org.apache.ignite.internal.processors.cache.distributed.GridDistributedCacheEntry;
 import org.apache.ignite.internal.processors.cache.distributed.GridDistributedLockCancelledException;
 import org.apache.ignite.internal.processors.cache.transactions.IgniteInternalTx;
+import org.apache.ignite.internal.processors.cache.transactions.IgniteTxEntry;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
 import org.apache.ignite.internal.util.lang.GridPlainRunnable;
 import org.apache.ignite.internal.util.tostring.GridToStringInclude;
@@ -163,6 +164,7 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
      * @param topVer Topology version.
      * @param threadId Owning thread ID.
      * @param ver Lock version.
+     * @param serReadVer Optional read entry version for optimistic serializable transaction.
      * @param timeout Timeout to acquire lock.
      * @param reenter Reentry flag.
      * @param tx Tx flag.
@@ -170,6 +172,7 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
      * @return New candidate.
      * @throws GridCacheEntryRemovedException If entry has been removed.
      * @throws GridDistributedLockCancelledException If lock was cancelled.
+     * @throws IgniteCheckedException If failed.
      */
     @Nullable public GridCacheMvccCandidate addDhtLocal(
         UUID nearNodeId,
@@ -177,10 +180,13 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
         AffinityTopologyVersion topVer,
         long threadId,
         GridCacheVersion ver,
+        @Nullable GridCacheVersion serReadVer,
         long timeout,
         boolean reenter,
         boolean tx,
-        boolean implicitSingle) throws GridCacheEntryRemovedException, GridDistributedLockCancelledException {
+        boolean implicitSingle)
+        throws GridCacheEntryRemovedException, GridDistributedLockCancelledException, IgniteCheckedException
+    {
         GridCacheMvccCandidate cand;
         GridCacheMvccCandidate prev;
         GridCacheMvccCandidate owner;
@@ -193,6 +199,15 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
             checkRemoved(nearVer);
 
             checkObsolete();
+
+            if (serReadVer != null) {
+                unswap(false);
+
+                if (!serReadVer.equals(this.ver)) {
+                    if (!((isNew() || deleted()) && serReadVer.equals(IgniteTxEntry.READ_NEW_ENTRY_VER)))
+                        return null;
+                }
+            }
 
             GridCacheMvcc mvcc = mvccExtras();
 
@@ -250,8 +265,8 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
     }
 
     /** {@inheritDoc} */
-    @Override public boolean tmLock(IgniteInternalTx tx, long timeout)
-        throws GridCacheEntryRemovedException, GridDistributedLockCancelledException {
+    @Override public boolean tmLock(IgniteInternalTx tx, long timeout, GridCacheVersion serReadVer)
+        throws GridCacheEntryRemovedException, GridDistributedLockCancelledException, IgniteCheckedException {
         if (tx.local()) {
             GridDhtTxLocalAdapter dhtTx = (GridDhtTxLocalAdapter)tx;
 
@@ -262,6 +277,7 @@ public class GridDhtCacheEntry extends GridDistributedCacheEntry {
                 tx.topologyVersion(),
                 tx.threadId(),
                 tx.xidVersion(),
+                serReadVer,
                 timeout,
                 /*reenter*/false,
                 /*tx*/true,

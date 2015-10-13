@@ -58,6 +58,7 @@ import static org.apache.ignite.testframework.GridTestUtils.setMemoryMode;
 import static org.apache.ignite.transactions.TransactionConcurrency.OPTIMISTIC;
 import static org.apache.ignite.transactions.TransactionConcurrency.PESSIMISTIC;
 import static org.apache.ignite.transactions.TransactionIsolation.REPEATABLE_READ;
+import static org.apache.ignite.transactions.TransactionIsolation.SERIALIZABLE;
 
 /**
  *
@@ -170,6 +171,13 @@ public class IgniteCacheCrossCacheTxFailoverTest extends GridCommonAbstractTest 
      */
     public void testCrossCacheOptimisticTxFailover() throws Exception {
         crossCacheTxFailover(PARTITIONED, true, OPTIMISTIC, REPEATABLE_READ, TestMemoryMode.HEAP);
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void _testCrossCacheOptimisticSerializableTxFailover() throws Exception {
+        crossCacheTxFailover(PARTITIONED, true, OPTIMISTIC, SERIALIZABLE, TestMemoryMode.HEAP);
     }
 
     /**

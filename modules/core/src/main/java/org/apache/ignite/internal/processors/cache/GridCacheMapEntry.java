@@ -37,6 +37,7 @@ import org.apache.ignite.internal.managers.deployment.GridDeploymentInfo;
 import org.apache.ignite.internal.managers.deployment.GridDeploymentInfoBean;
 import org.apache.ignite.internal.processors.affinity.AffinityTopologyVersion;
 import org.apache.ignite.internal.processors.cache.distributed.dht.GridDhtCacheEntry;
+import org.apache.ignite.internal.processors.cache.distributed.near.GridNearCacheEntry;
 import org.apache.ignite.internal.processors.cache.extras.GridCacheEntryExtras;
 import org.apache.ignite.internal.processors.cache.extras.GridCacheMvccEntryExtras;
 import org.apache.ignite.internal.processors.cache.extras.GridCacheObsoleteEntryExtras;
@@ -59,6 +60,7 @@ import org.apache.ignite.internal.util.offheap.unsafe.GridUnsafeMemory;
 import org.apache.ignite.internal.util.tostring.GridToStringExclude;
 import org.apache.ignite.internal.util.tostring.GridToStringInclude;
 import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.T2;
 import org.apache.ignite.internal.util.typedef.T3;
 import org.apache.ignite.internal.util.typedef.internal.CU;
 import org.apache.ignite.internal.util.typedef.internal.S;
@@ -673,7 +675,7 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
         String taskName,
         @Nullable IgniteCacheExpiryPolicy expirePlc)
         throws IgniteCheckedException, GridCacheEntryRemovedException {
-        return innerGet0(tx,
+        return (CacheObject)innerGet0(tx,
             readSwap,
             readThrough,
             evt,
@@ -683,12 +685,39 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
             subjId,
             transformClo,
             taskName,
-            expirePlc);
+            expirePlc,
+            false);
+    }
+
+    /** {@inheritDoc} */
+    @Nullable @Override public T2<CacheObject, GridCacheVersion> innerGetVersioned(
+        IgniteInternalTx tx,
+        boolean readSwap,
+        boolean unmarshal,
+        boolean updateMetrics,
+        boolean evt,
+        UUID subjId,
+        Object transformClo,
+        String taskName,
+        @Nullable IgniteCacheExpiryPolicy expiryPlc)
+        throws IgniteCheckedException, GridCacheEntryRemovedException {
+        return (T2<CacheObject, GridCacheVersion>)innerGet0(tx,
+            readSwap,
+            false,
+            evt,
+            unmarshal,
+            updateMetrics,
+            false,
+            subjId,
+            transformClo,
+            taskName,
+            expiryPlc,
+            true);
     }
 
     /** {@inheritDoc} */
     @SuppressWarnings({"unchecked", "RedundantTypeArguments", "TooBroadScope"})
-    private CacheObject innerGet0(IgniteInternalTx tx,
+    private Object innerGet0(IgniteInternalTx tx,
         boolean readSwap,
         boolean readThrough,
         boolean evt,
@@ -698,8 +727,11 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
         UUID subjId,
         Object transformClo,
         String taskName,
-        @Nullable IgniteCacheExpiryPolicy expiryPlc)
+        @Nullable IgniteCacheExpiryPolicy expiryPlc,
+        boolean retVer)
         throws IgniteCheckedException, GridCacheEntryRemovedException {
+        assert !(retVer && readThrough);
+
         // Disable read-through if there is no store.
         if (readThrough && !cctx.readThrough())
             readThrough = false;
@@ -710,6 +742,7 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
         CacheObject ret = null;
 
         GridCacheVersion startVer;
+        GridCacheVersion resVer = null;
 
         boolean expired = false;
 
@@ -840,11 +873,18 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
 
             if (ret != null && expiryPlc != null)
                 updateTtl(expiryPlc);
+
+            if (retVer) {
+                resVer = isNear() ? ((GridNearCacheEntry)this).dhtVersion() : this.ver;
+
+                if (resVer == null)
+                    ret = null;
+            }
         }
 
         if (ret != null)
             // If return value is consistent, then done.
-            return ret;
+            return retVer ? new T2<>(ret, resVer) : ret;
 
         boolean loadedFromStore = false;
 
@@ -905,6 +945,8 @@ public abstract class GridCacheMapEntry extends GridMetadataAwareAdapter impleme
                         taskName);
             }
         }
+
+        assert ret == null || !retVer;
 
         return ret;
     }

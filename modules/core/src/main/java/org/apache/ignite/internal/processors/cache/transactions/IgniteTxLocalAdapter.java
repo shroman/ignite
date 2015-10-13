@@ -57,6 +57,7 @@ import org.apache.ignite.internal.processors.cache.GridCacheSharedContext;
 import org.apache.ignite.internal.processors.cache.GridCacheUpdateTxResult;
 import org.apache.ignite.internal.processors.cache.IgniteCacheExpiryPolicy;
 import org.apache.ignite.internal.processors.cache.KeyCacheObject;
+import org.apache.ignite.internal.processors.cache.distributed.dht.colocated.GridDhtDetachedCacheEntry;
 import org.apache.ignite.internal.processors.cache.distributed.near.GridNearCacheEntry;
 import org.apache.ignite.internal.processors.cache.dr.GridCacheDrInfo;
 import org.apache.ignite.internal.processors.cache.store.CacheStoreManager;
@@ -73,6 +74,7 @@ import org.apache.ignite.internal.util.future.GridEmbeddedFuture;
 import org.apache.ignite.internal.util.future.GridFinishedFuture;
 import org.apache.ignite.internal.util.future.GridFutureAdapter;
 import org.apache.ignite.internal.util.lang.GridClosureException;
+import org.apache.ignite.internal.util.lang.GridInClosure3;
 import org.apache.ignite.internal.util.lang.GridTuple;
 import org.apache.ignite.internal.util.tostring.GridToStringBuilder;
 import org.apache.ignite.internal.util.tostring.GridToStringExclude;
@@ -85,10 +87,8 @@ import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.T2;
 import org.apache.ignite.internal.util.typedef.X;
 import org.apache.ignite.internal.util.typedef.internal.CU;
-import org.apache.ignite.internal.util.typedef.internal.GPC;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteBiClosure;
-import org.apache.ignite.lang.IgniteBiInClosure;
 import org.apache.ignite.lang.IgniteBiTuple;
 import org.apache.ignite.lang.IgniteClosure;
 import org.apache.ignite.plugin.security.SecurityPermission;
@@ -416,46 +416,130 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
     }
 
     /** {@inheritDoc} */
-    @Override public IgniteInternalFuture<Boolean> loadMissing(
+    @Override public IgniteInternalFuture<Void> loadMissing(
         final GridCacheContext cacheCtx,
         final boolean readThrough,
         boolean async,
         final Collection<KeyCacheObject> keys,
         boolean deserializePortable,
         boolean skipVals,
-        final IgniteBiInClosure<KeyCacheObject, Object> c
+        boolean needVer,
+        final GridInClosure3<KeyCacheObject, Object, GridCacheVersion> c
     ) {
-        if (!async) {
-            try {
-                if (!readThrough || !cacheCtx.readThrough()) {
-                    for (KeyCacheObject key : keys)
-                        c.apply(key, null);
+        assert cacheCtx.isLocal() : cacheCtx.name();
 
-                    return new GridFinishedFuture<>(false);
-                }
+        if (!readThrough || !cacheCtx.readThrough()) {
+            for (KeyCacheObject key : keys)
+                c.apply(key, null, IgniteTxEntry.READ_NEW_ENTRY_VER);
 
-                return new GridFinishedFuture<>(
-                    cacheCtx.store().loadAll(this, keys, c));
-            }
-            catch (IgniteCheckedException e) {
-                return new GridFinishedFuture<>(e);
-            }
+            return new GridFinishedFuture<>();
         }
-        else {
-            return cctx.kernalContext().closure().callLocalSafe(
-                new GPC<Boolean>() {
-                    @Override public Boolean call() throws Exception {
-                        if (!readThrough || !cacheCtx.readThrough()) {
-                            for (KeyCacheObject key : keys)
-                                c.apply(key, null);
 
-                            return false;
+        try {
+            IgniteCacheExpiryPolicy expiryPlc = accessPolicy(cacheCtx, keys);
+
+            Map<KeyCacheObject, GridCacheVersion> misses = null;
+
+            for (KeyCacheObject key : keys) {
+                while (true) {
+                    IgniteTxEntry txEntry = entry(cacheCtx.txKey(key));
+
+                    GridCacheEntryEx entry = txEntry == null ? cacheCtx.cache().entryEx(key) :
+                        txEntry.cached();
+
+                    if (entry == null)
+                        continue;
+
+                    try {
+                        T2<CacheObject, GridCacheVersion> res = entry.innerGetVersioned(this,
+                            /*readSwap*/true,
+                            /*unmarshal*/true,
+                            /*update-metrics*/!skipVals,
+                            /*event*/!skipVals,
+                            CU.subjectId(this, cctx),
+                            null,
+                            resolveTaskName(),
+                            expiryPlc);
+
+                        if (res == null) {
+                            if (misses == null)
+                                misses = new LinkedHashMap<>();
+
+                            misses.put(key, entry.version());
                         }
+                        else
+                            c.apply(key, res.get1(), res.get2());
 
-                        return cacheCtx.store().loadAll(IgniteTxLocalAdapter.this, keys, c);
+                        break;
                     }
-                },
-                true);
+                    catch (GridCacheEntryRemovedException ignore) {
+                        if (log.isDebugEnabled())
+                            log.debug("Got removed entry, will retry: " + key);
+
+                        if (txEntry != null)
+                            txEntry.cached(cacheCtx.cache().entryEx(key));
+                    }
+                }
+            }
+
+            if (misses != null) {
+                final Map<KeyCacheObject, GridCacheVersion> misses0 = misses;
+
+                cacheCtx.store().loadAll(this, misses.keySet(), new CI2<KeyCacheObject, Object>() {
+                    private GridCacheVersion nextVer;
+
+                    @Override public void apply(KeyCacheObject key, Object val) {
+                        GridCacheVersion ver = misses0.remove(key);
+
+                        assert ver != null : key;
+
+                        if (val != null) {
+                            if (nextVer == null)
+                                nextVer = cacheCtx.versions().next();
+
+                            CacheObject cacheVal = cacheCtx.toCacheObject(val);
+
+                            while (true) {
+                                GridCacheEntryEx entry = cacheCtx.cache().entryEx(key);
+
+                                try {
+                                    boolean set = entry.versionedValue(cacheVal, ver, nextVer);
+
+                                    if (set)
+                                        ver = nextVer;
+
+                                    if (log.isDebugEnabled())
+                                        log.debug("Set value loaded from store into entry [set=" + set +
+                                            ", curVer=" + ver + ", newVer=" + nextVer + ", " +
+                                            "entry=" + entry + ']');
+
+                                    break;
+                                }
+                                catch (GridCacheEntryRemovedException ignore) {
+                                    if (log.isDebugEnabled())
+                                        log.debug("Got removed entry, (will retry): " + entry);
+                                }
+                                catch (IgniteCheckedException e) {
+                                    // Wrap errors (will be unwrapped).
+                                    throw new GridClosureException(e);
+                                }
+                            }
+                        }
+                        else
+                            ver = IgniteTxEntry.READ_NEW_ENTRY_VER;
+
+                        c.apply(key, val, ver);
+                    }
+                });
+
+                for (KeyCacheObject key : misses0.keySet())
+                    c.apply(key, null, IgniteTxEntry.READ_NEW_ENTRY_VER);
+            }
+
+            return new GridFinishedFuture<>();
+        }
+        catch (IgniteCheckedException e) {
+            return new GridFinishedFuture<>(e);
         }
     }
 
@@ -1172,14 +1256,15 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                 commitErr.get());
         }
 
+        if (near()) {
+            // Must evict near entries before rolling back from
+            // transaction manager, so they will be removed from cache.
+            for (IgniteTxEntry e : allEntries())
+                evictNearEntry(e, false);
+        }
+
         if (doneFlag.compareAndSet(false, true)) {
             try {
-                if (near())
-                    // Must evict near entries before rolling back from
-                    // transaction manager, so they will be removed from cache.
-                    for (IgniteTxEntry e : allEntries())
-                        evictNearEntry(e, false);
-
                 cctx.tm().rollbackTx(this);
 
                 if (!internal()) {
@@ -1263,11 +1348,13 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
 
         AffinityTopologyVersion topVer = topologyVersion();
 
+        boolean needReadVer = optimistic() && serializable();
+
         // In this loop we cover only read-committed or optimistic transactions.
         // Transactions that are pessimistic and not read-committed are covered
         // outside of this loop.
         for (KeyCacheObject key : keys) {
-            if (pessimistic() && !readCommitted() && !skipVals)
+            if ((pessimistic() || needReadVer) && !readCommitted() && !skipVals)
                 addActiveCache(cacheCtx);
 
             IgniteTxKey txKey = cacheCtx.txKey(key);
@@ -1365,24 +1452,42 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                         GridCacheVersion ver = entry.version();
 
                         CacheObject val = null;
+                        GridCacheVersion readVer = null;
 
                         if (!pessimistic() || readCommitted() && !skipVals) {
                             IgniteCacheExpiryPolicy accessPlc =
                                 optimistic() ? accessPolicy(cacheCtx, txKey, expiryPlc) : null;
 
-                            // This call will check for filter.
-                            val = entry.innerGet(this,
-                                /*swap*/true,
-                                /*no read-through*/false,
-                                /*fail-fast*/true,
-                                /*unmarshal*/true,
-                                /*metrics*/true,
-                                /*event*/true,
-                                /*temporary*/false,
-                                CU.subjectId(this, cctx),
-                                null,
-                                resolveTaskName(),
-                                accessPlc);
+                            if (needReadVer) {
+                                T2<CacheObject, GridCacheVersion> res = entry.innerGetVersioned(this,
+                                    /*swap*/true,
+                                    /*unmarshal*/true,
+                                    /*metrics*/true,
+                                    /*event*/true,
+                                    CU.subjectId(this, cctx),
+                                    null,
+                                    resolveTaskName(),
+                                    accessPlc);
+
+                                if (res != null) {
+                                    val = res.get1();
+                                    readVer = res.get2();
+                                }
+                            }
+                            else {
+                                val = entry.innerGet(this,
+                                    /*swap*/true,
+                                    /*no read-through*/false,
+                                    /*fail-fast*/true,
+                                    /*unmarshal*/true,
+                                    /*metrics*/true,
+                                    /*event*/true,
+                                    /*temporary*/false,
+                                    CU.subjectId(this, cctx),
+                                    null,
+                                    resolveTaskName(),
+                                    accessPlc);
+                            }
 
                             if (val != null) {
                                 cacheCtx.addResult(map,
@@ -1416,8 +1521,15 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
 
                             // As optimization, mark as checked immediately
                             // for non-pessimistic if value is not null.
-                            if (val != null && !pessimistic())
+                            if (val != null && !pessimistic()) {
                                 txEntry.markValid();
+
+                                if (needReadVer) {
+                                    assert readVer != null;
+
+                                    txEntry.serializableReadVersion(readVer);
+                                }
+                            }
                         }
 
                         break; // While.
@@ -1484,6 +1596,15 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
     }
 
     /**
+     * @param cacheCtx Cache context.
+     * @param keys Keys.
+     * @return Expiry policy.
+     */
+    protected IgniteCacheExpiryPolicy accessPolicy(GridCacheContext cacheCtx, Collection<KeyCacheObject> keys) {
+        return null;
+    }
+
+    /**
      * Adds skipped key.
      *
      * @param skipped Skipped set (possibly {@code null}).
@@ -1509,7 +1630,6 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
      * @param cacheCtx Cache context.
      * @param map Return map.
      * @param missedMap Missed keys.
-     * @param redos Keys to retry.
      * @param deserializePortable Deserialize portable flag.
      * @param skipVals Skip values flag.
      * @param keepCacheObjects Keep cache objects flag.
@@ -1520,53 +1640,23 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
         final GridCacheContext cacheCtx,
         final Map<K, V> map,
         final Map<KeyCacheObject, GridCacheVersion> missedMap,
-        @Nullable final Collection<KeyCacheObject> redos,
         final boolean deserializePortable,
         final boolean skipVals,
         final boolean keepCacheObjects,
         final boolean skipStore
     ) {
-        assert redos != null || pessimistic();
-
         if (log.isDebugEnabled())
             log.debug("Loading missed values for missed map: " + missedMap);
 
-        final Collection<KeyCacheObject> loaded = new HashSet<>();
+        final boolean needReadVer = optimistic() && serializable();
 
         return new GridEmbeddedFuture<>(
-            new C2<Boolean, Exception, Map<K, V>>() {
-                @Override public Map<K, V> apply(Boolean b, Exception e) {
+            new C2<Void, Exception, Map<K, V>>() {
+                @Override public Map<K, V> apply(Void v, Exception e) {
                     if (e != null) {
                         setRollbackOnly();
 
                         throw new GridClosureException(e);
-                    }
-
-                    if (!b && !readCommitted()) {
-                        // There is no store - we must mark the entries.
-                        for (KeyCacheObject key : missedMap.keySet()) {
-                            IgniteTxEntry txEntry = entry(cacheCtx.txKey(key));
-
-                            if (txEntry != null)
-                                txEntry.markValid();
-                        }
-                    }
-
-                    if (readCommitted()) {
-                        Collection<KeyCacheObject> notFound = new HashSet<>(missedMap.keySet());
-
-                        notFound.removeAll(loaded);
-
-                        // In read-committed mode touch entries that have just been read.
-                        for (KeyCacheObject key : notFound) {
-                            IgniteTxEntry txEntry = entry(cacheCtx.txKey(key));
-
-                            GridCacheEntryEx entry = txEntry == null ? cacheCtx.cache().peekEx(key) :
-                                txEntry.cached();
-
-                            if (entry != null)
-                                cacheCtx.evicts().touch(entry, topologyVersion());
-                        }
                     }
 
                     return map;
@@ -1579,24 +1669,13 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                 missedMap.keySet(),
                 deserializePortable,
                 skipVals,
-                new CI2<KeyCacheObject, Object>() {
-                    /** */
-                    private GridCacheVersion nextVer;
-
-                    @Override public void apply(KeyCacheObject key, Object val) {
+                needReadVer,
+                new GridInClosure3<KeyCacheObject, Object, GridCacheVersion>() {
+                    @Override public void apply(KeyCacheObject key, Object val, GridCacheVersion loadVer) {
                         if (isRollbackOnly()) {
                             if (log.isDebugEnabled())
                                 log.debug("Ignoring loaded value for read because transaction was rolled back: " +
                                     IgniteTxLocalAdapter.this);
-
-                            return;
-                        }
-
-                        GridCacheVersion ver = missedMap.get(key);
-
-                        if (ver == null) {
-                            if (log.isDebugEnabled())
-                                log.debug("Value from storage was never asked for [key=" + key + ", val=" + val + ']');
 
                             return;
                         }
@@ -1617,90 +1696,46 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                                 visibleVal = txEntry.applyEntryProcessors(visibleVal);
                         }
 
-                        // In pessimistic mode we hold the lock, so filter validation
-                        // should always be valid.
-                        if (pessimistic())
-                            ver = null;
+                        assert txEntry != null || readCommitted() || skipVals;
 
-                        // Initialize next version.
-                        if (nextVer == null)
-                            nextVer = cctx.versions().next(topologyVersion());
+                        GridCacheEntryEx e = txEntry == null ? entryEx(cacheCtx, txKey) : txEntry.cached();
 
-                        while (true) {
-                            assert txEntry != null || readCommitted() || skipVals;
+                        if (readCommitted() || skipVals) {
+                            cacheCtx.evicts().touch(e, topologyVersion());
 
-                            GridCacheEntryEx e = txEntry == null ? entryEx(cacheCtx, txKey) : txEntry.cached();
-
-                            try {
-                                // Must initialize to true since even if filter didn't pass,
-                                // we still record the transaction value.
-                                boolean set;
-
-                                try {
-                                    set = e.versionedValue(cacheVal, ver, nextVer);
+                            if (visibleVal != null) {
+                                synchronized (map) {
+                                    cacheCtx.addResult(map,
+                                        key,
+                                        visibleVal,
+                                        skipVals,
+                                        keepCacheObjects,
+                                        deserializePortable,
+                                        false);
                                 }
-                                catch (GridCacheEntryRemovedException ignore) {
-                                    if (log.isDebugEnabled())
-                                        log.debug("Got removed entry in transaction getAll method " +
-                                            "(will try again): " + e);
-
-                                    if (pessimistic() && !readCommitted() && !isRollbackOnly()) {
-                                        U.error(log, "Inconsistent transaction state (entry got removed while " +
-                                            "holding lock) [entry=" + e + ", tx=" + IgniteTxLocalAdapter.this + "]");
-
-                                        setRollbackOnly();
-
-                                        return;
-                                    }
-
-                                    if (txEntry != null)
-                                        txEntry.cached(entryEx(cacheCtx, txKey));
-
-                                    continue; // While loop.
-                                }
-
-                                // In pessimistic mode, we should always be able to set.
-                                assert set || !pessimistic();
-
-                                if (readCommitted() || skipVals) {
-                                    cacheCtx.evicts().touch(e, topologyVersion());
-
-                                    if (visibleVal != null) {
-                                        cacheCtx.addResult(map,
-                                            key,
-                                            visibleVal,
-                                            skipVals,
-                                            keepCacheObjects,
-                                            deserializePortable,
-                                            false);
-                                    }
-                                }
-                                else {
-                                    assert txEntry != null;
-
-                                    txEntry.setAndMarkValid(cacheVal);
-
-                                    if (visibleVal != null) {
-                                        cacheCtx.addResult(map,
-                                            key,
-                                            visibleVal,
-                                            skipVals,
-                                            keepCacheObjects,
-                                            deserializePortable,
-                                            false);
-                                    }
-                                }
-
-                                loaded.add(key);
-
-                                if (log.isDebugEnabled())
-                                    log.debug("Set value loaded from store into entry from transaction [set=" + set +
-                                        ", matchVer=" + ver + ", newVer=" + nextVer + ", entry=" + e + ']');
-
-                                break; // While loop.
                             }
-                            catch (IgniteCheckedException ex) {
-                                throw new IgniteException("Failed to put value for cache entry: " + e, ex);
+                        }
+                        else {
+                            assert txEntry != null;
+
+                            txEntry.setAndMarkValid(cacheVal);
+
+                            if (needReadVer) {
+                                assert loadVer != null;
+
+                                txEntry.serializableReadVersion(loadVer);
+                            }
+
+                            if (visibleVal != null) {
+                                synchronized (map) {
+                                    cacheCtx.addResult(map,
+                                        key,
+                                        visibleVal,
+                                        skipVals,
+                                        keepCacheObjects,
+                                        deserializePortable,
+                                        false);
+                                }
                             }
                         }
                     }
@@ -1863,7 +1898,6 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                             return checkMissed(cacheCtx,
                                 retMap,
                                 missed,
-                                null,
                                 deserializePortable,
                                 skipVals,
                                 keepCacheObjects,
@@ -1912,8 +1946,6 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
             else {
                 assert optimistic() || readCommitted() || skipVals;
 
-                final Collection<KeyCacheObject> redos = new ArrayList<>();
-
                 if (!missed.isEmpty()) {
                     if (!readCommitted())
                         for (Iterator<KeyCacheObject> it = missed.keySet().iterator(); it.hasNext(); ) {
@@ -1929,67 +1961,13 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                     if (missed.isEmpty())
                         return new GridFinishedFuture<>(retMap);
 
-                    IgniteInternalFuture<Map<K, V>> fut0 = checkMissed(cacheCtx,
+                    return checkMissed(cacheCtx,
                         retMap,
                         missed,
-                        redos,
                         deserializePortable,
                         skipVals,
                         keepCacheObjects,
                         skipStore);
-
-                    return new GridEmbeddedFuture<>(
-                        // First future.
-                        fut0,
-                        // Closure that returns another future, based on result from first.
-                        new PMC<Map<K, V>>() {
-                            @Override public IgniteInternalFuture<Map<K, V>> postMiss(Map<K, V> map) {
-                                if (redos.isEmpty())
-                                    return new GridFinishedFuture<>(
-                                        Collections.<K, V>emptyMap());
-
-                                if (log.isDebugEnabled())
-                                    log.debug("Starting to future-recursively get values for keys: " + redos);
-
-                                // Future recursion.
-                                return getAllAsync(cacheCtx,
-                                    redos,
-                                    null,
-                                    deserializePortable,
-                                    skipVals,
-                                    true,
-                                    skipStore);
-                            }
-                        },
-                        // Finalize.
-                        new FinishClosure<Map<K, V>>() {
-                            @Override Map<K, V> finish(Map<K, V> loaded) {
-                                for (Map.Entry<K, V> entry : loaded.entrySet()) {
-                                    KeyCacheObject cacheKey = (KeyCacheObject)entry.getKey();
-
-                                    IgniteTxEntry txEntry = entry(cacheCtx.txKey(cacheKey));
-
-                                    CacheObject val = (CacheObject)entry.getValue();
-
-                                    if (!readCommitted())
-                                        txEntry.readValue(val);
-
-                                    if (!F.isEmpty(txEntry.entryProcessors()))
-                                        val = txEntry.applyEntryProcessors(val);
-
-                                    cacheCtx.addResult(retMap,
-                                        cacheKey,
-                                        val,
-                                        skipVals,
-                                        keepCacheObjects,
-                                        deserializePortable,
-                                        false);
-                                }
-
-                                return retMap;
-                            }
-                        }
-                    );
                 }
 
                 return new GridFinishedFuture<>(retMap);
@@ -2065,14 +2043,18 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
     /**
      * Checks filter for non-pessimistic transactions.
      *
-     * @param cached Cached entry.
+     * @param cctx Cache context.
+     * @param key Key.
+     * @param val Value.
      * @param filter Filter to check.
      * @return {@code True} if passed or pessimistic.
-     * @throws IgniteCheckedException If failed.
      */
-    private <K, V> boolean filter(GridCacheEntryEx cached,
-        CacheEntryPredicate[] filter) throws IgniteCheckedException {
-        return pessimistic() || (optimistic() && implicit()) || cached.context().isAll(cached, filter);
+    private boolean filter(
+        GridCacheContext cctx,
+        KeyCacheObject key,
+        CacheObject val,
+        CacheEntryPredicate[] filter) {
+        return pessimistic() || (optimistic() && implicit()) || isAll(cctx, key, val, filter);
     }
 
     /**
@@ -2096,7 +2078,7 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
      * @param skipStore Skip store flag.
      * @return Future with skipped keys (the ones that didn't pass filter for pessimistic transactions).
      */
-    protected <K, V> IgniteInternalFuture<Set<KeyCacheObject>> enlistWrite(
+    private <K, V> IgniteInternalFuture<Set<KeyCacheObject>> enlistWrite(
         final GridCacheContext cacheCtx,
         Collection<?> keys,
         @Nullable GridCacheEntryEx cached,
@@ -2107,7 +2089,7 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
         @Nullable Object[] invokeArgs,
         boolean retval,
         boolean lockOnly,
-        CacheEntryPredicate[] filter,
+        final CacheEntryPredicate[] filter,
         final GridCacheReturn ret,
         Collection<KeyCacheObject> enlisted,
         @Nullable Map<KeyCacheObject, GridCacheDrInfo> drPutMap,
@@ -2116,6 +2098,7 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
     ) {
         assert cached == null || keys.size() == 1;
         assert cached == null || F.first(keys).equals(cached.key());
+        assert retval || invokeMap == null;
 
         try {
             addActiveCache(cacheCtx);
@@ -2129,6 +2112,9 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
         boolean rmv = lookup == null && invokeMap == null;
 
         Set<KeyCacheObject> missedForLoad = null;
+
+        final boolean hasFilters = !F.isEmptyOrNulls(filter) && !F.isAlwaysTrue(filter);
+        final boolean needReadVer = (retval || hasFilters) && (optimistic() && serializable());
 
         try {
             // Set transform flag for transaction.
@@ -2209,24 +2195,40 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                                     ", locNodeId=" + cctx.localNodeId() + ']');
 
                             CacheObject old = null;
-
-                            boolean readThrough = !skipStore && !F.isEmptyOrNulls(filter) && !F.isAlwaysTrue(filter);
+                            GridCacheVersion readVer = null;
 
                             if (optimistic() && !implicit()) {
                                 try {
-                                    // Should read through if filter is specified.
-                                    old = entry.innerGet(this,
-                                        /*swap*/false,
-                                        /*read-through*/readThrough && cacheCtx.loadPreviousValue(),
-                                        /*fail-fast*/false,
-                                        /*unmarshal*/retval,
-                                        /*metrics*/retval,
-                                        /*events*/retval,
-                                        /*temporary*/false,
-                                        CU.subjectId(this, cctx),
-                                        entryProcessor,
-                                        resolveTaskName(),
-                                        null);
+                                    if (needReadVer) {
+                                        T2<CacheObject, GridCacheVersion> res = entry.innerGetVersioned(this,
+                                            /*swap*/false,
+                                            /*unmarshal*/retval,
+                                            /*metrics*/retval,
+                                            /*events*/retval,
+                                            CU.subjectId(this, cctx),
+                                            entryProcessor,
+                                            resolveTaskName(),
+                                            null);
+
+                                        if (res != null) {
+                                            old = res.get1();
+                                            readVer = res.get2();
+                                        }
+                                    }
+                                    else {
+                                        old = entry.innerGet(this,
+                                            /*swap*/false,
+                                            /*read-through*/false,
+                                            /*fail-fast*/false,
+                                            /*unmarshal*/retval,
+                                            /*metrics*/retval,
+                                            /*events*/retval,
+                                            /*temporary*/false,
+                                            CU.subjectId(this, cctx),
+                                            entryProcessor,
+                                            resolveTaskName(),
+                                            null);
+                                    }
                                 }
                                 catch (ClusterTopologyCheckedException e) {
                                     entry.context().evicts().touch(entry, topologyVersion());
@@ -2242,12 +2244,12 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                             else
                                 old = retval ? entry.rawGetOrUnmarshal(false) : entry.rawGet();
 
-                            if (!filter(entry, filter)) {
+                            if (old != null && hasFilters && !filter(entry.context(), cacheKey, old, filter)) {
                                 skipped = skip(skipped, cacheKey);
 
                                 ret.set(cacheCtx, old, false);
 
-                                if (!readCommitted() && old != null) {
+                                if (!readCommitted()) {
                                     // Enlist failed filters as reads for non-read-committed mode,
                                     // so future ops will get the same values.
                                     txEntry = addEntry(READ,
@@ -2264,9 +2266,15 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                                         skipStore);
 
                                     txEntry.markValid();
+
+                                    if (needReadVer) {
+                                        assert readVer != null;
+
+                                        txEntry.serializableReadVersion(readVer);
+                                    }
                                 }
 
-                                if (readCommitted() || old == null)
+                                if (readCommitted())
                                     cacheCtx.evicts().touch(entry, topologyVersion());
 
                                 break; // While.
@@ -2297,7 +2305,7 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                                 txEntry.markValid();
 
                                 if (old == null) {
-                                    boolean load = retval && !readThrough;
+                                    boolean load = retval || hasFilters;
 
                                     if (load) {
                                         if (missedForLoad == null)
@@ -2316,6 +2324,12 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                                     }
                                 }
                                 else {
+                                    if (needReadVer) {
+                                        assert readVer != null;
+
+                                        txEntry.serializableReadVersion(readVer);
+                                    }
+
                                     if (retval && !transform)
                                         ret.set(cacheCtx, old, true);
                                     else {
@@ -2361,7 +2375,7 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                 else {
                     if (entryProcessor == null && txEntry.op() == TRANSFORM)
                         throw new IgniteCheckedException("Failed to enlist write value for key (cannot have update value in " +
-                            "transaction after transform closure is applied): " + key);
+                            "transaction after EntryProcessor is applied): " + key);
 
                     GridCacheEntryEx entry = txEntry.cached();
 
@@ -2370,7 +2384,7 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
                     boolean del = txEntry.op() == DELETE && rmv;
 
                     if (!del) {
-                        if (!filter(entry, filter)) {
+                        if (hasFilters && !filter(entry.context(), cacheKey, v, filter)) {
                             skipped = skip(skipped, cacheKey);
 
                             ret.set(cacheCtx, v, false);
@@ -2431,21 +2445,30 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
         }
 
         if (missedForLoad != null) {
-            IgniteInternalFuture<Boolean> fut = loadMissing(
+            IgniteInternalFuture<Void> fut = loadMissing(
                 cacheCtx,
                 /*read through*/cacheCtx.config().isLoadPreviousValue() && !skipStore,
                 /*async*/true,
                 missedForLoad,
                 deserializePortables(cacheCtx),
                 /*skip values*/false,
-                new CI2<KeyCacheObject, Object>() {
-                    @Override public void apply(KeyCacheObject key, Object val) {
+                needReadVer,
+                new GridInClosure3<KeyCacheObject, Object, GridCacheVersion>() {
+                    @Override public void apply(KeyCacheObject key,
+                        @Nullable Object val,
+                        @Nullable GridCacheVersion loadVer) {
                         if (log.isDebugEnabled())
                             log.debug("Loaded value from remote node [key=" + key + ", val=" + val + ']');
 
                         IgniteTxEntry e = entry(new IgniteTxKey(key, cacheCtx.cacheId()));
 
                         assert e != null;
+
+                        if (needReadVer) {
+                            assert loadVer != null;
+
+                            e.serializableReadVersion(loadVer);
+                        }
 
                         CacheObject cacheVal = cacheCtx.toCacheObject(val);
 
@@ -2466,14 +2489,17 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
 
                             addInvokeResult(e, cacheVal, ret, ver);
                         }
-                        else
-                            ret.set(cacheCtx, cacheVal, true);
+                        else {
+                            boolean success = hasFilters ? isAll(e.context(), key, cacheVal, filter) : true;
+
+                            ret.set(cacheCtx, cacheVal, success);
+                        }
                     }
                 });
 
             return new GridEmbeddedFuture<>(
-                new C2<Boolean, Exception, Set<KeyCacheObject>>() {
-                    @Override public Set<KeyCacheObject> apply(Boolean b, Exception e) {
+                new C2<Void, Exception, Set<KeyCacheObject>>() {
+                    @Override public Set<KeyCacheObject> apply(Void b, Exception e) {
                         if (e != null)
                             throw new GridClosureException(e);
 
@@ -2484,6 +2510,31 @@ public abstract class IgniteTxLocalAdapter extends IgniteTxAdapter
         }
 
         return new GridFinishedFuture<>(skipped);
+    }
+
+    /**
+     * @param cctx Cache context.
+     * @param key Key.
+     * @param val Value.
+     * @param filter Filter.
+     * @return {@code True} if filter passed.
+     */
+    private boolean isAll(GridCacheContext cctx,
+        KeyCacheObject key,
+        CacheObject val,
+        CacheEntryPredicate[] filter) {
+        GridCacheEntryEx e = new GridDhtDetachedCacheEntry(cctx, key, 0, val, null, 0) {
+            @Nullable @Override public CacheObject peekVisibleValue() {
+                return rawGet();
+            }
+        };
+
+        for (CacheEntryPredicate p0 : filter) {
+            if (p0 != null && !p0.apply(e))
+                return false;
+        }
+
+        return true;
     }
 
     /**

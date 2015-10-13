@@ -17,11 +17,10 @@
 
 package org.apache.ignite.internal.processors.cache.distributed.dht;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -45,6 +44,7 @@ import org.apache.ignite.internal.util.future.GridFinishedFuture;
 import org.apache.ignite.internal.util.lang.GridClosureException;
 import org.apache.ignite.internal.util.typedef.C2;
 import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.T2;
 import org.apache.ignite.internal.util.typedef.internal.CU;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteBiClosure;
@@ -146,6 +146,8 @@ public final class GridDhtGetFuture<K, V> extends GridCompoundIdentityFuture<Col
 
         assert reader != null;
         assert !F.isEmpty(keys);
+
+        assert !reload;
 
         this.reader = reader;
         this.cctx = cctx;
@@ -291,8 +293,6 @@ public final class GridDhtGetFuture<K, V> extends GridCompoundIdentityFuture<Col
             return new GridFinishedFuture<Collection<GridCacheEntryInfo>>(
                 Collections.<GridCacheEntryInfo>emptyList());
 
-        final Collection<GridCacheEntryInfo> infos = new LinkedList<>();
-
         String taskName0 = cctx.kernalContext().job().currentTaskName();
 
         if (taskName0 == null)
@@ -335,8 +335,6 @@ public final class GridDhtGetFuture<K, V> extends GridCompoundIdentityFuture<Col
                         txFut.add(f);
                     }
 
-                    infos.add(info);
-
                     break;
                 }
                 catch (IgniteCheckedException err) {
@@ -355,7 +353,7 @@ public final class GridDhtGetFuture<K, V> extends GridCompoundIdentityFuture<Col
         if (txFut != null)
             txFut.markInitialized();
 
-        IgniteInternalFuture<Map<KeyCacheObject, CacheObject>> fut;
+        IgniteInternalFuture<Map<KeyCacheObject, T2<CacheObject, GridCacheVersion>>> fut;
 
         if (txFut == null || txFut.isDone()) {
             if (reload && cctx.readThrough() && cctx.store().configured()) {
@@ -393,8 +391,8 @@ public final class GridDhtGetFuture<K, V> extends GridCompoundIdentityFuture<Col
             // transactions to complete.
             fut = new GridEmbeddedFuture<>(
                 txFut,
-                new C2<Boolean, Exception, IgniteInternalFuture<Map<KeyCacheObject, CacheObject>>>() {
-                    @Override public IgniteInternalFuture<Map<KeyCacheObject, CacheObject>> apply(Boolean b, Exception e) {
+                new C2<Boolean, Exception, IgniteInternalFuture<Map<KeyCacheObject, T2<CacheObject, GridCacheVersion>>>>() {
+                    @Override public IgniteInternalFuture<Map<KeyCacheObject, T2<CacheObject, GridCacheVersion>>> apply(Boolean b, Exception e) {
                         if (e != null)
                             throw new GridClosureException(e);
 
@@ -432,23 +430,29 @@ public final class GridDhtGetFuture<K, V> extends GridCompoundIdentityFuture<Col
         }
 
         return new GridEmbeddedFuture<>(
-            new C2<Map<KeyCacheObject, CacheObject>, Exception, Collection<GridCacheEntryInfo>>() {
-                @Override public Collection<GridCacheEntryInfo> apply(Map<KeyCacheObject, CacheObject> map, Exception e) {
+            new C2<Map<KeyCacheObject, T2<CacheObject, GridCacheVersion>>, Exception, Collection<GridCacheEntryInfo>>() {
+                @Override public Collection<GridCacheEntryInfo> apply(Map<KeyCacheObject, T2<CacheObject, GridCacheVersion>> map, Exception e) {
                     if (e != null) {
                         onDone(e);
 
                         return Collections.emptyList();
                     }
                     else {
-                        for (Iterator<GridCacheEntryInfo> it = infos.iterator(); it.hasNext();) {
-                            GridCacheEntryInfo info = it.next();
+                        Collection<GridCacheEntryInfo> infos = new ArrayList<>(map.size());
 
-                            Object v = map.get(info.key());
+                        for (Map.Entry<KeyCacheObject, T2<CacheObject, GridCacheVersion>> entry : map.entrySet()) {
+                            T2<CacheObject, GridCacheVersion> val = entry.getValue();
 
-                            if (v == null)
-                                it.remove();
-                            else
-                                info.value(skipVals ? null : (CacheObject)v);
+                            assert val != null;
+
+                            GridCacheEntryInfo info = new GridCacheEntryInfo();
+
+                            info.cacheId(cctx.cacheId());
+                            info.key(entry.getKey());
+                            info.value(skipVals ? null : val.get1());
+                            info.version(val.get2());
+
+                            infos.add(info);
                         }
 
                         return infos;

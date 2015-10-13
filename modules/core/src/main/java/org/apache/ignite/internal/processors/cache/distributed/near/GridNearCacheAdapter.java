@@ -288,7 +288,9 @@ public abstract class GridNearCacheAdapter<K, V> extends GridDistributedCacheAda
             deserializePortable,
             expiry,
             skipVal,
-            canRemap);
+            canRemap,
+            false,
+            null);
 
         // init() will register future for responses if future has remote mappings.
         fut.init();

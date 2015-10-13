@@ -627,7 +627,7 @@ public class GridDhtTxLocal extends GridDhtTxLocalAdapter implements GridCacheMa
                         if (finish(false) || state() == UNKNOWN)
                             fut.finish();
                         else
-                            fut.onError(new IgniteCheckedException("Failed to commit transaction: " +
+                            fut.onError(new IgniteCheckedException("Failed to rollback transaction: " +
                                 CU.txString(GridDhtTxLocal.this)));
 
                     }

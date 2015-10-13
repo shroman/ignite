@@ -1409,144 +1409,15 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
      * @param taskName Task name.
      * @return Future.
      */
-    public IgniteInternalFuture<Map<KeyCacheObject, CacheObject>> reloadAllAsync0(
+    public final IgniteInternalFuture<Map<KeyCacheObject, T2<CacheObject, GridCacheVersion>>> reloadAllAsync0(
         Collection<KeyCacheObject> keys,
         boolean ret,
         boolean skipVals,
         @Nullable UUID subjId,
-        String taskName)
-    {
-        final AffinityTopologyVersion topVer = ctx.affinity().affinityTopologyVersion();
+        String taskName) {
+        assert false;
 
-        if (!F.isEmpty(keys)) {
-            final Map<KeyCacheObject, GridCacheVersion> keyVers = new HashMap();
-
-            for (KeyCacheObject key : keys) {
-                if (key == null)
-                    continue;
-
-                // Skip primary or backup entries for near cache.
-                if (ctx.isNear() && ctx.affinity().localNode(key, topVer))
-                    continue;
-
-                while (true) {
-                    try {
-                        GridCacheEntryEx entry = entryExSafe(key, topVer);
-
-                        if (entry == null)
-                            break;
-
-                        GridCacheVersion ver = entry.version();
-
-                        keyVers.put(key, ver);
-
-                        break;
-                    }
-                    catch (GridCacheEntryRemovedException ignore) {
-                        if (log.isDebugEnabled())
-                            log.debug("Got removed entry for reload (will retry): " + key);
-                    }
-                    catch (GridDhtInvalidPartitionException ignore) {
-                        if (log.isDebugEnabled())
-                            log.debug("Got invalid partition for key (will skip): " + key);
-
-                        break;
-                    }
-                }
-            }
-
-            final Map<KeyCacheObject, CacheObject> map =
-                ret ? U.<KeyCacheObject, CacheObject>newHashMap(keys.size()) : null;
-
-            final Collection<KeyCacheObject> absentKeys = F.view(keyVers.keySet());
-
-            final Collection<KeyCacheObject> loadedKeys = new GridConcurrentHashSet<>();
-
-            IgniteInternalFuture<Object> readFut = readThroughAllAsync(absentKeys, true, skipVals, null,
-                subjId, taskName, new CI2<KeyCacheObject, Object>() {
-                    /** Version for all loaded entries. */
-                    private GridCacheVersion nextVer = ctx.versions().next();
-
-                    /** {@inheritDoc} */
-                    @Override public void apply(KeyCacheObject key, Object val) {
-                        loadedKeys.add(key);
-
-                        GridCacheEntryEx entry = peekEx(key);
-
-                        if (entry != null) {
-                            try {
-                                GridCacheVersion curVer = keyVers.get(key);
-
-                                if (curVer != null) {
-                                    boolean wasNew = entry.isNewLocked();
-
-                                    entry.unswap();
-
-                                    CacheObject cacheVal = ctx.toCacheObject(val);
-
-                                    boolean set = entry.versionedValue(cacheVal, curVer, nextVer);
-
-                                    ctx.evicts().touch(entry, topVer);
-
-                                    if (map != null) {
-                                        if (set || wasNew)
-                                            map.put(key, cacheVal);
-                                        else {
-                                            CacheObject v = entry.peek(true, false, false, null);
-
-                                            if (v != null)
-                                                map.put(key, v);
-                                        }
-                                    }
-
-                                    if (log.isDebugEnabled()) {
-                                        log.debug("Set value loaded from store into entry [set=" + set + ", " +
-                                            "curVer=" +
-                                            curVer + ", newVer=" + nextVer + ", entry=" + entry + ']');
-                                    }
-                                }
-                                else {
-                                    if (log.isDebugEnabled()) {
-                                        log.debug("Current version was not found (either entry was removed or " +
-                                            "validation was not passed: " + entry);
-                                    }
-                                }
-                            }
-                            catch (GridCacheEntryRemovedException ignore) {
-                                if (log.isDebugEnabled()) {
-                                    log.debug("Got removed entry for reload (will not store reloaded entry) " +
-                                        "[entry=" + entry + ']');
-                                }
-                            }
-                            catch (IgniteCheckedException e) {
-                                throw new IgniteException(e);
-                            }
-                        }
-                    }
-                });
-
-            return readFut.chain(new CX1<IgniteInternalFuture<Object>, Map<KeyCacheObject, CacheObject>>() {
-                @Override public Map<KeyCacheObject, CacheObject> applyx(IgniteInternalFuture<Object> e)
-                    throws IgniteCheckedException  {
-                    // Touch all not loaded keys.
-                    for (KeyCacheObject key : absentKeys) {
-                        if (!loadedKeys.contains(key)) {
-                            GridCacheEntryEx entry = peekEx(key);
-
-                            if (entry != null)
-                                ctx.evicts().touch(entry, topVer);
-                        }
-                    }
-
-                    // Make sure there were no exceptions.
-                    e.get();
-
-                    return map;
-                }
-            });
-        }
-
-        return new GridFinishedFuture<>(Collections.<KeyCacheObject, CacheObject>emptyMap());
+        return new GridFinishedFuture<>();
     }
 
     /**
@@ -1763,7 +1634,8 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
             expiry,
             skipVals,
             false,
-            canRemap);
+            canRemap,
+            false);
     }
 
     /**
@@ -1778,7 +1650,7 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
      * @param keepCacheObjects Keep cache objects
      * @return Future.
      */
-    public <K1, V1> IgniteInternalFuture<Map<K1, V1>> getAllAsync0(@Nullable final Collection<KeyCacheObject> keys,
+    public final <K1, V1> IgniteInternalFuture<Map<K1, V1>> getAllAsync0(@Nullable final Collection<KeyCacheObject> keys,
         final boolean readThrough,
         boolean checkTx,
         @Nullable final UUID subjId,
@@ -1787,7 +1659,8 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
         @Nullable IgniteCacheExpiryPolicy expiry,
         final boolean skipVals,
         final boolean keepCacheObjects,
-        boolean canRemap
+        boolean canRemap,
+        final boolean needVer
         ) {
         if (F.isEmpty(keys))
             return new GridFinishedFuture<>(Collections.<K1, V1>emptyMap());
@@ -1822,20 +1695,17 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
                         GridCacheEntryEx entry = entryEx(key);
 
                         try {
-                            CacheObject val = entry.innerGet(null,
+                            T2<CacheObject, GridCacheVersion> res = entry.innerGetVersioned(null,
                                 ctx.isSwapOrOffheapEnabled(),
-                                /*don't read-through*/false,
-                                /*fail-fast*/true,
                                 /*unmarshal*/true,
                                 /*update-metrics*/!skipVals,
                                 /*event*/!skipVals,
-                                /*temporary*/false,
                                 subjId,
                                 null,
                                 taskName,
                                 expiry);
 
-                            if (val == null) {
+                            if (res == null) {
                                 GridCacheVersion ver = entry.version();
 
                                 if (misses == null)
@@ -1844,7 +1714,20 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
                                 misses.put(key, ver);
                             }
                             else {
-                                ctx.addResult(map, key, val, skipVals, keepCacheObjects, deserializePortable, true);
+                                if (needVer) {
+                                    assert keepCacheObjects;
+
+                                    map.put((K1)key, (V1)new T2<>(res.get1(), res.get2()));
+                                }
+                                else {
+                                    ctx.addResult(map,
+                                        key,
+                                        res.get1(),
+                                        skipVals,
+                                        keepCacheObjects,
+                                        deserializePortable,
+                                        true);
+                                }
 
                                 if (tx == null || (!tx.implicit() && tx.isolation() == READ_COMMITTED))
                                     ctx.evicts().touch(entry, topVer);
@@ -1859,15 +1742,6 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
                         catch (GridCacheEntryRemovedException ignored) {
                             if (log.isDebugEnabled())
                                 log.debug("Got removed entry in getAllAsync(..) method (will retry): " + key);
-                        }
-                        catch (GridCacheFilterFailedException ignore) {
-                            if (log.isDebugEnabled())
-                                log.debug("Filter validation failed for entry: " + entry);
-
-                            if (tx == null || (!tx.implicit() && tx.isolation() == READ_COMMITTED))
-                                ctx.evicts().touch(entry, topVer);
-
-                            break; // While loop.
                         }
                     }
                 }
@@ -1918,13 +1792,20 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
 
                                                 // Don't put key-value pair into result map if value is null.
                                                 if (val != null) {
-                                                    ctx.addResult(map,
-                                                        key,
-                                                        cacheVal,
-                                                        skipVals,
-                                                        keepCacheObjects,
-                                                        deserializePortable,
-                                                        false);
+                                                    if (needVer) {
+                                                        assert keepCacheObjects;
+
+                                                        map.put((K1)key, (V1)new T2<>(cacheVal, set ? nextVer : ver));
+                                                    }
+                                                    else {
+                                                        ctx.addResult(map,
+                                                            key,
+                                                            cacheVal,
+                                                            skipVals,
+                                                            keepCacheObjects,
+                                                            deserializePortable,
+                                                            false);
+                                                    }
                                                 }
 
                                                 if (tx0 == null || (!tx0.implicit() &&
@@ -2017,6 +1898,8 @@ public abstract class GridCacheAdapter<K, V> implements IgniteInternalCache<K, V
             }
         }
         else {
+            assert !needVer;
+
             return asyncOp(tx, new AsyncOp<Map<K1, V1>>(keys) {
                 @Override public IgniteInternalFuture<Map<K1, V1>> op(IgniteTxLocalAdapter tx) {
                     return tx.getAllAsync(ctx, keys, null, deserializePortable, skipVals, false, !readThrough);

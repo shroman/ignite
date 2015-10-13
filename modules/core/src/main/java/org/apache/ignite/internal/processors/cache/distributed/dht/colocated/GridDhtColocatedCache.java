@@ -65,9 +65,11 @@ import org.apache.ignite.internal.processors.cache.transactions.IgniteTxLocalEx;
 import org.apache.ignite.internal.processors.cache.version.GridCacheVersion;
 import org.apache.ignite.internal.util.future.GridEmbeddedFuture;
 import org.apache.ignite.internal.util.future.GridFinishedFuture;
+import org.apache.ignite.internal.util.lang.GridInClosure3;
 import org.apache.ignite.internal.util.typedef.C2;
 import org.apache.ignite.internal.util.typedef.CI2;
 import org.apache.ignite.internal.util.typedef.F;
+import org.apache.ignite.internal.util.typedef.T2;
 import org.apache.ignite.internal.util.typedef.internal.CU;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
@@ -278,7 +280,48 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
         boolean deserializePortable,
         @Nullable IgniteCacheExpiryPolicy expiryPlc,
         boolean skipVals,
-        boolean canRemap
+        boolean canRemap) {
+        return loadAsync(keys,
+            readThrough,
+            reload,
+            forcePrimary,
+            topVer, subjId,
+            taskName,
+            deserializePortable,
+            expiryPlc,
+            skipVals,
+            canRemap,
+            false,
+            null);
+    }
+
+    /**
+     * @param keys Keys to load.
+     * @param readThrough Read through flag.
+     * @param reload Reload flag.
+     * @param forcePrimary Force get from primary node flag.
+     * @param topVer Topology version.
+     * @param subjId Subject ID.
+     * @param taskName Task name.
+     * @param deserializePortable Deserialize portable flag.
+     * @param expiryPlc Expiry policy.
+     * @param skipVals Skip values flag.
+     * @return Loaded values.
+     */
+    public IgniteInternalFuture<Map<K, V>> loadAsync(
+        @Nullable Collection<KeyCacheObject> keys,
+        boolean readThrough,
+        boolean reload,
+        boolean forcePrimary,
+        AffinityTopologyVersion topVer,
+        @Nullable UUID subjId,
+        String taskName,
+        boolean deserializePortable,
+        @Nullable IgniteCacheExpiryPolicy expiryPlc,
+        boolean skipVals,
+        boolean canRemap,
+        boolean needVer,
+        @Nullable GridInClosure3<KeyCacheObject, Object, GridCacheVersion> c
     ) {
         if (keys == null || keys.isEmpty())
             return new GridFinishedFuture<>(Collections.<K, V>emptyMap());
@@ -288,7 +331,8 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
 
         // Optimisation: try to resolve value locally and escape 'get future' creation.
         if (!reload && !forcePrimary) {
-            Map<K, V> locVals = U.newHashMap(keys.size());
+            Map<K, V> locVals = null;
+            Map<KeyCacheObject, T2<CacheObject, GridCacheVersion>> locVals0 = null;
 
             boolean success = true;
 
@@ -304,18 +348,40 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
                         if (entry != null) {
                             boolean isNew = entry.isNewLocked();
 
-                            CacheObject v = entry.innerGet(null,
-                                /*swap*/true,
-                                /*read-through*/false,
-                                /*fail-fast*/true,
-                                /*unmarshal*/true,
-                                /**update-metrics*/false,
-                                /*event*/!skipVals,
-                                /*temporary*/false,
-                                subjId,
-                                null,
-                                taskName,
-                                expiryPlc);
+                            CacheObject v = null;
+                            GridCacheVersion ver = null;
+
+                            if (needVer) {
+                                T2<CacheObject, GridCacheVersion> res = entry.innerGetVersioned(
+                                    null,
+                                    /*swap*/true,
+                                    /*unmarshal*/true,
+                                    /**update-metrics*/false,
+                                    /*event*/!skipVals,
+                                    subjId,
+                                    null,
+                                    taskName,
+                                    expiryPlc);
+
+                                if (res != null) {
+                                    v = res.get1();
+                                    ver = res.get2();
+                                }
+                            }
+                            else {
+                                v = entry.innerGet(null,
+                                    /*swap*/true,
+                                    /*read-through*/false,
+                                    /*fail-fast*/true,
+                                    /*unmarshal*/true,
+                                    /**update-metrics*/false,
+                                    /*event*/!skipVals,
+                                    /*temporary*/false,
+                                    subjId,
+                                    null,
+                                    taskName,
+                                    expiryPlc);
+                            }
 
                             // Entry was not in memory or in swap, so we remove it from cache.
                             if (v == null) {
@@ -326,8 +392,20 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
 
                                 success = false;
                             }
-                            else
-                                ctx.addResult(locVals, key, v, skipVals, false, deserializePortable, true);
+                            else {
+                                if (c != null) {
+                                    if (locVals0 == null)
+                                        locVals0 = U.newHashMap(keys.size());
+
+                                    locVals0.put(key, new T2<>(v, ver));
+                                }
+                                else {
+                                    if (locVals == null)
+                                        locVals = U.newHashMap(keys.size());
+
+                                    ctx.addResult(locVals, key, v, skipVals, false, deserializePortable, true);
+                                }
+                            }
                         }
                         else
                             success = false;
@@ -364,6 +442,13 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
             if (success) {
                 sendTtlUpdateRequest(expiryPlc);
 
+                if (c != null) {
+                    if (locVals0 != null) {
+                        for (Map.Entry<KeyCacheObject, T2<CacheObject, GridCacheVersion>> e : locVals0.entrySet())
+                            c.apply(e.getKey(), e.getValue().get1(), e.getValue().get2());
+                    }
+                }
+
                 return new GridFinishedFuture<>(locVals);
             }
         }
@@ -384,7 +469,9 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
             deserializePortable,
             expiryPlc,
             skipVals,
-            canRemap);
+            canRemap,
+            needVer,
+            c);
 
         fut.init();
 
@@ -801,10 +888,9 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
                         if (log.isDebugEnabled())
                             log.debug("Got removed entry when adding lock (will retry): " + entry);
                     }
-                    catch (GridDistributedLockCancelledException e) {
+                    catch (IgniteCheckedException | GridDistributedLockCancelledException e) {
                         if (log.isDebugEnabled())
-                            log.debug("Got lock request for cancelled lock (will ignore): " +
-                                entry);
+                            log.debug("Failed to add entry [err=" + e + ", entry=" + entry + ']');
 
                         fut.onError(e);
 
