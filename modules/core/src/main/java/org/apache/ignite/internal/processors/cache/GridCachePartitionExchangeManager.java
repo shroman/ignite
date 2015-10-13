@@ -1283,36 +1283,17 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
 
                         NavigableMap<Integer, List<Integer>> orderMap = new TreeMap<>();
 
-                        //Marshaller cache first.
-                        int mId = CU.cacheId(GridCacheUtils.MARSH_CACHE_NAME);
-
-                        orderMap.put(-2, new ArrayList<Integer>(1));
-
-                        orderMap.get(-2).add(mId);
-
-                        //Utility & atomic cache second.
-                        int uId = CU.cacheId(GridCacheUtils.UTILITY_CACHE_NAME);
-                        int aId = CU.cacheId(GridCacheUtils.ATOMICS_CACHE_NAME);
-
-                        orderMap.put(-1, new ArrayList<Integer>(2));
-
-                        orderMap.get(-1).add(uId);
-                        orderMap.get(-1).add(aId);
-
-                        //Others.
                         for (Map.Entry<Integer, GridDhtPreloaderAssignments> e : assignsMap.entrySet()) {
                             int cacheId = e.getKey();
 
-                            if (cacheId != uId && cacheId != mId && cacheId != aId) {
-                                GridCacheContext<K, V> cacheCtx = cctx.cacheContext(cacheId);
+                            GridCacheContext<K, V> cacheCtx = cctx.cacheContext(cacheId);
 
-                                int order = cacheCtx.config().getRebalanceOrder();
+                            int order = cacheCtx.config().getRebalanceOrder();
 
-                                if (orderMap.get(order) == null)
-                                    orderMap.put(order, new LinkedList<Integer>());
+                            if (orderMap.get(order) == null)
+                                orderMap.put(order, new LinkedList<Integer>());
 
-                                orderMap.get(order).add(cacheId);
-                            }
+                            orderMap.get(order).add(cacheId);
                         }
 
                         //Ordered rebalance scheduling.
@@ -1335,7 +1316,11 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
                                     U.log(log, "Rebalancing scheduled: [cache=" + cacheCtx.name() +
                                         " , waitList=" + waitList.toString() + "]");
 
-                                    rebalancingQueue.add(r);
+                                    //Marshaller cache rebalancing launches in sync way.
+                                    if (cacheId == CU.cacheId(GridCacheUtils.MARSH_CACHE_NAME))
+                                        r.run();
+                                    else
+                                        rebalancingQueue.add(r);
                                 }
                             }
                         }

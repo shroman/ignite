@@ -1040,10 +1040,10 @@ public class CacheConfiguration<K, V> extends MutableConfiguration<K, V> {
      * {@link CacheRebalanceMode#SYNC SYNC} or {@link CacheRebalanceMode#ASYNC ASYNC} rebalance modes only.
      * <p/>
      * If cache rebalance order is positive, rebalancing for this cache will be started only when rebalancing for
-     * all caches with smaller rebalance order (except caches with rebalance order {@code 0}) will be completed.
+     * all caches with smaller rebalance order will be completed.
      * <p/>
      * Note that cache with order {@code 0} does not participate in ordering. This means that cache with
-     * rebalance order {@code 1} will never wait for any other caches. All caches with order {@code 0} will
+     * rebalance order {@code 0} will never wait for any other caches. All caches with order {@code 0} will
      * be rebalanced right away concurrently with each other and ordered rebalance processes.
      * <p/>
      * If not set, cache order is 0, i.e. rebalancing is not ordered.
