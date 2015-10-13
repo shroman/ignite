@@ -575,7 +575,6 @@ public abstract class GridDhtCacheAdapter<K, V> extends GridDistributedCacheAdap
         @Nullable Collection<? extends K> keys,
         boolean forcePrimary,
         boolean skipTx,
-        @Nullable GridCacheEntryEx entry,
         @Nullable UUID subjId,
         String taskName,
         boolean deserializePortable,
@@ -586,7 +585,6 @@ public abstract class GridDhtCacheAdapter<K, V> extends GridDistributedCacheAdap
 
         return getAllAsync(keys,
             opCtx == null || !opCtx.skipStore(),
-            null,
             /*don't check local tx. */false,
             subjId,
             taskName,
@@ -655,7 +653,6 @@ public abstract class GridDhtCacheAdapter<K, V> extends GridDistributedCacheAdap
             reader,
             keys,
             readThrough,
-            reload,
             /*tx*/null,
             topVer,
             subjId,

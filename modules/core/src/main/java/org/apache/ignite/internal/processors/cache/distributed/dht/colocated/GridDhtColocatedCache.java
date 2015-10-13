@@ -190,7 +190,6 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
         @Nullable final Collection<? extends K> keys,
         boolean forcePrimary,
         boolean skipTx,
-        @Nullable final GridCacheEntryEx entry,
         @Nullable UUID subjId,
         String taskName,
         final boolean deserializePortable,
@@ -214,7 +213,6 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
                 @Override public IgniteInternalFuture<Map<K, V>> op(IgniteTxLocalAdapter tx) {
                     return tx.getAllAsync(ctx,
                         ctx.cacheKeysView(keys),
-                        entry,
                         deserializePortable,
                         skipVals,
                         false,
@@ -332,7 +330,7 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
         // Optimisation: try to resolve value locally and escape 'get future' creation.
         if (!reload && !forcePrimary) {
             Map<K, V> locVals = null;
-            Map<KeyCacheObject, T2<CacheObject, GridCacheVersion>> locVals0 = null;
+            Map<KeyCacheObject, T2<Object, GridCacheVersion>> locVals0 = null;
 
             boolean success = true;
 
@@ -397,7 +395,7 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
                                     if (locVals0 == null)
                                         locVals0 = U.newHashMap(keys.size());
 
-                                    locVals0.put(key, new T2<>(v, ver));
+                                    locVals0.put(key, new T2<>((Object)(skipVals ? true : v), ver));
                                 }
                                 else {
                                     if (locVals == null)
@@ -444,7 +442,7 @@ public class GridDhtColocatedCache<K, V> extends GridDhtTransactionalCacheAdapte
 
                 if (c != null) {
                     if (locVals0 != null) {
-                        for (Map.Entry<KeyCacheObject, T2<CacheObject, GridCacheVersion>> e : locVals0.entrySet())
+                        for (Map.Entry<KeyCacheObject, T2<Object, GridCacheVersion>> e : locVals0.entrySet())
                             c.apply(e.getKey(), e.getValue().get1(), e.getValue().get2());
                     }
                 }

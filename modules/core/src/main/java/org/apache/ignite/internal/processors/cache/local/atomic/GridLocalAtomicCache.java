@@ -495,7 +495,6 @@ public class GridLocalAtomicCache<K, V> extends GridCacheAdapter<K, V> {
         @Nullable final Collection<? extends K> keys,
         final boolean forcePrimary,
         boolean skipTx,
-        @Nullable final GridCacheEntryEx entry,
         @Nullable UUID subjId,
         final String taskName,
         final boolean deserializePortable,
@@ -615,7 +614,6 @@ public class GridLocalAtomicCache<K, V> extends GridCacheAdapter<K, V> {
         return getAllAsync(
             keys,
             opCtx == null || !opCtx.skipStore(),
-            null,
             false,
             subjId,
             taskName,

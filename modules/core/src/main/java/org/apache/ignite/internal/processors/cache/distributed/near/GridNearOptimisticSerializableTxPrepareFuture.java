@@ -473,11 +473,11 @@ public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearTxPre
 
         Map<IgniteBiTuple<ClusterNode, Boolean>, GridDistributedTxMapping> mappings = new HashMap<>();
 
-        for (IgniteTxEntry read : reads)
-            map(read, topVer, mappings, false, remap);
-
         for (IgniteTxEntry write : writes)
             map(write, topVer, mappings, true, remap);
+
+        for (IgniteTxEntry read : reads)
+            map(read, topVer, mappings, false, remap);
 
         keyLockFut.onAllKeysAdded();
 
@@ -586,7 +586,7 @@ public class GridNearOptimisticSerializableTxPrepareFuture extends GridNearTxPre
         // Must lock near entries separately.
         if (m.near()) {
             try {
-                tx.optimisticLockEntries(m.entries());
+                tx.optimisticLockEntries(F.concat(false, m.writes(), m.reads()));
 
                 tx.userPrepare();
             }

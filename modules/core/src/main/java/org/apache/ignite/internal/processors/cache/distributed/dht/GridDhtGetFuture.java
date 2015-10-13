@@ -72,9 +72,6 @@ public final class GridDhtGetFuture<K, V> extends GridCompoundIdentityFuture<Col
     /** */
     private UUID reader;
 
-    /** Reload flag. */
-    private boolean reload;
-
     /** Read through flag. */
     private boolean readThrough;
 
@@ -120,7 +117,6 @@ public final class GridDhtGetFuture<K, V> extends GridCompoundIdentityFuture<Col
      * @param reader Reader.
      * @param keys Keys.
      * @param readThrough Read through flag.
-     * @param reload Reload flag.
      * @param tx Transaction.
      * @param topVer Topology version.
      * @param subjId Subject ID.
@@ -134,7 +130,6 @@ public final class GridDhtGetFuture<K, V> extends GridCompoundIdentityFuture<Col
         UUID reader,
         LinkedHashMap<KeyCacheObject, Boolean> keys,
         boolean readThrough,
-        boolean reload,
         @Nullable IgniteTxLocalEx tx,
         @NotNull AffinityTopologyVersion topVer,
         @Nullable UUID subjId,
@@ -147,14 +142,11 @@ public final class GridDhtGetFuture<K, V> extends GridCompoundIdentityFuture<Col
         assert reader != null;
         assert !F.isEmpty(keys);
 
-        assert !reload;
-
         this.reader = reader;
         this.cctx = cctx;
         this.msgId = msgId;
         this.keys = keys;
         this.readThrough = readThrough;
-        this.reload = reload;
         this.tx = tx;
         this.topVer = topVer;
         this.subjId = subjId;
@@ -356,33 +348,23 @@ public final class GridDhtGetFuture<K, V> extends GridCompoundIdentityFuture<Col
         IgniteInternalFuture<Map<KeyCacheObject, T2<CacheObject, GridCacheVersion>>> fut;
 
         if (txFut == null || txFut.isDone()) {
-            if (reload && cctx.readThrough() && cctx.store().configured()) {
-                fut = cache().reloadAllAsync0(keys.keySet(),
-                    true,
-                    skipVals,
+            if (tx == null) {
+                fut = cache().getDhtAllAsync(
+                    keys.keySet(),
+                    readThrough,
                     subjId,
-                    taskName);
+                    taskName,
+                    expiryPlc,
+                    skipVals,
+                    /*can remap*/true);
             }
             else {
-                if (tx == null) {
-                    fut = cache().getDhtAllAsync(
-                        keys.keySet(),
-                        readThrough,
-                        subjId,
-                        taskName,
-                        expiryPlc,
-                        skipVals,
-                        /*can remap*/true);
-                }
-                else {
-                    fut = tx.getAllAsync(cctx,
-                        keys.keySet(),
-                        null,
-                        /*deserialize portable*/false,
-                        skipVals,
-                        /*keep cache objects*/true,
-                        /*skip store*/!readThrough);
-                }
+                fut = tx.getAllAsync(cctx,
+                    keys.keySet(),
+                    /*deserialize portable*/false,
+                    skipVals,
+                    /*keep cache objects*/true,
+                    /*skip store*/!readThrough);
             }
         }
         else {
@@ -396,33 +378,23 @@ public final class GridDhtGetFuture<K, V> extends GridCompoundIdentityFuture<Col
                         if (e != null)
                             throw new GridClosureException(e);
 
-                        if (reload && cctx.readThrough() && cctx.store().configured()) {
-                            return cache().reloadAllAsync0(keys.keySet(),
-                                true,
-                                skipVals,
+                        if (tx == null) {
+                            return cache().getDhtAllAsync(
+                                keys.keySet(),
+                                readThrough,
                                 subjId,
-                                taskName);
+                                taskName,
+                                expiryPlc,
+                                skipVals,
+                                /*can remap*/true);
                         }
                         else {
-                            if (tx == null) {
-                                return cache().getDhtAllAsync(
-                                    keys.keySet(),
-                                    readThrough,
-                                    subjId,
-                                    taskName,
-                                    expiryPlc,
-                                    skipVals,
-                                    /*can remap*/true);
-                            }
-                            else {
-                                return tx.getAllAsync(cctx,
-                                    keys.keySet(),
-                                    null,
-                                    /*deserialize portable*/false,
-                                    skipVals,
-                                    /*keep cache objects*/true,
-                                    /*skip store*/!readThrough);
-                            }
+                            return tx.getAllAsync(cctx,
+                                keys.keySet(),
+                                /*deserialize portable*/false,
+                                skipVals,
+                                /*keep cache objects*/true,
+                                /*skip store*/!readThrough);
                         }
                     }
                 }
