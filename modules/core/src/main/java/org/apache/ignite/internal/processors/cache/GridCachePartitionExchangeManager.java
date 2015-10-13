@@ -1279,6 +1279,8 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
                     }
 
                     if (assignsMap != null) {
+                        rebalancingQueue.clear();
+
                         NavigableMap<Integer, List<Integer>> orderMap = new TreeMap<>();
 
                         //Marshaller cache first.
@@ -1334,34 +1336,33 @@ public class GridCachePartitionExchangeManager<K, V> extends GridCacheSharedMana
                                         " , waitList=" + waitList.toString() + "]");
 
                                     rebalancingQueue.add(r);
-
-                                    if (rebalancingQueueOwning.get() == 0) {
-                                        cacheCtx.closures().callLocalSafe(new GPC<Boolean>() {
-                                            @Override public Boolean call() {
-                                                while (true) {
-                                                    if (!rebalancingQueueOwning.compareAndSet(0, 1))
-                                                        return false;
-
-                                                    try {
-                                                        Runnable rn = rebalancingQueue.poll();
-
-                                                        if (rn == null)
-                                                            return false;
-
-                                                        rn.run();
-                                                    }
-                                                    finally {
-                                                        boolean res = rebalancingQueueOwning.compareAndSet(1, 0);
-
-                                                        assert res;
-                                                    }
-                                                }
-                                            }
-                                        }, /*system pool*/ true);
-                                    }
                                 }
                             }
                         }
+
+                        while (!rebalancingQueueOwning.compareAndSet(0, 1)) {
+                            U.sleep(10); // Wait for thread stop.
+                        }
+
+                        cctx.kernalContext().closure().callLocalSafe(new GPC<Boolean>() {
+                            @Override public Boolean call() {
+                                try {
+                                    while (true) {
+                                        Runnable rn = rebalancingQueue.poll();
+
+                                        if (rn == null)
+                                            return false;
+
+                                        rn.run();
+                                    }
+                                }
+                                finally {
+                                    boolean res = rebalancingQueueOwning.compareAndSet(1, 0);
+
+                                    assert res;
+                                }
+                            }
+                        }, /*system pool*/ true);
                     }
                 }
                 catch (IgniteInterruptedCheckedException e) {
