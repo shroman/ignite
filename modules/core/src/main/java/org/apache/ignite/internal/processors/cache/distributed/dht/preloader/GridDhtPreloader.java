@@ -21,9 +21,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Queue;
 import java.util.UUID;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.ignite.IgniteCheckedException;
@@ -53,12 +54,14 @@ import org.apache.ignite.internal.util.lang.GridPlainRunnable;
 import org.apache.ignite.internal.util.typedef.CI1;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.CU;
+import org.apache.ignite.internal.util.typedef.internal.GPC;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteBiInClosure;
 import org.apache.ignite.lang.IgnitePredicate;
 import org.apache.ignite.lang.IgniteUuid;
 import org.jetbrains.annotations.Nullable;
 import org.jsr166.ConcurrentHashMap8;
+import org.jsr166.ConcurrentLinkedDeque8;
 
 import static org.apache.ignite.events.EventType.EVT_CACHE_REBALANCE_PART_DATA_LOST;
 import static org.apache.ignite.events.EventType.EVT_CACHE_REBALANCE_PART_UNLOADED;
@@ -103,6 +106,12 @@ public class GridDhtPreloader extends GridCachePreloaderAdapter {
 
     /** Demand lock. */
     private final ReadWriteLock demandLock = new ReentrantReadWriteLock();
+
+    /** */
+    private final Queue<GridDhtLocalPartition> partitionsToEvict = new ConcurrentLinkedDeque8<>();
+
+    /** */
+    private final AtomicReference<Integer> partitionsEvictionOwning = new AtomicReference<>(0);
 
     /** Discovery listener. */
     private final GridLocalEventListener discoLsnr = new GridLocalEventListener() {
@@ -717,6 +726,41 @@ public class GridDhtPreloader extends GridCachePreloaderAdapter {
      */
     void remoteFuture(GridDhtForceKeysFuture<?, ?> fut) {
         forceKeyFuts.remove(fut.futureId(), fut);
+    }
+
+    /** {@inheritDoc} */
+    @Override public void evictPartitionAsync(GridDhtLocalPartition part) {
+        partitionsToEvict.add(part);
+
+        if (partitionsEvictionOwning.compareAndSet(0, 1)) {
+            cctx.closures().callLocalSafe(new GPC<Boolean>() {
+                @Override public Boolean call() {
+                    boolean firstRun = true;
+
+                    while (true) {
+                        if (!firstRun && !partitionsEvictionOwning.compareAndSet(0, 1))
+                            return false;
+
+                        firstRun = false;
+
+                        try {
+                            GridDhtLocalPartition part = partitionsToEvict.poll();
+
+                            if (part == null) {
+                                return false;
+                            }
+
+                            part.tryEvict();
+                        }
+                        finally {
+                            boolean res = partitionsEvictionOwning.compareAndSet(1, 0);
+
+                            assert res;
+                        }
+                    }
+                }
+            }, /*system pool*/ true);
+        }
     }
 
     /**

@@ -21,7 +21,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -50,13 +49,11 @@ import org.apache.ignite.internal.util.typedef.CI1;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.T2;
 import org.apache.ignite.internal.util.typedef.internal.CU;
-import org.apache.ignite.internal.util.typedef.internal.GPC;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 import org.apache.ignite.lang.IgniteUuid;
 import org.jetbrains.annotations.NotNull;
 import org.jsr166.ConcurrentHashMap8;
-import org.jsr166.ConcurrentLinkedDeque8;
 import org.jsr166.LongAdder8;
 
 import static org.apache.ignite.IgniteSystemProperties.IGNITE_ATOMIC_CACHE_DELETE_HISTORY_SIZE;
@@ -79,12 +76,6 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
 
     /** Logger. */
     private static volatile IgniteLogger log;
-
-    /** */
-    private static final Queue<GridDhtLocalPartition> partitionsToEvict = new ConcurrentLinkedDeque8<>();
-
-    /** */
-    private static final AtomicReference<Integer> partitionsEvictionOwning = new AtomicReference<>(0);
 
     /** Partition ID. */
     private final int id;
@@ -292,7 +283,7 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
         }
 
         // Attempt to evict.
-        tryEvict();
+        cctx.preloader().evictPartitionAsync(this);
     }
 
     /**
@@ -417,7 +408,7 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
 
             // Decrement reservations.
             if (state.compareAndSet(s, s, reservations, --reservations)) {
-                tryEvict();
+                cctx.preloader().evictPartitionAsync(this);
 
                 break;
             }
@@ -505,7 +496,7 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
             clearDeferredDeletes();
         }
         else {
-            tryEvict();
+            cctx.preloader().evictPartitionAsync(this);
         }
     }
 
@@ -524,58 +515,30 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
     /**
      * @return {@code True} if entry has been transitioned to state EVICTED.
      */
-    void tryEvict() {
+    public void tryEvict() {
         if (state.getReference() != RENTING || state.getStamp() != 0 || groupReserved())
             return;
 
-        partitionsToEvict.add(this);
+        // Attempt to evict partition entries from cache.
+        clearAll();
 
-        if (partitionsEvictionOwning.get() == 0) {
-            cctx.closures().callLocalSafe(new GPC<Boolean>() {
-                @Override public Boolean call() {
-                    while (true) {
-                        if (!partitionsEvictionOwning.compareAndSet(0, 1))
-                            return false;
+        if (map.isEmpty() && state.compareAndSet(RENTING, EVICTED, 0, 0)) {
+            if (log.isDebugEnabled())
+                log.debug("Evicted partition: " + this);
 
-                        try {
-                            GridDhtLocalPartition part = partitionsToEvict.poll();
+            if (!GridQueryProcessor.isEnabled(cctx.config()))
+                clearSwap();
 
-                            if (part == null) {
-                                return false;
-                            }
+            if (cctx.isDrEnabled())
+                cctx.dr().partitionEvicted(id);
 
-                            if (part.state.getReference() != EVICTED) {
-                                // Attempt to evict partition entries from cache.
-                                part.clearAll();
+            cctx.dataStructures().onPartitionEvicted(id);
 
-                                if (part.map.isEmpty() && part.state.compareAndSet(RENTING, EVICTED, 0, 0)) {
-                                    if (log.isDebugEnabled())
-                                        log.debug("Evicted partition: " + this);
+            rent.onDone();
 
-                                    if (!GridQueryProcessor.isEnabled(part.cctx.config()))
-                                        part.clearSwap();
+            ((GridDhtPreloader)cctx.preloader()).onPartitionEvicted(this, true);
 
-                                    if (part.cctx.isDrEnabled())
-                                        part.cctx.dr().partitionEvicted(id);
-
-                                    part.cctx.dataStructures().onPartitionEvicted(id);
-
-                                    part.rent.onDone();
-
-                                    ((GridDhtPreloader)part.cctx.preloader()).onPartitionEvicted(part, true);
-
-                                    part.clearDeferredDeletes();
-                                }
-                            }
-                        }
-                        finally {
-                            boolean res = partitionsEvictionOwning.compareAndSet(1, 0);
-
-                            assert res;
-                        }
-                    }
-                }
-            }, /*system pool*/ true);
+            clearDeferredDeletes();
         }
     }
 
@@ -616,7 +579,7 @@ public class GridDhtLocalPartition implements Comparable<GridDhtLocalPartition>,
      *
      */
     void onUnlock() {
-        tryEvict();
+        cctx.preloader().evictPartitionAsync(this);
     }
 
     /**
