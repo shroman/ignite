@@ -39,8 +39,6 @@
                 <!-- Partitioned cache example configuration with configurations adjusted to server nodes'. -->
                 <bean class="org.apache.ignite.configuration.CacheConfiguration">
                     <property name="atomicityMode" value="ATOMIC"/>
-
-
                 </bean>
             </list>
         </property>

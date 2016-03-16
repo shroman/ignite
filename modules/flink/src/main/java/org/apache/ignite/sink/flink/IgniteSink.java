@@ -19,36 +19,27 @@ package org.apache.ignite.sink.flink;
 
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.util.serialization.SerializationSchema;
-import org.apache.ignite.*;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.IgniteQueue;
+import org.apache.ignite.Ignition;
 import org.apache.ignite.configuration.CollectionConfiguration;
 
 /**
  * Apache Flink Ignite sink implemented as a RichSinkFunction.
  */
 public class IgniteSink<IN> extends RichSinkFunction<IN> {
-
-    private static final long serialVersionUID = 1L;
-
     /** Logger. */
-    private IgniteLogger log;
+    private final IgniteLogger log;
 
-    /**
-     * Configuration for Ignite collections.
-     */
+    /** Configuration for Ignite collections. */
     private static CollectionConfiguration colCfg;
 
-    private static IgniteQueue queue;
-    /**
-     * The serialization schema describes how to turn a data object into a different serialized
-     * representation.
-     *
-     */
-    private SerializationSchema schema;
+    /** The serialization schema describes how to turn a data object into a different serialized representation. */
+    private final SerializationSchema schema;
 
-    /**
-     * Ignite grid configuration file.
-     */
-    private static String igniteConfigFile;
+    /** Ignite grid configuration file. */
+    private static String igniteCfgFile;
 
     /** Queue name. */
     private static String queueName;
@@ -58,7 +49,6 @@ public class IgniteSink<IN> extends RichSinkFunction<IN> {
      *
      * @return {@link IgniteQueue} queue.
      */
-
     public static IgniteQueue getQueue() {
         return SinkContext.getQueue();
     }
@@ -78,15 +68,21 @@ public class IgniteSink<IN> extends RichSinkFunction<IN> {
      * @return Configuration file.
      */
     public String getIgniteConfigFile() {
-        return igniteConfigFile;
+        return igniteCfgFile;
     }
 
-    public IgniteSink(String queueName,
-                      String igniteConfigFile,
-                      SerializationSchema schema,
-                      CollectionConfiguration colCfg) {
+    /**
+     * Comments here...
+     *
+     * @param queueName
+     * @param igniteCfgFile
+     * @param schema
+     * @param colCfg
+     */
+    public IgniteSink(String queueName, String igniteCfgFile,
+        SerializationSchema schema, CollectionConfiguration colCfg) {
         this.queueName = queueName;
-        this.igniteConfigFile = igniteConfigFile;
+        this.igniteCfgFile = igniteCfgFile;
         this.schema = schema;
         this.colCfg = colCfg;
         this.log = SinkContext.getIgnite().log();
@@ -94,32 +90,34 @@ public class IgniteSink<IN> extends RichSinkFunction<IN> {
 
     /**
      * Transfers data into grid. It is called when new data
-     * arrives to the sink, and forwards it to {@link IgniteQueue}
+     * arrives to the sink, and forwards it to {@link IgniteQueue}.
      *
      * @param in IN.
      */
     @SuppressWarnings("unchecked")
     @Override
     public void invoke(IN in) {
-
         try {
             Object object = schema.serialize(in);
-            queue = SinkContext.getQueue();
-            queue.put(object);
-        } catch (Exception e) {
+
+            SinkContext.getQueue().put(object);
+        }
+        catch (Exception e) {
             log.error("Error while processing IN of " + queueName, e);
         }
     }
 
+    /**
+     * Comments here...
+     */
     public static class SinkContext {
-
-        /** Constructor.*/
+        /** Constructor. */
         private SinkContext() {
         }
 
-        /** Instance holder.*/
+        /** Instance holder. */
         private static class Holder {
-            private static final Ignite IGNITE = Ignition.start(igniteConfigFile);
+            private static final Ignite IGNITE = Ignition.start(igniteCfgFile);
             private static final IgniteQueue QUEUE = IGNITE.queue(queueName, 0, colCfg);
         }
 
