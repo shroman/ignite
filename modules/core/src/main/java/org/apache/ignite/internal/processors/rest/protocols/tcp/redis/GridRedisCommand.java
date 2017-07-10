@@ -62,6 +62,16 @@ public enum GridRedisCommand {
     /** GETRANGE. */
     GETRANGE("GETRANGE"),
 
+    // HASH commands.
+    /** HSET. */
+    HSET("HSET"),
+    /** HGET. */
+    HGET("HGET"),
+    /** HMSET. */
+    HMSET("HMSET"),
+    /** HMGET. */
+    HMGET("HMGET"),
+
     // Key commands.
     /** DEL. */
     DEL("DEL"),
