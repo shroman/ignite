@@ -109,4 +109,38 @@ public class RedisProtocolHashSelfTest extends RedisCommonAbstractTest {
             }
         }
     }
+
+    /**
+     * Note: {@link Jedis#hdel(String, String...)} is supposed to respond with the number of actually deleted fields.
+     *
+     * @throws Exception If failed.
+     */
+    public void testHDel() throws Exception {
+        try (Jedis jedis = pool.getResource()) {
+            Assert.assertEquals("OK", jedis.hmset(HKEY, new HashMap<String, String>() {{
+                put("f1", "v1");
+                put("f2", "v2");
+                put("f3", "v3");
+            }}));
+
+            Assert.assertEquals(2L, (long)jedis.hdel(HKEY, "f1", "f2"));
+            Assert.assertEquals(null, jedis.hget(HKEY, "f2"));
+            Assert.assertEquals("v3", jedis.hget(HKEY, "f3"));
+
+            // different from Redis protocol.
+            Assert.assertEquals(2L, (long)jedis.hdel(HKEY, "f3", "f4"));
+        }
+    }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testHExists() throws Exception {
+        try (Jedis jedis = pool.getResource()) {
+            jedis.hset(HKEY, "f1", "v1");
+
+            Assert.assertTrue(jedis.hexists(HKEY, "f1"));
+            Assert.assertFalse(jedis.hexists(HKEY, "f2"));
+        }
+    }
 }

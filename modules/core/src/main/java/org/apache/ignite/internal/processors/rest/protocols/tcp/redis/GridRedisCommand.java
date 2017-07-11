@@ -71,6 +71,10 @@ public enum GridRedisCommand {
     HMSET("HMSET"),
     /** HMGET. */
     HMGET("HMGET"),
+    /** HDEL. */
+    HDEL("HDEL"),
+    /** HEXISTS. */
+    HEXISTS("HEXISTS"),
 
     // Key commands.
     /** DEL. */
