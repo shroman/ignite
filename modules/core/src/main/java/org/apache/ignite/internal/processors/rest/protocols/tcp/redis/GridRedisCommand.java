@@ -75,6 +75,8 @@ public enum GridRedisCommand {
     HDEL("HDEL"),
     /** HEXISTS. */
     HEXISTS("HEXISTS"),
+    /** HLEN. */
+    HLEN("HLEN"),
 
     // Key commands.
     /** DEL. */

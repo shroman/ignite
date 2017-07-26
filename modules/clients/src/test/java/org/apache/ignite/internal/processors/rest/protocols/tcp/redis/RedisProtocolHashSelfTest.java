@@ -143,4 +143,18 @@ public class RedisProtocolHashSelfTest extends RedisCommonAbstractTest {
             Assert.assertFalse(jedis.hexists(HKEY, "f2"));
         }
     }
+
+    /**
+     * @throws Exception If failed.
+     */
+    public void testHLen() throws Exception {
+        try (Jedis jedis = pool.getResource()) {
+            Assert.assertEquals(0L, (long)jedis.hlen("Non-existing"));
+
+            for (int i = 1; i <= 100; i++)
+                jedis.hset(HKEY, "f" + i, "v" + i);
+
+            Assert.assertEquals(100L, (long)jedis.hlen(HKEY));
+        }
+    }
 }
