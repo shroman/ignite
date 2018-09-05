@@ -34,7 +34,6 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import javax.cache.CacheException;
-import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteException;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.binary.BinaryObject;
@@ -44,7 +43,6 @@ import org.apache.ignite.cache.CacheWriteSynchronizationMode;
 import org.apache.ignite.cache.QueryEntity;
 import org.apache.ignite.cache.QueryIndex;
 import org.apache.ignite.cache.query.SqlFieldsQuery;
-import org.apache.ignite.cache.query.annotations.QuerySqlField;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.DataRegionConfiguration;
 import org.apache.ignite.configuration.DataStorageConfiguration;
@@ -1368,8 +1366,14 @@ public class H2DynamicTableSelfTest extends AbstractSchemaSelfTest {
                     try (ResultSet dataRs = ps.executeQuery()) {
                         assertTrue(dataRs.next());
 
-                        for (int i = 0; i < dataRs.getMetaData().getColumnCount(); i++)
+                        for (int i = 0; i < dataRs.getMetaData().getColumnCount(); i++) {
                             resData.add(dataRs.getObject(i + 1));
+
+                            if (testUuid) {
+                                assertEquals("OTHER", dataRs.getMetaData().getColumnTypeName(i+1));
+                                assertEquals("UUID", dataRs.getMetaData().getColumnClassName(i + 1));
+                            }
+                        }
                     }
                 }
             }

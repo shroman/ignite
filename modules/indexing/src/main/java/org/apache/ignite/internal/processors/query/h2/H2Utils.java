@@ -210,7 +210,8 @@ public class H2Utils {
             String schemaName = rsMeta.getSchemaName(i);
             String typeName = rsMeta.getTableName(i);
             String name = rsMeta.getColumnLabel(i);
-            String type = rsMeta.getColumnClassName(i);
+//            String type = rsMeta.getColumnClassName(i);
+            String type = rsMeta.getColumnTypeName(i);
             int precision = rsMeta.getPrecision(i);
             int scale = rsMeta.getScale(i);
 
